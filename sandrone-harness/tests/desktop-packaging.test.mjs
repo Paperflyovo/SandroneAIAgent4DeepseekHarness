@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
-import { access, readFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 
 import nativeArtifacts from '../apps/desktop/verify-native-artifacts.cjs'
@@ -8,7 +10,7 @@ import {
   electronExecutableRelativePath,
 } from '../scripts/lib/desktop-platform.mjs'
 
-const { requiredNodePtyArtifacts } = nativeArtifacts
+const { missingRequiredPeerDependencies, requiredNodePtyArtifacts } = nativeArtifacts
 
 async function source(relative) {
   return readFile(new URL(`../${relative}`, import.meta.url), 'utf8')
@@ -62,6 +64,39 @@ test('native artifact gate distinguishes prebuilt and rebuilt node-pty layouts',
   assert.throws(() => requiredNodePtyArtifacts('freebsd', 'x64'), /Unsupported packaged platform/)
   await access(new URL('../node_modules/node-pty/prebuilds/win32-x64/pty.node', import.meta.url))
   await access(new URL('../node_modules/node-pty/prebuilds/darwin-arm64/pty.node', import.meta.url))
+})
+
+test('packaging gate rejects missing required peers and ignores optional peers', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'sandrone-peer-gate-'))
+  const nodeModules = join(root, 'node_modules')
+  const consumer = join(nodeModules, '@example', 'consumer')
+  const runtime = join(nodeModules, '@example', 'runtime')
+  await mkdir(consumer, { recursive: true })
+  await writeFile(join(consumer, 'package.json'), JSON.stringify({
+    name: '@example/consumer',
+    version: '1.0.0',
+    peerDependencies: {
+      '@example/optional': '1.0.0',
+      '@example/runtime': '1.0.0',
+    },
+    peerDependenciesMeta: {
+      '@example/optional': { optional: true },
+    },
+  }))
+  try {
+    assert.deepEqual(missingRequiredPeerDependencies(nodeModules), [{
+      packageName: '@example/runtime',
+      consumers: ['@example/consumer@1.0.0'],
+    }])
+    await mkdir(runtime, { recursive: true })
+    await writeFile(join(runtime, 'package.json'), JSON.stringify({
+      name: '@example/runtime',
+      version: '1.0.0',
+    }))
+    assert.deepEqual(missingRequiredPeerDependencies(nodeModules), [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test('manual sandbox workflow covers native x64 and arm64 runners for all desktop platforms', async () => {
