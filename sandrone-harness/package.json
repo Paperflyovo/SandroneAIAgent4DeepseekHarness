@@ -1,6 +1,6 @@
 {
   "name": "sandrone-ai-agent-for-deepseek-harness",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "main": "apps/desktop/main.cjs",
   "description": "Sandrone desktop distribution of the official DeepSeek Harness.",
@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@sandrone/harness-ui": "workspace:*",
+    "@deepseek-ai/cordis-plugin-group": "1.0.1",
     "@deepseek-ai/dsh": "0.1.0-rc.6",
     "@deepseek-ai/dsh-base": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-directory-picker-browse": "0.1.0-rc.6",
