@@ -1,0 +1,28 @@
+extends: apps/desktop/electron-builder.yml
+
+npmRebuild: false
+electronDist: node_modules/electron/dist
+
+mac:
+  target:
+    - dmg
+    - zip
+  artifactName: SandroneAIAgent-${version}-mac-${arch}.${ext}
+  category: public.app-category.developer-tools
+  darkModeSupport: true
+  icon: build/icon.png
+  extendInfo:
+    NSDesktopFolderUsageDescription: Sandrone AI Agent accesses Desktop folders that you explicitly select as Workspaces.
+    NSDocumentsFolderUsageDescription: Sandrone AI Agent accesses Documents folders that you explicitly select as Workspaces.
+    NSDownloadsFolderUsageDescription: Sandrone AI Agent accesses Downloads folders that you explicitly select as Workspaces.
+
+dmg:
+  title: Sandrone AI Agent ${version}
+  contents:
+    - x: 180
+      y: 170
+      type: file
+    - x: 480
+      y: 170
+      type: link
+      path: /Applications

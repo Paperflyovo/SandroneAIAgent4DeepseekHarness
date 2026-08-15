@@ -180,10 +180,28 @@ function installPermissionPolicy(window) {
 }
 
 function createApplicationMenu() {
+  const isMac = process.platform === 'darwin'
   const template = [
+    ...(isMac ? [{
+      label: APP_NAME,
+      submenu: [
+        { role: 'about', label: `关于 ${APP_NAME}` },
+        { type: 'separator' },
+        { role: 'services', label: '服务' },
+        { type: 'separator' },
+        { role: 'hide', label: `隐藏 ${APP_NAME}` },
+        { role: 'hideOthers', label: '隐藏其他应用' },
+        { role: 'unhide', label: '全部显示' },
+        { type: 'separator' },
+        { role: 'quit', label: `退出 ${APP_NAME}` },
+      ],
+    }] : []),
     {
       label: '文件',
-      submenu: [{ role: 'close', label: '关闭窗口' }, { role: 'quit', label: '退出' }],
+      submenu: [
+        { role: 'close', label: '关闭窗口' },
+        ...(!isMac ? [{ role: 'quit', label: '退出' }] : []),
+      ],
     },
     {
       label: '编辑',
@@ -196,14 +214,15 @@ function createApplicationMenu() {
     {
       label: '视图',
       submenu: [
-        { label: '后退', accelerator: 'Alt+Left', click: () => mainWindow?.webContents.navigationHistory.goBack() },
-        { label: '前进', accelerator: 'Alt+Right', click: () => mainWindow?.webContents.navigationHistory.goForward() },
+        { label: '后退', accelerator: isMac ? 'Command+[' : 'Alt+Left', click: () => mainWindow?.webContents.navigationHistory.goBack() },
+        { label: '前进', accelerator: isMac ? 'Command+]' : 'Alt+Right', click: () => mainWindow?.webContents.navigationHistory.goForward() },
         { type: 'separator' },
         { role: 'reload', label: '刷新界面' }, { role: 'forceReload', label: '强制刷新界面' },
         { role: 'resetZoom', label: '实际大小' }, { role: 'zoomIn', label: '放大' },
         { role: 'zoomOut', label: '缩小' }, { role: 'togglefullscreen', label: '全屏' },
       ],
     },
+    ...(isMac ? [{ role: 'windowMenu', label: '窗口' }] : []),
     {
       label: '帮助',
       submenu: [

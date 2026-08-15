@@ -6,6 +6,8 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
+import { electronExecutableRelativePath } from './lib/desktop-platform.mjs'
+
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
@@ -135,7 +137,7 @@ async function electronExecutable() {
     'node_modules',
     'electron',
     'dist',
-    process.platform === 'win32' ? 'electron.exe' : 'electron',
+    electronExecutableRelativePath(),
   )
   const executablePath = await realpath(candidate)
   const manifest = JSON.parse(await readFile(join(root, 'node_modules', 'electron', 'package.json'), 'utf8'))
@@ -199,10 +201,34 @@ async function withTimeout(operation, milliseconds, message) {
 
 async function forceStopProcessTree(rootPid) {
   if (!Number.isInteger(rootPid) || rootPid < 1) return
-  await execFileAsync('taskkill.exe', ['/PID', String(rootPid), '/T', '/F'], {
-    encoding: 'utf8',
-    windowsHide: true,
-  }).catch(() => {})
+  if (process.platform === 'win32') {
+    await execFileAsync('taskkill.exe', ['/PID', String(rootPid), '/T', '/F'], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).catch(() => {})
+    return
+  }
+  const table = await execFileAsync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8' }).catch(() => null)
+  const children = new Map()
+  for (const line of table?.stdout.split(/\r?\n/) ?? []) {
+    const [pidText, parentText] = line.trim().split(/\s+/)
+    const pid = Number(pidText)
+    const parent = Number(parentText)
+    if (!Number.isInteger(pid) || !Number.isInteger(parent)) continue
+    const siblings = children.get(parent) ?? []
+    siblings.push(pid)
+    children.set(parent, siblings)
+  }
+  const pending = [rootPid]
+  const tree = []
+  while (pending.length > 0) {
+    const pid = pending.pop()
+    tree.push(pid)
+    pending.push(...(children.get(pid) ?? []))
+  }
+  for (const pid of tree.reverse()) {
+    try { process.kill(pid, 'SIGKILL') } catch {}
+  }
 }
 
 async function waitForShutdown({ identities, origin }) {

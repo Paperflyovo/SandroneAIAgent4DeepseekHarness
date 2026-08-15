@@ -1,0 +1,22 @@
+extends: apps/desktop/electron-builder.yml
+
+npmRebuild: false
+electronDist: node_modules/electron/dist
+
+win:
+  target:
+    - nsis
+  artifactName: SandroneAIAgent-${version}-${arch}.${ext}
+  executableName: SandroneAIAgent
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false
+  shortcutName: Sandrone AI Agent
+  uninstallDisplayName: Sandrone AI Agent
+  runAfterFinish: true

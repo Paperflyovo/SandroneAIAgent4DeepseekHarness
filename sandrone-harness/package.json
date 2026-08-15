@@ -23,8 +23,8 @@
     "web": "pnpm run build:ui && node scripts/run-web.mjs",
     "web:dump": "pnpm run build:ui && node scripts/run-web.mjs --dump-config",
     "desktop": "pnpm run build:ui && electron apps/desktop/main.cjs",
-    "desktop:pack": "pnpm run build && pnpm test && electron-builder --config apps/desktop/electron-builder.yml",
-    "desktop:dir": "electron-builder --config apps/desktop/electron-builder.yml --dir"
+    "desktop:pack": "pnpm run build && pnpm test && node scripts/package-desktop.mjs",
+    "desktop:dir": "node scripts/package-desktop.mjs --dir"
   },
   "dependencies": {
     "@sandrone/harness-ui": "workspace:*",

@@ -27,6 +27,16 @@ The desktop supervisor starts the official `dsh web` profile on a random
 `127.0.0.1` port. Harness data is kept under Electron's user-data directory and
 survives application upgrades.
 
+## Cross-platform desktop sandbox
+
+`pnpm run desktop:pack` now selects a native Builder profile from the current host and CPU. Windows produces NSIS, macOS produces DMG and ZIP, and Linux produces AppImage and DEB. `pnpm run desktop:dir` creates only the unpacked application for the current platform. Cross-compilation is deliberately rejected: platform-native dependencies are installed and packaged on matching runners.
+
+The Windows and macOS profiles use the prebuilt `node-pty` artifacts shipped by its package. Linux has no published `node-pty` prebuild in this dependency version, so its profile enables a sequential Electron rebuild and the CI runner installs the required compiler toolchain. Every package runs an `afterPack` gate that refuses an artifact missing the matching PTY binary.
+
+The repository-level `Desktop cross-platform sandbox` workflow is manual and uploads unsigned x64/arm64 artifacts for 14 days; it cannot publish a GitHub Release. This keeps early macOS/Linux experiments separate from the signed release path. macOS Gatekeeper and Windows SmartScreen warnings remain expected until signing and notarization are configured.
+
+The implementation boundary, native dependency policy, public reference evidence and promotion checklist are recorded in `docs/cross-platform-desktop.md`.
+
 ## Upstream rule
 
 The npm distribution is pinned to `@deepseek-ai/dsh@0.1.0-rc.6` and the matching

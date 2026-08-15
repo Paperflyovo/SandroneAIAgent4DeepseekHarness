@@ -1,0 +1,82 @@
+name: Desktop cross-platform sandbox
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            arch: x64
+            runner: windows-latest
+          - platform: windows
+            arch: arm64
+            runner: windows-11-arm
+          - platform: macos
+            arch: x64
+            runner: macos-15-intel
+          - platform: macos
+            arch: arm64
+            runner: macos-latest
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+          - platform: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+
+    defaults:
+      run:
+        working-directory: sandrone-harness
+
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+          cache-dependency-path: sandrone-harness/pnpm-lock.yaml
+
+      - name: Install Linux native build prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3 pkg-config libfuse2
+
+      - name: Install dependencies for this platform
+        run: pnpm install --frozen-lockfile
+
+      - name: Build, test and package
+        run: pnpm run desktop:pack
+
+      - name: Upload unsigned sandbox artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SandroneAIAgent-${{ matrix.platform }}-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            sandrone-harness/release/*.exe
+            sandrone-harness/release/*.exe.blockmap
+            sandrone-harness/release/*.dmg
+            sandrone-harness/release/*.zip
+            sandrone-harness/release/*.AppImage
+            sandrone-harness/release/*.deb

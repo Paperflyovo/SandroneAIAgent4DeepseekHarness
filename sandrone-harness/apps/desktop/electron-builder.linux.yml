@@ -1,0 +1,19 @@
+extends: apps/desktop/electron-builder.yml
+
+npmRebuild: true
+nativeRebuilder: sequential
+electronDist: node_modules/electron/dist
+
+linux:
+  target:
+    - AppImage
+    - deb
+  artifactName: SandroneAIAgent-${version}-linux-${arch}.${ext}
+  executableName: sandrone-ai-agent
+  icon: build/icon.png
+  category: Development
+  synopsis: Sandrone desktop experience powered by the official DeepSeek Harness
+  maintainer: Sandrone contributors
+
+deb:
+  priority: optional
