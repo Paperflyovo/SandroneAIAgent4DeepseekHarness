@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+  <title>Sandrone</title>
+  <style>
+    :root { color-scheme: light dark; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f5f2; color: #242724; }
+    main { width: min(440px, calc(100vw - 40px)); }
+    .mark { width: 38px; height: 38px; margin-bottom: 20px; border: 1px solid #b8bdb7; border-radius: 8px; display: grid; place-items: center; color: #9b554f; font-weight: 700; }
+    h1 { margin: 0 0 8px; font-size: 20px; font-weight: 600; letter-spacing: 0; }
+    p { margin: 0; color: #687069; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; }
+    .track { height: 3px; margin-top: 24px; overflow: hidden; background: #dfe2dc; }
+    .track::after { content: ""; display: block; width: 38%; height: 100%; background: #9b554f; animation: travel 1.2s ease-in-out infinite alternate; }
+    button { display: none; margin-top: 18px; min-height: 34px; padding: 0 14px; border: 1px solid #c9cdc7; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
+    button.visible { display: inline-flex; align-items: center; }
+    @keyframes travel { from { transform: translateX(-100%); } to { transform: translateX(264%); } }
+    @media (prefers-reduced-motion: reduce) { .track::after { animation: none; width: 100%; } }
+    @media (prefers-color-scheme: dark) { body { background: #171918; color: #edf0ec; } p { color: #adb5ae; } .track { background: #343936; } button { background: #202321; border-color: #424944; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">S</div>
+    <h1 id="title">正在启动 DeepSeek Harness</h1>
+    <p id="detail">正在加载官方运行时、会话与工具。首次启动会稍久一些。</p>
+    <div class="track" id="track"></div>
+    <button id="retry" type="button">重新启动</button>
+  </main>
+  <script>
+    const title = document.getElementById('title')
+    const detail = document.getElementById('detail')
+    const track = document.getElementById('track')
+    const retry = document.getElementById('retry')
+    const render = status => {
+      if (!status) return
+      if (status.phase === 'failed') {
+        title.textContent = 'Harness 启动失败'
+        detail.textContent = status.error || '没有收到官方服务的就绪信号。'
+        track.hidden = true
+        retry.classList.add('visible')
+      } else if (status.phase === 'restarting') {
+        title.textContent = 'Harness 正在恢复'
+        detail.textContent = `服务意外退出，正在进行第 ${status.attempts} 次有限重启。`
+        track.hidden = false
+        retry.classList.remove('visible')
+      } else if (status.phase === 'starting') {
+        title.textContent = '正在启动 DeepSeek Harness'
+        detail.textContent = '正在加载官方运行时、会话与工具。首次启动会稍久一些。'
+        track.hidden = false
+        retry.classList.remove('visible')
+      }
+    }
+    retry.addEventListener('click', async () => {
+      retry.classList.remove('visible')
+      track.hidden = false
+      title.textContent = '正在重新启动 DeepSeek Harness'
+      detail.textContent = '请稍候。'
+      await window.sandroneDesktop.restartHarness()
+    })
+    window.sandroneDesktop.getStatus().then(render)
+    window.sandroneDesktop.onStatus(render)
+  </script>
+</body>
+</html>

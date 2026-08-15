@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sandrone Harness Frontend Lifecycle"
+  short_description: "Build reversible Harness client plugins"
+  default_prompt: "Use $sandrone-harness-frontend-lifecycle to design or review a DeepSeek Harness frontend extension."

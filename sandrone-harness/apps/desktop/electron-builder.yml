@@ -1,0 +1,39 @@
+appId: ai.sandrone.deepseek-harness
+productName: Sandrone AI Agent
+artifactName: SandroneAIAgent-${version}-${arch}.${ext}
+asar: false
+npmRebuild: false
+electronDist: node_modules/electron/dist
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - package.json
+  - apps/desktop/**/*
+  - packages/sandrone-ui/package.json
+  - packages/sandrone-ui/lib/**/*
+  - profiles/**/*
+  - node_modules/**/*
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  executableName: SandroneAIAgent
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false
+  shortcutName: Sandrone AI Agent
+  uninstallDisplayName: Sandrone AI Agent
+  runAfterFinish: true
+
+compression: normal

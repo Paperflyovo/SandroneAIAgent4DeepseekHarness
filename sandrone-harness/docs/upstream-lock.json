@@ -1,0 +1,24 @@
+{
+  "npmPackage": "@deepseek-ai/dsh",
+  "npmVersion": "0.1.0-rc.6",
+  "packageFamilyVersion": "0.1.0-rc.6",
+  "auditedSource": {
+    "repository": "https://github.com/deepseek-ai/deepseek-harness",
+    "commit": "47f943859bef60e4160492346772ded9b24f765a",
+    "version": "0.1.0-rc.5",
+    "license": "MIT"
+  },
+  "publicContracts": [
+    "@deepseek-ai/dsh web profile",
+    "@deepseek-ai/dsh-client-runtime/client",
+    "@deepseek-ai/dsh-client-ui-slots",
+    "@deepseek-ai/dsh-client-ui-theme/client",
+    "@deepseek-ai/dsh-client-ui-primitives"
+  ],
+  "upgradePolicy": [
+    "Upgrade the complete @deepseek-ai/dsh package family together.",
+    "Compare public exports, SessionEvent and RPC contracts, Slot declarations and persistence format.",
+    "Run the official Web tests before Sandrone compatibility tests.",
+    "Back up the DSH_HOME data directory before opening a candidate version."
+  ]
+}

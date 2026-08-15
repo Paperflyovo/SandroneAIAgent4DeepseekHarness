@@ -1,0 +1,42 @@
+# Sandrone adapter dependencies and generated output. The official
+# DeepSeek checkout keeps its own repository-level ignore policy.
+sandrone-harness/**/node_modules/
+sandrone-harness/dist/
+sandrone-harness/release/
+sandrone-harness/runtime/
+sandrone-harness/**/coverage/
+sandrone-harness/.pnpm-store/
+sandrone-harness/**/.cache/
+sandrone-harness/**/*.tsbuildinfo
+sandrone-harness/pnpm-debug.log
+
+# Local configuration, credentials, and user state
+sandrone-harness/.env
+sandrone-harness/.env.*
+!.env.example
+sandrone-harness/.sessions/
+sandrone-harness/.storages/
+sandrone-harness/profiles/*/user-data/
+sandrone-harness/profiles/*/browser-data/
+sandrone-harness/**/*.log
+sandrone-harness/**/*.tmp
+
+# Local tooling and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+.playwright-mcp/
+.codex-npm-cache/
+.codex-npm-packs/
+.worktrees/
+worktrees/
+
+# Test and browser artifacts
+sandrone-harness/tmp/
+sandrone-harness/artifacts/
+sandrone-harness/screenshots/
+
+# Electron branding assets are source files, not build residue.
+!sandrone-harness/build/
+!sandrone-harness/build/**
