@@ -21,6 +21,8 @@ pnpm run desktop
 
 The Windows desktop profile pins DeepSeek's official in-app browse directory picker. This preserves workspace selection without loading the native picker worker, which is not ABI-compatible with Electron's embedded Node runtime. Packaging uses the official Windows x64 prebuild shipped by `node-pty`, so a normal build does not require Visual Studio Spectre-mitigated libraries.
 
+On first launch, finish DeepSeek's preview notice and API-key onboarding before using controls behind those dialogs; choosing **稍后配置** is supported. `pnpm run qa:desktop` exercises that cold-start flow, opens the picker from Sandrone's top bar, adopts a real temporary directory, reloads the renderer, and verifies that the Workspace remains registered. Set `ELECTRON_EXECUTABLE_PATH` to a packaged executable to run the same checks against `win-unpacked` or an installed build.
+
 The desktop supervisor starts the official `dsh web` profile on a random
 `127.0.0.1` port. Harness data is kept under Electron's user-data directory and
 survives application upgrades.

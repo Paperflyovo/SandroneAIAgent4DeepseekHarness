@@ -266,6 +266,47 @@ async function desktopStatus(page) {
   }
 }
 
+async function acceptPreviewNotice(page) {
+  const notice = page.getByRole('dialog').filter({ hasText: /内测声明|Preview Notice/i }).first()
+  if (!await notice.isVisible()) return false
+  await notice.getByRole('button', { name: /继续|Continue/i }).click()
+  await notice.waitFor({ state: 'hidden', timeout: 30_000 })
+  return true
+}
+
+async function deferApiKeyOnboarding(page) {
+  const onboarding = page.getByRole('dialog').filter({ hasText: /添加一个 API Key|Add an API Key/i }).first()
+  try {
+    await onboarding.waitFor({ state: 'visible', timeout: 10_000 })
+  } catch {
+    return false
+  }
+  await onboarding.getByRole('button', { name: /稍后配置|Configure later/i }).click()
+  await onboarding.waitFor({ state: 'hidden', timeout: 30_000 })
+  return true
+}
+
+async function addWorkspaceThroughDirectoryBrowser(page, workspacePath) {
+  let dialog = page.getByRole('dialog').filter({ hasText: /选择工作区目录|Select Workspace Directory/i }).first()
+  if (!await dialog.isVisible()) {
+    const openWorkspace = page.getByRole('button', { name: '打开工作区', exact: true })
+    await openWorkspace.waitFor({ state: 'visible', timeout: 30_000 })
+    await openWorkspace.click()
+    dialog = page.getByRole('dialog').filter({ hasText: /选择工作区目录|Select Workspace Directory/i }).first()
+  }
+  await dialog.waitFor({ state: 'visible', timeout: 30_000 })
+  const editPath = dialog.getByRole('button', { name: /编辑路径|Edit path/i })
+  await editPath.click()
+  const pathInput = dialog.getByRole('textbox', { name: /编辑路径|Edit path/i })
+  await pathInput.fill(workspacePath)
+  await pathInput.press('Enter')
+
+  const open = dialog.getByRole('button', { name: /打开|Open/i })
+  await open.waitFor({ state: 'visible', timeout: 30_000 })
+  await open.click()
+  await dialog.waitFor({ state: 'hidden', timeout: 30_000 })
+}
+
 async function main() {
   const startedAt = new Date()
   const outputDirectory = join(root, 'runtime', 'tmp', `qa-electron-${timestampName(startedAt)}`)
@@ -274,6 +315,7 @@ async function main() {
   const localDirectory = join(profileRoot, 'local')
   const chromiumUserDataDirectory = join(profileRoot, 'chromium')
   const temporaryDirectory = join(outputDirectory, 'tmp')
+  const workspaceDirectory = join(outputDirectory, 'workspace-fixture')
   const reportPath = join(outputDirectory, 'report.json')
   const entrypoint = join(root, 'apps', 'desktop', 'main.cjs')
   const readyTimeoutMs = timeoutFromEnvironment()
@@ -306,6 +348,7 @@ async function main() {
     mkdir(localDirectory, { recursive: true }),
     mkdir(chromiumUserDataDirectory, { recursive: true }),
     mkdir(temporaryDirectory, { recursive: true }),
+    mkdir(workspaceDirectory, { recursive: true }),
   ])
 
   try {
@@ -375,6 +418,12 @@ async function main() {
     recordCheck(report, 'desktop has exactly one renderer window', initialWindows.length === 1, initialWindows.map(window => safeUrl(window.url())))
     recordCheck(report, 'desktop supervisor is ready on the visible origin', initialStatus.phase === 'ready' && initialStatus.url === origin, initialStatus)
     recordCheck(report, 'Sandrone Buddy is visible', await firstWindow.locator(buddySelector).isVisible(), buddySelector)
+    report.application.previewNoticeAccepted = await acceptPreviewNotice(firstWindow)
+    report.application.apiKeyOnboardingDeferred = await deferApiKeyOnboarding(firstWindow)
+    await addWorkspaceThroughDirectoryBrowser(firstWindow, workspaceDirectory)
+    const workspaceTitle = firstWindow.getByText('workspace-fixture', { exact: true }).first()
+    await workspaceTitle.waitFor({ state: 'visible', timeout: 30_000 })
+    recordCheck(report, 'workspace directory picker adopts a selected directory', await workspaceTitle.isVisible(), workspaceDirectory)
     const initialScreenshot = join(outputDirectory, 'desktop-initial.png')
     await firstWindow.screenshot({ path: initialScreenshot, fullPage: false })
     report.application.initial.screenshot = initialScreenshot
@@ -397,6 +446,7 @@ async function main() {
     recordCheck(report, 'reload preserves the ready supervisor generation', reloadedStatus.phase === 'ready' && reloadedStatus.url === origin, reloadedStatus)
     recordCheck(report, 'reload keeps exactly one renderer window', reloadedWindows.length === 1, reloadedWindows.map(window => safeUrl(window.url())))
     recordCheck(report, 'reload restores Sandrone Buddy', await firstWindow.locator(buddySelector).isVisible(), buddySelector)
+    recordCheck(report, 'reload preserves the selected workspace', await firstWindow.getByText('workspace-fixture', { exact: true }).first().isVisible(), workspaceDirectory)
     const reloadedScreenshot = join(outputDirectory, 'desktop-after-reload.png')
     await firstWindow.screenshot({ path: reloadedScreenshot, fullPage: false })
     report.application.afterReload.screenshot = reloadedScreenshot
@@ -408,6 +458,12 @@ async function main() {
     if (firstWindow && !firstWindow.isClosed()) {
       try {
         report.application.failureStatus = await desktopStatus(firstWindow)
+      } catch {}
+      try {
+        report.application.failureDialogs = await firstWindow.locator('[role="dialog"]:visible').allTextContents()
+        const failureScreenshot = join(outputDirectory, 'desktop-failure.png')
+        await firstWindow.screenshot({ path: failureScreenshot, fullPage: false })
+        report.application.failureScreenshot = failureScreenshot
       } catch {}
     }
   } finally {
