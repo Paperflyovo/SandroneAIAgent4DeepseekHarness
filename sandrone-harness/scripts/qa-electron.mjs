@@ -312,25 +312,15 @@ async function deferApiKeyOnboarding(page) {
   return true
 }
 
-async function addWorkspaceThroughDirectoryBrowser(page, workspacePath) {
-  let dialog = page.getByRole('dialog').filter({ hasText: /选择工作区目录|Select Workspace Directory/i }).first()
-  if (!await dialog.isVisible()) {
-    const openWorkspace = page.getByRole('button', { name: '打开工作区', exact: true })
-    await openWorkspace.waitFor({ state: 'visible', timeout: 30_000 })
-    await openWorkspace.click()
-    dialog = page.getByRole('dialog').filter({ hasText: /选择工作区目录|Select Workspace Directory/i }).first()
-  }
-  await dialog.waitFor({ state: 'visible', timeout: 30_000 })
-  const editPath = dialog.getByRole('button', { name: /编辑路径|Edit path/i })
-  await editPath.click()
-  const pathInput = dialog.getByRole('textbox', { name: /编辑路径|Edit path/i })
-  await pathInput.fill(workspacePath)
-  await pathInput.press('Enter')
-
-  const open = dialog.getByRole('button', { name: /打开|Open/i })
-  await open.waitFor({ state: 'visible', timeout: 30_000 })
-  await open.click()
-  await dialog.waitFor({ state: 'hidden', timeout: 30_000 })
+async function addWorkspaceThroughNativePicker(page, workspacePath) {
+  // The desktop shows the OS-native directory dialog (Electron
+  // dialog.showOpenDialog); automated runs resolve SANDRONE_QA_PICK_DIRECTORY
+  // instead, so clicking the add-workspace button adopts the fixture path.
+  const openWorkspace = page.getByRole('button', { name: /添加工作区/ }).first()
+  await openWorkspace.waitFor({ state: 'visible', timeout: 30_000 })
+  await openWorkspace.click()
+  const workspaceTitle = page.getByText('workspace-fixture', { exact: true }).first()
+  await workspaceTitle.waitFor({ state: 'visible', timeout: 30_000 })
 }
 
 async function main() {
@@ -388,7 +378,12 @@ async function main() {
       TEMP: temporaryDirectory,
       TMP: temporaryDirectory,
       ELECTRON_USER_DATA_DIR: chromiumUserDataDirectory,
+      SANDRONE_QA_PICK_DIRECTORY: workspaceDirectory,
     }
+    // The QA harness itself may run under Electron-as-Node (ELECTRON_RUN_AS_NODE=1);
+    // that must never leak into the desktop app under test or require('electron')
+    // loses the app APIs and the process exits during launch.
+    delete launchEnvironment.ELECTRON_RUN_AS_NODE
 
     application = await playwright.electron.launch({
       executablePath: electron.executablePath,
@@ -446,7 +441,7 @@ async function main() {
     recordCheck(report, 'Sandrone Buddy is visible', await firstWindow.locator(buddySelector).isVisible(), buddySelector)
     report.application.previewNoticeAccepted = await acceptPreviewNotice(firstWindow)
     report.application.apiKeyOnboardingDeferred = await deferApiKeyOnboarding(firstWindow)
-    await addWorkspaceThroughDirectoryBrowser(firstWindow, workspaceDirectory)
+    await addWorkspaceThroughNativePicker(firstWindow, workspaceDirectory)
     const workspaceTitle = firstWindow.getByText('workspace-fixture', { exact: true }).first()
     await workspaceTitle.waitFor({ state: 'visible', timeout: 30_000 })
     recordCheck(report, 'workspace directory picker adopts a selected directory', await workspaceTitle.isVisible(), workspaceDirectory)
@@ -476,6 +471,110 @@ async function main() {
     const reloadedScreenshot = join(outputDirectory, 'desktop-after-reload.png')
     await firstWindow.screenshot({ path: reloadedScreenshot, fullPage: false })
     report.application.afterReload.screenshot = reloadedScreenshot
+
+    // Settings must render as a standalone page filling the window below the
+    // 38px titlebar, not as a centered floating dialog. A renderer reload can
+    // resurface the onboarding dialog, so defer it again before clicking.
+    await acceptPreviewNotice(firstWindow)
+    await deferApiKeyOnboarding(firstWindow)
+    const settingsTrigger = firstWindow.locator('[data-sandrone-settings] button').first()
+    await settingsTrigger.waitFor({ state: 'visible', timeout: 30_000 })
+    await settingsTrigger.click()
+    const settingsPanel = firstWindow.locator('[role="dialog"][aria-modal="true"]').first()
+    await settingsPanel.waitFor({ state: 'visible', timeout: 30_000 })
+    const settingsBox = await settingsPanel.boundingBox()
+    const viewport = await firstWindow.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
+    const panelStyle = await firstWindow.evaluate(() => {
+      const element = document.querySelector('[role="dialog"][aria-modal="true"]')
+      if (!element) return null
+      const style = getComputedStyle(element)
+      const sandroneTag = document.querySelector('style[data-plugin="@sandrone/harness-ui"]')
+      return {
+        className: element.className,
+        top: style.top,
+        height: style.height,
+        width: style.width,
+        maxWidth: style.maxWidth,
+        borderRadius: style.borderRadius,
+        sandroneCssHasPanelRule: sandroneTag ? sandroneTag.textContent.includes('[class*="VOzbGW_panel"]') : null,
+        panelRuleMatches: [...document.querySelectorAll('[class*="VOzbGW_panel"]')].map(node => node.className),
+      }
+    })
+    const settingsPageFillsWindow = Boolean(settingsBox && viewport)
+      && settingsBox.x <= 4
+      && Math.abs(settingsBox.y - 38) <= 4
+      && Math.abs(settingsBox.width - viewport.width) <= 4
+      && Math.abs(settingsBox.height - (viewport.height - 38)) <= 4
+    recordCheck(report, 'settings renders as a full page below the titlebar', settingsPageFillsWindow, { box: settingsBox, viewport, panelStyle })
+    const backToWorkspace = firstWindow.getByRole('button', { name: '返回工作区', exact: true })
+    await backToWorkspace.waitFor({ state: 'visible', timeout: 30_000 })
+    const settingsSearch = firstWindow.getByPlaceholder('搜索设置')
+    await settingsSearch.waitFor({ state: 'visible', timeout: 30_000 })
+    await settingsSearch.fill('其他')
+    const filteredNavOk = await firstWindow.getByRole('button', { name: /通用设置/ }).isHidden()
+      && await firstWindow.getByRole('button', { name: '其他', exact: true }).isVisible()
+    recordCheck(report, 'settings chrome shows back-to-workspace and a filtering section search', filteredNavOk, {})
+    await settingsSearch.fill('')
+    const otherNav = firstWindow.getByRole('button', { name: '其他', exact: true })
+    await otherNav.click()
+    const gpuSwitch = firstWindow.getByRole('switch')
+    await gpuSwitch.waitFor({ state: 'visible', timeout: 30_000 })
+    // Wait until the async GPU state IPC resolves (fresh profile starts on).
+    const gpuDeadline = Date.now() + 30_000
+    for (;;) {
+      if (await gpuSwitch.getAttribute('aria-checked') === 'true') break
+      if (Date.now() > gpuDeadline) throw new Error('GPU switch never resolved its initial state')
+      await wait(250)
+    }
+    const gpuGeometry = await firstWindow.evaluate(() => {
+      const describe = element => {
+        if (!element) return null
+        const rect = element.getBoundingClientRect()
+        return {
+          tag: element.tagName,
+          cls: String(element.className).slice(0, 40),
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+        }
+      }
+      const row = document.querySelector('.sandrone-setting-row')
+      const section = document.querySelector('.sandrone-settings-other')
+      const options = row?.closest('[class*="options"]') ?? null
+      return {
+        switch: describe(document.querySelector('.sandrone-setting-switch')),
+        row: describe(row),
+        section: describe(section),
+        options: describe(options),
+        panel: describe(document.querySelector('[class*="VOzbGW_panel"]')),
+      }
+    })
+    const gpuBefore = await gpuSwitch.getAttribute('aria-checked')
+    await gpuSwitch.click()
+    const gpuAfter = await gpuSwitch.getAttribute('aria-checked')
+    const gpuSane = Boolean(gpuGeometry)
+      && gpuGeometry.row !== null && gpuGeometry.row.h < 200
+      && gpuGeometry.switch !== null && gpuGeometry.switch.w === 40 && gpuGeometry.switch.h === 22
+    recordCheck(report, 'settings 其他 section exposes a toggling GPU acceleration switch', gpuBefore !== null && gpuAfter !== null && gpuBefore !== gpuAfter && gpuSane, { before: gpuBefore, after: gpuAfter, geometry: gpuGeometry })
+    await gpuSwitch.click()
+    await firstWindow.keyboard.press('Escape')
+    await settingsPanel.waitFor({ state: 'hidden', timeout: 30_000 })
+
+    // Sidebar search: SandroneCode-style flat row with a live result view and
+    // a clear control. A fresh profile has no sessions, so presence (not
+    // result rows) is asserted; Escape collapses the search again.
+    const searchButton = firstWindow.getByRole('button', { name: '搜索会话', exact: true })
+    await searchButton.click()
+    const searchInput = firstWindow.getByPlaceholder('搜索项目、会话')
+    await searchInput.waitFor({ state: 'visible', timeout: 30_000 })
+    await searchInput.fill('zz-no-such-session')
+    const searchTree = firstWindow.locator('[aria-label="搜索结果"]')
+    await searchTree.waitFor({ state: 'visible', timeout: 30_000 })
+    const searchClearVisible = await firstWindow.getByRole('button', { name: '清除搜索', exact: true }).isVisible()
+    recordCheck(report, 'sidebar search expands with a live result view and clear control', searchClearVisible, { clearVisible: searchClearVisible })
+    await firstWindow.keyboard.press('Escape')
+    await searchTree.waitFor({ state: 'hidden', timeout: 30_000 })
 
     watchedProcesses = mergeProcessIdentities(watchedProcesses, await electronProcesses(application, rootPid))
     report.lifecycle.processesBeforeClose = watchedProcesses

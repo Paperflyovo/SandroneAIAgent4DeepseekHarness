@@ -2,6 +2,8 @@
 
 这是 SandroneCode 对 DeepSeek Harness 的开源适配项目。仓库保留 DeepSeek Harness 的完整源码，同时提供 Sandrone 风格的 Web 视觉插件和 Electron 载体。
 
+> Co-authored by Paperfly_ovo & Seint
+
 ## 目录
 
 - `deepseek-harness/`：DeepSeek Harness 官方源码，保持上游目录结构和许可证，不在适配层中复制或改写。

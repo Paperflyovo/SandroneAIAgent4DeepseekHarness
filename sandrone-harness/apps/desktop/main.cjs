@@ -7,6 +7,7 @@ const { pathToFileURL } = require('node:url')
 const {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   Menu,
   screen,
@@ -22,8 +23,10 @@ const { packageBin } = require('./lib/resolve-package.cjs')
 const APP_NAME = 'Sandrone AI Agent'
 const ROOT = path.resolve(__dirname, '..', '..')
 const RUNNER = path.join(__dirname, 'harness-runner.mjs')
-const PATCH = path.join(ROOT, 'profiles', 'sandrone-web.patch.yml')
+const UI_BUILD_SCRIPT = path.join(ROOT, 'scripts', 'build-ui.mjs')
+const PATCH = path.join(ROOT, 'profiles', 'sandrone-desktop.patch.yml')
 const UI_PLUGIN = path.join(ROOT, 'packages', 'sandrone-ui')
+const WINDOW_ICON = path.join(ROOT, 'build', 'icon.png')
 const LOADING_PAGE = path.join(__dirname, 'loading.html')
 const LOADING_URL = pathToFileURL(LOADING_PAGE).href
 const NAVIGATION_RETRY_DELAYS = [500, 1_500, 4_000]
@@ -36,6 +39,78 @@ let activeOrigin = null
 let navigationRetry = 0
 let navigationTimer = null
 let quitting = false
+let reloadUiInFlight = null
+
+function desktopSettingsPath() {
+  return path.join(app.getPath('userData'), 'desktop-settings.json')
+}
+
+function readDesktopSettings() {
+  try {
+    const value = JSON.parse(fs.readFileSync(desktopSettingsPath(), 'utf8'))
+    return { gpuAcceleration: value.gpuAcceleration !== false }
+  } catch {
+    return { gpuAcceleration: true }
+  }
+}
+
+function writeDesktopSettings(settings) {
+  const target = desktopSettingsPath()
+  const temporary = `${target}.${process.pid}.tmp`
+  try {
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.writeFileSync(temporary, `${JSON.stringify(settings)}\n`)
+    fs.renameSync(temporary, target)
+  } catch (error) {
+    try { fs.rmSync(temporary, { force: true }) } catch {}
+    console.error(`[sandrone-desktop] could not persist desktop settings: ${String(error)}`)
+  }
+}
+
+let desktopSettings = readDesktopSettings()
+// Must be called before app.whenReady: disabling GPU switches the renderer to
+// software compositing, which avoids afterimage/ghosting artifacts on drivers
+// with broken accelerated compositing.
+if (!desktopSettings.gpuAcceleration) app.disableHardwareAcceleration()
+
+function toggleGpuAcceleration(enabled) {
+  desktopSettings = { gpuAcceleration: enabled }
+  writeDesktopSettings(desktopSettings)
+  syncGpuMenuState()
+  const choice = dialog.showMessageBoxSync(mainWindow ?? undefined, {
+    type: 'question',
+    title: 'GPU 加速',
+    message: 'GPU 硬件加速更改将在重启后生效。',
+    detail: enabled
+      ? '已启用 GPU 加速。'
+      : '已禁用 GPU 加速，界面将改用软件渲染，可避免残影等合成问题。',
+    buttons: ['立即重启', '稍后'],
+    defaultId: 0,
+    cancelId: 1,
+  })
+  if (choice === 0) {
+    app.relaunch()
+    app.quit()
+  }
+}
+
+function syncGpuMenuState() {
+  const item = Menu.getApplicationMenu()?.items
+    .find(entry => entry.label === '视图')?.submenu?.items
+    .find(entry => entry.label === 'GPU 硬件加速')
+  if (item) item.checked = desktopSettings.gpuAcceleration
+}
+
+function showAboutDialog() {
+  dialog.showMessageBoxSync(mainWindow ?? undefined, {
+    type: 'info',
+    title: `关于 ${APP_NAME}`,
+    message: APP_NAME,
+    detail: `DeepSeek Harness 的 Sandrone 桌面发行版。\n\nCo-authored by Paperfly_ovo & Seint\n适配层许可：MIT`,
+    buttons: ['确定'],
+    defaultId: 0,
+  })
+}
 
 function dshHome() {
   return path.join(app.getPath('userData'), 'DeepSeekHarness')
@@ -95,6 +170,55 @@ function launchHarness() {
   })
 }
 
+function rebuildUi() {
+  return new Promise((resolve, reject) => {
+    const child = fork(UI_BUILD_SCRIPT, [], {
+      cwd: ROOT,
+      execPath: process.execPath,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+      windowsHide: true,
+    })
+    let stderr = ''
+    child.stderr.on('data', chunk => { stderr += chunk })
+    child.on('error', reject)
+    child.on('exit', code => {
+      if (code === 0) {
+        resolve()
+      } else {
+        reject(new Error(stderr.trim() || `build:ui exited with code ${code}`))
+      }
+    })
+  })
+}
+
+/**
+ * Ctrl+R dev loop: rebuild the Sandrone UI bundle, redeploy it into DSH_HOME,
+ * then hard-reload the renderer. The harness serves plugin bundles from disk
+ * with cache-control: no-cache, and its client-hmr poll notices the redeployed
+ * files, so the next paint reflects the new bundle without relaunching.
+ */
+function reloadUi() {
+  if (reloadUiInFlight) return reloadUiInFlight
+  reloadUiInFlight = (async () => {
+    await rebuildUi()
+    deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      await mainWindow.webContents.reloadIgnoringCache()
+    }
+  })().finally(() => {
+    reloadUiInFlight = null
+  })
+  return reloadUiInFlight
+}
+
+function triggerReloadUi() {
+  reloadUi().catch(error => {
+    console.error(`[sandrone-desktop] UI rebuild failed: ${String(error)}`)
+    dialog.showErrorBox('Sandrone UI 重建失败', String(error))
+  })
+}
+
 const supervisor = new HarnessSupervisor({
   launch: launchHarness,
   readinessTimeoutMs: HARNESS_READINESS_TIMEOUT_MS,
@@ -106,6 +230,16 @@ const supervisor = new HarnessSupervisor({
 function sendStatus(status = supervisor.snapshot()) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   mainWindow.webContents.send('desktop:status', status)
+}
+
+function sendMaximizedState() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('desktop:maximized-changed', mainWindow.isMaximized())
+}
+
+function sendDesktopCommand(command) {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('desktop:command', command)
 }
 
 async function showLoadingPage() {
@@ -199,6 +333,9 @@ function createApplicationMenu() {
     {
       label: '文件',
       submenu: [
+        { label: '打开工作区', click: () => sendDesktopCommand('open-workspace') },
+        { label: '设置', accelerator: 'CmdOrCtrl+,', click: () => sendDesktopCommand('open-settings') },
+        { type: 'separator' },
         { role: 'close', label: '关闭窗口' },
         ...(!isMac ? [{ role: 'quit', label: '退出' }] : []),
       ],
@@ -217,15 +354,21 @@ function createApplicationMenu() {
         { label: '后退', accelerator: isMac ? 'Command+[' : 'Alt+Left', click: () => mainWindow?.webContents.navigationHistory.goBack() },
         { label: '前进', accelerator: isMac ? 'Command+]' : 'Alt+Right', click: () => mainWindow?.webContents.navigationHistory.goForward() },
         { type: 'separator' },
-        { role: 'reload', label: '刷新界面' }, { role: 'forceReload', label: '强制刷新界面' },
-        { role: 'resetZoom', label: '实际大小' }, { role: 'zoomIn', label: '放大' },
-        { role: 'zoomOut', label: '缩小' }, { role: 'togglefullscreen', label: '全屏' },
+        { label: '切换侧边栏', accelerator: 'CmdOrCtrl+B', click: () => sendDesktopCommand('toggle-sidebar') },
+        { label: '切换夜间模式', click: () => sendDesktopCommand('toggle-theme') },
+        { label: 'GPU 硬件加速', type: 'checkbox', checked: desktopSettings.gpuAcceleration, click: item => toggleGpuAcceleration(item.checked) },
+        { type: 'separator' },
+        { label: '重建并刷新界面', accelerator: 'CmdOrCtrl+R', click: triggerReloadUi },
+        { type: 'separator' },
+        { role: 'resetZoom', label: '实际大小' },
+        { role: 'togglefullscreen', label: '全屏' },
       ],
     },
     ...(isMac ? [{ role: 'windowMenu', label: '窗口' }] : []),
     {
       label: '帮助',
       submenu: [
+        { label: `关于 ${APP_NAME}`, click: showAboutDialog },
         { label: 'DeepSeek Harness', click: () => shell.openExternal('https://github.com/deepseek-ai/deepseek-harness') },
         { type: 'separator' },
         { label: '开发者工具', accelerator: 'F12', click: () => mainWindow?.webContents.toggleDevTools() },
@@ -233,6 +376,20 @@ function createApplicationMenu() {
     },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+const APPLICATION_MENU_LABELS = Object.freeze({ file: '文件', edit: '编辑', view: '视图', help: '帮助' })
+
+function popupApplicationMenu(menuId, position) {
+  const label = typeof menuId === 'string' ? APPLICATION_MENU_LABELS[menuId] : undefined
+  if (label === undefined) return false
+  const item = Menu.getApplicationMenu()?.items.find(entry => entry.label === label)
+  if (!item?.submenu || !mainWindow || mainWindow.isDestroyed()) return false
+  const options = { window: mainWindow }
+  if (Number.isFinite(position?.x)) options.x = Math.max(0, Math.round(position.x))
+  if (Number.isFinite(position?.y)) options.y = Math.max(0, Math.round(position.y))
+  item.submenu.popup(options)
+  return true
 }
 
 function createWindow() {
@@ -245,9 +402,10 @@ function createWindow() {
     minWidth: 900,
     minHeight: 620,
     show: false,
+    frame: false,
     title: APP_NAME,
-    backgroundColor: '#f4f5f2',
-    autoHideMenuBar: false,
+    icon: WINDOW_ICON,
+    backgroundColor: '#f5f2ec',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
@@ -258,8 +416,16 @@ function createWindow() {
   })
   installNavigationPolicy(mainWindow)
   installPermissionPolicy(mainWindow)
+  // Desktop layout is pinned at 100%: pinch/Ctrl+wheel zoom would shrink the
+  // CSS viewport and trip the mobile media queries, collapsing the frame.
+  mainWindow.webContents.setVisualZoomLevelLimits(1, 1)
   if (saved.maximized) mainWindow.maximize()
   mainWindow.once('ready-to-show', () => mainWindow?.show())
+  // Frameless shell: keep the OS-facing title constant so the taskbar and
+  // Alt-Tab never show "<会话名> - DeepSeek Harness" page titles.
+  mainWindow.on('page-title-updated', event => event.preventDefault())
+  mainWindow.on('maximize', sendMaximizedState)
+  mainWindow.on('unmaximize', sendMaximizedState)
   mainWindow.on('close', writeWindowState)
   mainWindow.on('closed', () => { mainWindow = null })
   mainWindow.webContents.on('did-finish-load', () => {
@@ -291,6 +457,54 @@ function registerIpc() {
     await showLoadingPage()
     await supervisor.restart()
     return supervisor.snapshot()
+  })
+  ipcMain.handle('desktop:show-application-menu', (event, menuId, position) => {
+    assertTrusted(event)
+    return popupApplicationMenu(menuId, position)
+  })
+  ipcMain.handle('desktop:get-gpu-acceleration', event => {
+    assertTrusted(event)
+    return desktopSettings.gpuAcceleration
+  })
+  ipcMain.handle('desktop:set-gpu-acceleration', (event, value) => {
+    assertTrusted(event)
+    desktopSettings = { gpuAcceleration: value === true }
+    writeDesktopSettings(desktopSettings)
+    syncGpuMenuState()
+    return desktopSettings.gpuAcceleration
+  })
+  ipcMain.handle('desktop:pick-directory', async event => {
+    assertTrusted(event)
+    // QA override: automated runs cannot drive the native OS dialog, so the
+    // fixture path resolves directly when the environment asks for it.
+    const fixture = process.env.SANDRONE_QA_PICK_DIRECTORY?.trim()
+    if (fixture) return fixture
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择文件夹',
+      buttonLabel: '选择文件夹',
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+  ipcMain.handle('desktop:window-minimize', event => {
+    assertTrusted(event)
+    mainWindow?.minimize()
+  })
+  ipcMain.handle('desktop:window-toggle-maximize', event => {
+    assertTrusted(event)
+    if (!mainWindow) return false
+    if (mainWindow.isMaximized()) mainWindow.unmaximize()
+    else mainWindow.maximize()
+    return mainWindow.isMaximized()
+  })
+  ipcMain.handle('desktop:window-close', event => {
+    assertTrusted(event)
+    mainWindow?.close()
+  })
+  ipcMain.handle('desktop:window-is-maximized', event => {
+    assertTrusted(event)
+    return mainWindow?.isMaximized() ?? false
   })
 }
 

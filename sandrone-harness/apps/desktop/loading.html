@@ -4,31 +4,61 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
-  <title>Sandrone</title>
+  <title>Sandrone AI Agent</title>
   <style>
-    :root { color-scheme: light dark; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif; }
+    :root { color-scheme: light dark; font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f5f2; color: #242724; }
-    main { width: min(440px, calc(100vw - 40px)); }
-    .mark { width: 38px; height: 38px; margin-bottom: 20px; border: 1px solid #b8bdb7; border-radius: 8px; display: grid; place-items: center; color: #9b554f; font-weight: 700; }
-    h1 { margin: 0 0 8px; font-size: 20px; font-weight: 600; letter-spacing: 0; }
-    p { margin: 0; color: #687069; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; }
-    .track { height: 3px; margin-top: 24px; overflow: hidden; background: #dfe2dc; }
-    .track::after { content: ""; display: block; width: 38%; height: 100%; background: #9b554f; animation: travel 1.2s ease-in-out infinite alternate; }
-    button { display: none; margin-top: 18px; min-height: 34px; padding: 0 14px; border: 1px solid #c9cdc7; border-radius: 6px; background: #fff; color: inherit; cursor: pointer; }
-    button.visible { display: inline-flex; align-items: center; }
+    body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; background: #f5f2ec; color: #2e2a26; }
+    .titlebar { height: 38px; display: flex; align-items: center; padding-left: 14px; border-bottom: 1px solid #ddd6cc; background: #efeae2; -webkit-app-region: drag; user-select: none; }
+    .brand { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #2e2a26; }
+    .window-controls { margin-left: auto; align-self: stretch; display: flex; -webkit-app-region: no-drag; }
+    .window-controls button { width: 46px; border: 0; background: transparent; color: inherit; cursor: pointer; font: 13px "Segoe UI Symbol", "Segoe UI", sans-serif; }
+    .window-controls button:hover { background: rgb(46 42 38 / 8%); }
+    .window-controls button.close:hover { background: #b54840; color: #fff; }
+    main { flex: 1; min-height: 0; display: grid; place-items: center; padding: 24px; }
+    .card { width: min(460px, calc(100vw - 40px)); padding: 28px; border: 1px solid #ddd6cc; border-radius: 16px; background: #fffdf9; box-shadow: 0 24px 64px rgb(54 45 37 / 12%); }
+    .mark { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; background: #2e2a26; color: #fffdf9; font: 700 22px Georgia, serif; }
+    h1 { margin: 18px 0 8px; color: #1e1b18; font-size: 21px; font-weight: 600; }
+    p { margin: 0; color: #706a63; font-size: 13px; line-height: 21px; overflow-wrap: anywhere; }
+    .track { height: 3px; margin-top: 22px; overflow: hidden; border-radius: 99px; background: #ece7df; }
+    .track::after { content: ""; display: block; width: 38%; height: 100%; border-radius: inherit; background: #b99f86; animation: travel 1.2s ease-in-out infinite alternate; }
+    button { min-height: 34px; padding: 0 16px; border: 1px solid #c6bcb0; border-radius: 999px; background: #fffdf9; color: #2e2a26; font: 13px inherit; cursor: pointer; }
+    #retry { display: none; margin-top: 20px; }
+    #retry.visible { display: inline-flex; align-items: center; }
     @keyframes travel { from { transform: translateX(-100%); } to { transform: translateX(264%); } }
     @media (prefers-reduced-motion: reduce) { .track::after { animation: none; width: 100%; } }
-    @media (prefers-color-scheme: dark) { body { background: #171918; color: #edf0ec; } p { color: #adb5ae; } .track { background: #343936; } button { background: #202321; border-color: #424944; } }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1c1a18; color: #e8e3dc; }
+      .titlebar { border-color: #3d3832; background: #252220; }
+      .brand { color: #e8e3dc; }
+      .card { border-color: #3d3832; background: #2c2926; box-shadow: 0 24px 64px rgb(0 0 0 / 50%); }
+      .mark { background: #c8a882; color: #1c1a18; }
+      h1 { color: #f1ece5; }
+      p { color: #9a948c; }
+      .track { background: #3d3832; }
+      .track::after { background: #c8a882; }
+      button { border-color: #544e46; background: #2c2926; color: #d4cfc8; }
+      .window-controls button:hover { background: rgb(255 255 255 / 8%); }
+    }
   </style>
 </head>
 <body>
+  <header class="titlebar">
+    <span class="brand">Sandrone AI Agent · 本地工作台</span>
+    <div class="window-controls">
+      <button aria-label="最小化" data-action="minimize">─</button>
+      <button aria-label="最大化" data-action="maximize">□</button>
+      <button class="close" aria-label="关闭" data-action="close">✕</button>
+    </div>
+  </header>
   <main>
-    <div class="mark" aria-hidden="true">S</div>
-    <h1 id="title">正在启动 DeepSeek Harness</h1>
-    <p id="detail">正在加载官方运行时、会话与工具。首次启动会稍久一些。</p>
-    <div class="track" id="track"></div>
-    <button id="retry" type="button">重新启动</button>
+    <section class="card">
+      <div class="mark" aria-hidden="true">S</div>
+      <h1 id="title">正在启动 DeepSeek Harness</h1>
+      <p id="detail">正在加载官方运行时、会话与工具。首次启动会稍久一些。</p>
+      <div class="track" id="track"></div>
+      <button id="retry" type="button">重新启动</button>
+    </section>
   </main>
   <script>
     const title = document.getElementById('title')
@@ -53,6 +83,12 @@
         track.hidden = false
         retry.classList.remove('visible')
       }
+    }
+    const desktop = window.sandroneDesktop?.window
+    if (desktop) {
+      document.querySelector('[data-action="minimize"]').addEventListener('click', () => desktop.minimize())
+      document.querySelector('[data-action="maximize"]').addEventListener('click', () => desktop.toggleMaximize())
+      document.querySelector('[data-action="close"]').addEventListener('click', () => desktop.close())
     }
     retry.addEventListener('click', async () => {
       retry.classList.remove('visible')

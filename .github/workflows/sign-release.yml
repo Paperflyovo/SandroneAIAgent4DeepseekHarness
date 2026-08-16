@@ -1,0 +1,88 @@
+name: sign-release
+
+# Signs the Windows installer through the SignPath Foundation (free code
+# signing for open-source projects). Manual dispatch: builds the unsigned
+# NSIS installer, submits it to SignPath, and uploads the signed installer.
+#
+# Repository prerequisites (one-time, done on signpath.org / GitHub):
+#   1. Install the SignPath GitHub App on this repository.
+#   2. Apply for the project on https://signpath.org (open-source, permissive
+#      license) and approve the SignPath Foundation signing policy.
+#   3. Add the following secrets/variables:
+#        secrets: SIGNPATH_API_TOKEN, SIGNPATH_ORG_ID
+#        vars:    SIGNPATH_PROJECT_SLUG, SIGNPATH_POLICY_SLUG
+#      (The SignPath web app lists the organization id, project slug, and the
+#       slug of the "release-signing" policy after the application is set up.)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-and-sign:
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        working-directory: sandrone-harness
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the unsigned installer
+        working-directory: sandrone-harness
+        run: pnpm run desktop:pack
+
+      - name: Locate the installer
+        id: locate
+        shell: pwsh
+        run: |
+          $file = Get-ChildItem release -Filter 'SandroneAIAgent-*.exe' |
+            Where-Object { $_.Name -notmatch '__uninstaller' } |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $file) { throw 'unsigned installer not found' }
+          "installer=$($file.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "name=$($file.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Upload unsigned installer
+        id: upload-unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: sandrone-harness/release/${{ steps.locate.outputs.name }}
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Submit to SignPath for signing
+        id: signpath
+        uses: signpath/github-action-submit-signing-request@v2.0.0
+        with:
+          organization-id: ${{ secrets.SIGNPATH_ORG_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          artifact-configuration-slug: installer
+          wait-for-completion: true
+          output-artifact-directory: signed-installer
+
+      - name: Upload signed installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-installer
+          path: signed-installer/**
+          if-no-files-found: error
+          retention-days: 14

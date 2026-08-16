@@ -19,13 +19,45 @@ pnpm test
 pnpm run desktop
 ```
 
-The Windows desktop profile pins DeepSeek's official in-app browse directory picker. This preserves workspace selection without loading the native picker worker, which is not ABI-compatible with Electron's embedded Node runtime. Packaging uses the official Windows x64 prebuild shipped by `node-pty`, so a normal build does not require Visual Studio Spectre-mitigated libraries.
+The desktop picks workspace directories through the OS-native folder dialog:
+Electron's own `dialog.showOpenDialog` (no native worker, so no ABI surface with
+the embedded Node runtime). The Sandrone UI occupies the official
+`sidebar.workspaces.directoryFlow` and `conversation.hero.workspace.directoryFlow`
+slots with a bridge-backed flow, and the desktop profile (`profiles/
+sandrone-desktop.patch.yml`) omits the official in-app browse picker. The Web
+profile keeps DeepSeek's in-app browse picker unchanged. Packaging uses the
+official Windows x64 prebuild shipped by `node-pty`, so a normal build does not
+require Visual Studio Spectre-mitigated libraries.
 
-On first launch, finish DeepSeek's preview notice and API-key onboarding before using controls behind those dialogs; choosing **稍后配置** is supported. `pnpm run qa:desktop` exercises that cold-start flow, opens the picker from Sandrone's top bar, adopts a real temporary directory, reloads the renderer, and verifies that the Workspace remains registered. Set `ELECTRON_EXECUTABLE_PATH` to a packaged executable to run the same checks against `win-unpacked` or an installed build.
+On first launch, finish DeepSeek's preview notice and API-key onboarding before using controls behind those dialogs; choosing **稍后配置** is supported. `pnpm run qa:desktop` exercises that cold-start flow, opens the picker from the official sidebar add-workspace button, adopts a real temporary directory, reloads the renderer, and verifies that the Workspace remains registered. Set `ELECTRON_EXECUTABLE_PATH` to a packaged executable to run the same checks against `win-unpacked` or an installed build.
 
 The desktop supervisor starts the official `dsh web` profile on a random
 `127.0.0.1` port. Harness data is kept under Electron's user-data directory and
 survives application upgrades.
+
+The desktop window is frameless and mirrors SandroneCode's desktop titlebar: a
+38px full-width drag strip with history chevrons, the 文件/编辑/视图/帮助 app-menu
+labels, and right-aligned minimize/maximize/close controls — all driven through
+the narrow desktop bridge. The OS-facing title stays `Sandrone AI Agent`; the
+sidebar keeps the session names, and menu commands delegate to the official
+sidebar/settings/workspace controls.
+
+### Instant UI reload (Ctrl+R)
+
+While the desktop app is running, press `Ctrl+R` (视图 menu) to rebuild the
+Sandrone UI plugin, redeploy it into `DSH_HOME` and hard-reload the renderer —
+no application restart. The Harness serves plugin bundles from disk with
+`cache-control: no-cache`, so the next paint reflects the new bundle; the
+official `client-hmr` poll also notices the redeployed files and pushes a
+rebuild frame to the browser half.
+
+The 视图 menu also exposes a persisted **GPU 硬件加速** checkbox (stored in
+`desktop-settings.json` under user-data), mirrored by the settings page's
+**其他** section as a toggle switch. Turning it off calls
+`app.disableHardwareAcceleration()` on the next launch so the renderer uses
+software compositing — the remedy for afterimage/ghosting artifacts on GPU
+drivers with broken accelerated compositing. The menu change offers an
+immediate restart; the settings switch simply takes effect on the next launch.
 
 ## Cross-platform desktop sandbox
 
@@ -58,12 +90,22 @@ its slot registrations, theme layer and stylesheet without touching official sta
 The Web surface deliberately keeps SandroneCode's visual language while DeepSeek
 Harness remains the only product/runtime owner. The UI uses a warm paper-and-ink
 palette, a quiet sidebar, compact controls, restrained shadows and a red composer
-focus line. Light and dark modes are token-driven; mobile layouts collapse without
+focus line. The sidebar search keeps SandroneCode's flat icon-plus-input row with
+its round clear button, the `项目与会话` results group, and the slide-in/fade
+animations for the results tree and rows. Light and dark modes are token-driven;
+mobile layouts collapse without
 horizontal overflow; reduced-motion users receive the same controls without animation.
 
 The Buddy pet is an optional overlay, not another assistant. Its visibility is stored
 under `sandrone.harness.buddy.v1`, and it has no access to prompts, responses,
 providers, API keys or session history.
+
+Settings open as a standalone page that fills the window below the 38px
+titlebar — no floating dialog, dimming mask, close button, or redundant
+"设置" nav title. The left navigation starts with a 返回工作区 row and a
+section-search box that filters the settings sections (Enter opens the first
+match), and keeps the official left navigation and content, restyled onto the
+paper palette.
 
 The plugin marks stable public `data-slot` regions with `data-sandrone-*` attributes.
 This keeps the visual layer resilient to DeepSeek's generated class names while

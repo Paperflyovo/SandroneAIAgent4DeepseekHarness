@@ -1,0 +1,13 @@
+- insert:
+    - id: sandrone-ui
+      name: '@sandrone/harness-ui'
+    - id: directory-picker-host
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+
+- id: directory-picker
+  disabled: true
+
+- id: session-query-sqlite
+  config:
+    path: ':memory:'
+    openAt: first-search

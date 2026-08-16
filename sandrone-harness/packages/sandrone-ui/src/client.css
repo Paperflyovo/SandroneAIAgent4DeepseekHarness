@@ -53,6 +53,8 @@ select {
 }
 
 [data-sandrone-sidebar-column] {
+  box-sizing: border-box !important;
+  padding-top: 38px !important;
   background: var(--sandrone-paper-soft) !important;
   border-right-color: var(--sandrone-line) !important;
   min-width: 0 !important;
@@ -294,108 +296,129 @@ select {
   color: var(--sandrone-ink) !important;
 }
 
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="sectionHeader"] {
-  position: relative !important;
+/* Search bar restyled after SandroneCode: a flat icon + input + round-clear
+   row under a hairline, with the results tree sliding in beneath it. The
+   official search slot already morphs (label fade + max-width) on focus. */
+[data-sandrone-workspaces] [class*="sectionHeader"] {
   box-sizing: border-box !important;
-  min-height: 92px !important;
-  padding: 44px 5px 8px !important;
-  border-bottom: 1px solid var(--sandrone-line) !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="sectionLabel"] {
-  display: block !important;
-  overflow: visible !important;
-  width: auto !important;
-  height: 18px !important;
-  color: var(--sandrone-ink-strong) !important;
-  font-size: 0 !important;
-  font-weight: 650 !important;
-  line-height: 18px !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="sectionLabel"]::after {
-  content: '项目';
-  font-size: 12px;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="searchSlot"] {
-  position: absolute !important;
-  top: 0 !important;
-  right: 0 !important;
-  left: 0 !important;
-  height: 43px !important;
-  border-bottom: 1px solid var(--sandrone-line) !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="search"] {
-  width: 100% !important;
-  height: 43px !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="searchButton"] {
-  display: flex !important;
-  width: 100% !important;
-  height: 43px !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 8px !important;
-  padding: 0 8px !important;
-  border-radius: 0 !important;
-  color: var(--sandrone-muted) !important;
-  font-size: 0 !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="searchButton"]::after {
-  content: '搜索项目、会话…';
-  font-size: 13px;
-}
-
-[data-sandrone-workspaces] [role="tree"]::before {
-  content: '会话';
-  display: block;
-  padding: 8px 5px 5px;
-  color: var(--sandrone-ink-strong);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-[data-sandrone-workspaces] input {
-  box-sizing: border-box !important;
-  width: 100% !important;
-  min-height: 42px !important;
-  padding: 0 10px 0 32px !important;
-  border: 0 !important;
+  height: 40px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
   border-bottom: 1px solid var(--sandrone-line) !important;
   border-radius: 0 !important;
-  outline: none !important;
+}
+
+[data-sandrone-workspaces] [class*="searchExpanded"] {
+  border: none !important;
+  border-radius: 0 !important;
   background: transparent !important;
-  color: var(--sandrone-ink) !important;
-  font-size: 13px !important;
+  color: var(--sandrone-muted) !important;
 }
 
-[data-sandrone-workspaces] input::placeholder {
+[data-sandrone-workspaces] [class*="searchButton"] {
   color: var(--sandrone-muted) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchInput"] {
+  margin-left: 2px !important;
+  color: var(--sandrone-ink-strong) !important;
+  font-size: 12px !important;
+}
+
+[data-sandrone-workspaces] [class*="searchInput"]::placeholder {
+  color: var(--sandrone-muted) !important;
+}
+
+[data-sandrone-workspaces] [class*="clearButton"] {
+  width: 18px !important;
+  height: 18px !important;
+  background: var(--sandrone-paper-soft) !important;
+  color: var(--sandrone-muted) !important;
+  font-size: 12px !important;
+}
+
+[data-sandrone-workspaces] [class*="clearButton"]:hover {
+  background: var(--sandrone-accent-soft) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchTree"] {
+  transform-origin: top !important;
+  animation: sandrone-search-in 320ms var(--sandrone-ease) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchTree"]::before {
+  content: '项目与会话';
+  display: block;
+  padding: 7px 7px 4px;
+  color: var(--sandrone-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+[data-sandrone-workspaces] [class*="searchResultRow"] {
+  border-radius: 4px !important;
+  padding: 7px 8px !important;
+  transition: background 120ms var(--sandrone-ease) !important;
+  animation: sandrone-row-in 180ms var(--sandrone-ease) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchResultRow"]:hover,
+[data-sandrone-workspaces] [class*="searchResultRow"][class*="selected"] {
+  background: var(--sandrone-accent-soft) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchResultTitle"] {
+  font-size: 12.5px !important;
+  color: var(--sandrone-ink-strong) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchResultWorkspace"],
+[data-sandrone-workspaces] [class*="searchResultSnippet"] {
+  font-size: 10px !important;
+  color: var(--sandrone-muted) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchStatus"],
+[data-sandrone-workspaces] [class*="searchWarning"] {
+  padding: 10px 12px !important;
+  color: var(--sandrone-muted) !important;
+  font-size: 11px !important;
+}
+
+[data-sandrone-workspaces] [class*="searchWarning"] {
+  color: var(--sandrone-red) !important;
+}
+
+@keyframes sandrone-search-in {
+  from { opacity: 0; transform: scaleY(.92); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes sandrone-row-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
 }
 
 [data-sandrone-workspaces] [role="tree"] {
-  padding: 6px 0 0 !important;
+  padding: 8px 0 0 !important;
 }
 
 [data-sandrone-workspaces] [role="treeitem"] {
   position: relative !important;
-  min-height: 44px !important;
-  margin: 2px 0 !important;
-  padding: 10px 11px !important;
+  min-height: 40px !important;
+  margin: 1px 0 !important;
+  padding: 8px 10px !important;
   border: 1px solid transparent !important;
-  border-radius: 9px !important;
+  border-radius: 8px !important;
   background: transparent !important;
 }
 
 [data-sandrone-workspaces] [role="treeitem"][aria-selected="true"],
 [data-sandrone-workspaces] [role="treeitem"][aria-current="true"] {
-  border-color: var(--sandrone-line) !important;
-  background: var(--sandrone-paper-raised) !important;
-  box-shadow: inset 5px 0 0 var(--sandrone-red), var(--sandrone-shadow) !important;
+  border-color: transparent !important;
+  background: var(--sandrone-accent-soft) !important;
+  box-shadow: inset 4px 0 0 var(--sandrone-red) !important;
 }
 
 [data-sandrone-settings] {
@@ -532,118 +555,134 @@ select {
    The controls below are only a visual shell: each action delegates to the
    corresponding Harness-owned button or service, so refresh, search,
    workspace selection, settings and theme state stay authoritative. */
+/* Frameless desktop titlebar, mirrored from SandroneCode's desktop-titlebar:
+   full-width drag strip with history chevrons, a separator, app-menu labels,
+   a flexible drag spacer, and right-aligned window controls. */
 [data-sandrone-topbar] {
   position: absolute;
   top: 0;
   right: 0;
-  left: var(--sandrone-sidebar-width, 280px);
+  left: 0;
   z-index: 30;
   display: flex;
   box-sizing: border-box;
-  height: 56px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 0 18px 0 10px;
+  height: 38px;
+  align-items: stretch;
   border-bottom: 1px solid var(--sandrone-line);
-  background: color-mix(in srgb, var(--sandrone-paper) 96%, transparent);
-  color: var(--sandrone-ink);
-  box-shadow: 0 3px 16px rgb(54 45 37 / 4%);
-  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--sandrone-paper-soft) 92%, var(--sandrone-paper));
+  color: var(--sandrone-muted);
+  -webkit-app-region: drag;
+  user-select: none;
   pointer-events: auto;
 }
 
-.sandrone-topbar-leading,
-.sandrone-topbar-actions {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 5px;
+[data-sandrone-topbar] button {
+  -webkit-app-region: no-drag;
 }
 
-.sandrone-topbar-leading { flex: 1 1 auto; }
-.sandrone-topbar-actions { flex: 0 0 auto; }
+.sandrone-topbar-navigation {
+  display: flex;
+  align-items: stretch;
+  padding-left: 5px;
+  -webkit-app-region: no-drag;
+}
 
-.sandrone-topbar-leading button,
-.sandrone-topbar-actions button {
+.sandrone-topbar-history {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
+  width: 32px;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--sandrone-line);
-  border-radius: 10px;
-  background: var(--sandrone-paper-raised);
+  border: none;
+  background: transparent;
   color: var(--sandrone-muted);
-  font-family: "Segoe UI Symbol", "Segoe UI", sans-serif;
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
-  transition: border-color 160ms var(--sandrone-ease), background 160ms var(--sandrone-ease), color 160ms var(--sandrone-ease), transform 160ms var(--sandrone-ease);
 }
 
-.sandrone-topbar-leading button:hover,
-.sandrone-topbar-actions button:hover {
-  border-color: var(--sandrone-accent);
+.sandrone-topbar-history:hover {
+  background: color-mix(in srgb, var(--sandrone-ink) 8%, transparent);
+  color: var(--sandrone-ink-strong);
+}
+
+.sandrone-topbar-history svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sandrone-topbar-separator {
+  width: 1px;
+  height: 16px;
+  align-self: center;
+  margin: 0 4px;
+  background: var(--sandrone-line-strong);
+}
+
+.sandrone-topbar-menu-item {
+  min-width: 45px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--sandrone-ink);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.sandrone-topbar-menu-item:hover {
   background: var(--sandrone-accent-soft);
-  color: var(--sandrone-ink-strong);
-  transform: translateY(-1px);
 }
 
-.sandrone-topbar-leading button:focus-visible,
-.sandrone-topbar-actions button:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--sandrone-red) 45%, transparent);
-  outline-offset: 2px;
+.sandrone-topbar-drag {
+  min-width: 80px;
+  flex: 1;
 }
 
-.sandrone-topbar-nav {
-  width: 28px !important;
-  height: 28px !important;
-  border-color: transparent !important;
-  background: transparent !important;
-  font-size: 20px !important;
+.sandrone-topbar-window {
+  display: flex;
+  margin-left: auto;
+  -webkit-app-region: no-drag;
 }
 
-.sandrone-topbar-menu {
-  margin-left: 4px;
-  font-size: 19px !important;
-}
-
-.sandrone-topbar-title {
-  min-width: 0;
-  max-width: min(520px, 46vw);
-  margin-left: 4px;
-  overflow: hidden;
-  color: var(--sandrone-ink-strong);
-  font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif;
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -.025em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sandrone-topbar-sync {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
+.sandrone-topbar-window button {
+  display: grid;
+  width: 46px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--sandrone-muted);
-  font-size: 10px;
+  cursor: pointer;
+  transition: background 120ms var(--sandrone-ease), color 120ms var(--sandrone-ease);
 }
 
-.sandrone-topbar-sync i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #6c8754;
-  box-shadow: 0 0 0 3px rgb(108 135 84 / 12%);
+.sandrone-topbar-window button:hover {
+  background: color-mix(in srgb, var(--sandrone-ink) 8%, transparent);
+  color: var(--sandrone-ink-strong);
+}
+
+.sandrone-topbar-window button.sandrone-topbar-window-close:hover {
+  background: #b54840;
+  color: #fff;
+}
+
+.sandrone-topbar-window svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 [data-sandrone-center] [data-slot="conversation"] {
   box-sizing: border-box !important;
-  padding-top: 56px !important;
+  padding-top: 38px !important;
 }
 
 [data-sandrone-session-header] {
@@ -697,13 +736,22 @@ select {
   box-shadow: 0 0 0 4px rgb(200 16 46 / 15%), var(--sandrone-shadow-deep) !important;
 }
 
+/* The official composer paints its text through an aria-hidden backdrop layer
+   that sits under the real textarea (@deepseek-ai/dsh-client-ui-conversation,
+   InputBar.module.css keeps the textarea color transparent on purpose). The
+   textarea must stay transparent and share the backdrop's font metrics,
+   otherwise every keystroke renders twice (ghosting) and the caret drifts. */
 [data-sandrone-composer] [data-composer-card] textarea {
-  min-height: 64px !important;
-  padding: 12px 16px 4px !important;
-  color: var(--sandrone-ink) !important;
+  color: transparent !important;
   caret-color: var(--sandrone-red) !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
   line-height: 24px !important;
+}
+
+/* Preserve the official read-only/disabled look: the draft is shown in the
+   tertiary label color by the textarea itself. */
+[data-sandrone-composer] [data-composer-card] textarea:disabled {
+  color: var(--dsw-alias-label-tertiary) !important;
 }
 
 [data-sandrone-composer] [data-composer-card] textarea::placeholder {
@@ -743,18 +791,7 @@ select {
   background: linear-gradient(180deg, transparent 0, var(--sandrone-paper) 18px) !important;
 }
 
-body[data-ds-dark-theme] [data-sandrone-topbar] {
-  background: color-mix(in srgb, var(--sandrone-paper) 94%, transparent);
-}
-
 @media (max-width: 900px) {
-  [data-sandrone-topbar] {
-    left: 56px;
-    padding-right: 10px;
-  }
-
-  .sandrone-topbar-title { max-width: 35vw; }
-  .sandrone-topbar-sync { display: none; }
   [data-sandrone-composer] [data-composer-card] { width: calc(100% - 20px) !important; }
 }
 
@@ -762,11 +799,7 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
   [data-sandrone-sidebar-header] { height: 112px !important; min-height: 112px !important; }
   [data-sandrone-sidebar] [class*="logoRow"] { height: 112px !important; }
   [data-sandrone-sidebar-header] [class*="brand"] { bottom: 12px !important; left: 16px !important; }
-  [data-sandrone-topbar] { gap: 4px; padding-left: 4px; }
-  .sandrone-topbar-leading button, .sandrone-topbar-actions button { width: 32px; height: 32px; }
-  .sandrone-topbar-nav { display: none !important; }
-  .sandrone-topbar-title { max-width: 34vw; font-size: 13px; }
-  .sandrone-topbar-actions { gap: 2px; }
+  [data-sandrone-topbar] { padding-left: 4px; }
   [data-sandrone-center] [data-slot="conversation"] { padding-top: 50px !important; }
 }
 
@@ -923,47 +956,6 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
   padding: 0 12px !important;
 }
 
-[data-sandrone-workspaces] [class*="searchSlot"] {
-  width: auto !important;
-  max-width: none !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-}
-
-[data-sandrone-workspaces] [class*="search"] {
-  position: relative !important;
-  width: 100% !important;
-  max-width: none !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-}
-
-[data-sandrone-workspaces] [class*="searchButton"] {
-  position: absolute !important;
-  z-index: 1 !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 28px !important;
-  min-width: 28px !important;
-  justify-content: center !important;
-  padding: 0 !important;
-}
-
-[data-sandrone-workspaces] [class*="searchButton"]::after {
-  content: none !important;
-}
-
-[data-sandrone-workspaces] [class*="searchInput"] {
-  flex: 1 1 auto !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  padding-left: 32px !important;
-}
-
 [data-sandrone-settings] {
   display: block !important;
   width: 100% !important;
@@ -983,7 +975,9 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
 
 [data-sandrone-composer] [data-composer-card] textarea {
   min-height: 44px !important;
-  padding: 10px 16px 2px !important;
+  /* Match the official shared padding of input/mirror/backdrop so the caret
+     and IME composition underline sit exactly on the visible backdrop text. */
+  padding: 4px 12px 0 16px !important;
 }
 
 [data-sandrone-composer] [data-composer-card] [class*="scroll"] {
@@ -1023,7 +1017,7 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
   height: 44px !important;
   min-height: 44px !important;
   max-height: 44px !important;
-  padding: 8px 16px 0 !important;
+  padding: 4px 12px 0 16px !important;
 }
 
 [data-sandrone-composer] [data-composer-card]:has(textarea:placeholder-shown) [class*="row"] {
@@ -1214,17 +1208,20 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   color: var(--sandrone-paper-raised) !important;
 }
 
+/* Settings as a standalone page below the 38px titlebar, not a floating card:
+   the panel fills its overlay (which starts at the titlebar edge), drops the
+   border/radius/shadow, and keeps the soft-paper left navigation. */
 body [role="dialog"][class*="VOzbGW_panel"] {
   box-sizing: border-box !important;
-  width: min(1220px, calc(100vw - 48px)) !important;
-  max-width: calc(100vw - 48px) !important;
-  height: min(800px, calc(100vh - 48px)) !important;
-  max-height: calc(100vh - 48px) !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
   padding: 0 !important;
-  border: 1px solid var(--sandrone-line) !important;
-  border-radius: 18px !important;
-  background: var(--sandrone-paper-raised) !important;
-  box-shadow: var(--sandrone-shadow-deep) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: var(--sandrone-paper) !important;
+  box-shadow: none !important;
   color: var(--sandrone-ink) !important;
 }
 
@@ -1239,10 +1236,6 @@ body [role="dialog"][class*="VOzbGW_panel"] > nav {
 
 body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {
   min-width: 0 !important;
-}
-
-body [role="dialog"][class*="VOzbGW_panel"] [class*="header"] {
-  border-bottom: 1px solid var(--sandrone-line) !important;
 }
 
 @media (max-width: 760px) {
@@ -1381,4 +1374,213 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="header"] {
   [data-sandrone-center] [data-composer-card] {
     transition: none !important;
   }
+
+  [data-sandrone-workspaces] [class*="searchTree"],
+  [data-sandrone-workspaces] [class*="searchResultRow"] {
+    animation: none !important;
+  }
+}
+
+/* Settings as a standalone page instead of a floating dialog, mirroring
+   SandroneCode: the official settings overlay fills the window below the
+   38px titlebar and drops the dimming mask. Class names track the pinned
+   @deepseek-ai/dsh-client-ui-settings-general bundle (VOzbGW_*). */
+[class*="VOzbGW_overlay"] {
+  inset: 38px 0 0 !important;
+  align-items: stretch !important;
+}
+
+[class*="VOzbGW_mask"] {
+  display: none !important;
+}
+
+/* The settings page keeps no close button and no redundant "设置" nav title:
+   a back-to-workspace row and a section search replace the title. */
+[class*="VOzbGW_close"] {
+  display: none !important;
+}
+
+[class*="VOzbGW_navTitle"] {
+  display: none !important;
+}
+
+.sandrone-settings-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.sandrone-settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 5px 8px 5px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sandrone-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sandrone-settings-back:hover {
+  background: var(--sandrone-paper-raised);
+  color: var(--sandrone-ink-strong);
+}
+
+.sandrone-settings-back svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sandrone-settings-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--sandrone-line);
+  border-radius: 999px;
+  background: var(--sandrone-paper-raised);
+  cursor: text;
+}
+
+.sandrone-settings-search:focus-within {
+  border-color: var(--sandrone-accent);
+}
+
+.sandrone-settings-search svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: var(--sandrone-muted);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input {
+  min-width: 0;
+  flex: 1;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--sandrone-ink-strong);
+  font-size: 12px;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.sandrone-settings-search input::placeholder {
+  color: var(--sandrone-muted);
+}
+
+/* The official "打开配置文件" header action targets a provider document that
+   does not exist in this desktop distribution; hide it (class tracks the
+   pinned dsh-client-ui-settings-general bundle). */
+[class*="me01iq_action"] {
+  display: none !important;
+}
+
+/* Sandrone "其他" settings section: one paper card with a toggle switch.
+   Scoped and hardened with !important because the official settings panel
+   stretches generic section children/buttons to fill its flex containers. */
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-other {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 12px !important;
+  background: var(--sandrone-paper-raised) !important;
+}
+
+.sandrone-setting-copy {
+  min-width: 0;
+}
+
+.sandrone-setting-label {
+  color: var(--sandrone-ink-strong);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.sandrone-setting-hint {
+  margin-top: 4px;
+  color: var(--sandrone-muted);
+  font-size: 11.5px;
+  line-height: 18px;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {
+  position: relative !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  flex: 0 0 40px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: var(--sandrone-line-strong) !important;
+  cursor: pointer;
+  transition: background 160ms var(--sandrone-ease);
+}
+
+.sandrone-setting-switch.is-on {
+  background: var(--sandrone-ink-strong) !important;
+}
+
+.sandrone-setting-switch:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.sandrone-setting-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sandrone-paper-raised);
+  box-shadow: 0 1px 2px rgb(54 45 37 / 20%);
+  transition: transform 160ms var(--sandrone-ease);
+}
+
+.sandrone-setting-switch.is-on .sandrone-setting-knob {
+  transform: translateX(18px);
 }

@@ -35,6 +35,7 @@ __export(client_exports, {
 });
 module.exports = __toCommonJS(client_exports);
 var import_react = __toESM(require("react"), 1);
+var import_client = require("react-dom/client");
 var import_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 
 // packages/sandrone-ui/src/client.css
@@ -93,6 +94,8 @@ select {
 }
 
 [data-sandrone-sidebar-column] {
+  box-sizing: border-box !important;
+  padding-top: 38px !important;
   background: var(--sandrone-paper-soft) !important;
   border-right-color: var(--sandrone-line) !important;
   min-width: 0 !important;
@@ -334,108 +337,129 @@ select {
   color: var(--sandrone-ink) !important;
 }
 
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="sectionHeader"] {
-  position: relative !important;
+/* Search bar restyled after SandroneCode: a flat icon + input + round-clear
+   row under a hairline, with the results tree sliding in beneath it. The
+   official search slot already morphs (label fade + max-width) on focus. */
+[data-sandrone-workspaces] [class*="sectionHeader"] {
   box-sizing: border-box !important;
-  min-height: 92px !important;
-  padding: 44px 5px 8px !important;
-  border-bottom: 1px solid var(--sandrone-line) !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="sectionLabel"] {
-  display: block !important;
-  overflow: visible !important;
-  width: auto !important;
-  height: 18px !important;
-  color: var(--sandrone-ink-strong) !important;
-  font-size: 0 !important;
-  font-weight: 650 !important;
-  line-height: 18px !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="sectionLabel"]::after {
-  content: '\u9879\u76EE';
-  font-size: 12px;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="searchSlot"] {
-  position: absolute !important;
-  top: 0 !important;
-  right: 0 !important;
-  left: 0 !important;
-  height: 43px !important;
-  border-bottom: 1px solid var(--sandrone-line) !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="search"] {
-  width: 100% !important;
-  height: 43px !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="searchButton"] {
-  display: flex !important;
-  width: 100% !important;
-  height: 43px !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 8px !important;
-  padding: 0 8px !important;
-  border-radius: 0 !important;
-  color: var(--sandrone-muted) !important;
-  font-size: 0 !important;
-}
-
-[data-sandrone-frame]:not([data-sidebar-collapsed]) [data-sandrone-workspaces] [class*="searchButton"]::after {
-  content: '\u641C\u7D22\u9879\u76EE\u3001\u4F1A\u8BDD\u2026';
-  font-size: 13px;
-}
-
-[data-sandrone-workspaces] [role="tree"]::before {
-  content: '\u4F1A\u8BDD';
-  display: block;
-  padding: 8px 5px 5px;
-  color: var(--sandrone-ink-strong);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-[data-sandrone-workspaces] input {
-  box-sizing: border-box !important;
-  width: 100% !important;
-  min-height: 42px !important;
-  padding: 0 10px 0 32px !important;
-  border: 0 !important;
+  height: 40px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
   border-bottom: 1px solid var(--sandrone-line) !important;
   border-radius: 0 !important;
-  outline: none !important;
+}
+
+[data-sandrone-workspaces] [class*="searchExpanded"] {
+  border: none !important;
+  border-radius: 0 !important;
   background: transparent !important;
-  color: var(--sandrone-ink) !important;
-  font-size: 13px !important;
+  color: var(--sandrone-muted) !important;
 }
 
-[data-sandrone-workspaces] input::placeholder {
+[data-sandrone-workspaces] [class*="searchButton"] {
   color: var(--sandrone-muted) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchInput"] {
+  margin-left: 2px !important;
+  color: var(--sandrone-ink-strong) !important;
+  font-size: 12px !important;
+}
+
+[data-sandrone-workspaces] [class*="searchInput"]::placeholder {
+  color: var(--sandrone-muted) !important;
+}
+
+[data-sandrone-workspaces] [class*="clearButton"] {
+  width: 18px !important;
+  height: 18px !important;
+  background: var(--sandrone-paper-soft) !important;
+  color: var(--sandrone-muted) !important;
+  font-size: 12px !important;
+}
+
+[data-sandrone-workspaces] [class*="clearButton"]:hover {
+  background: var(--sandrone-accent-soft) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchTree"] {
+  transform-origin: top !important;
+  animation: sandrone-search-in 320ms var(--sandrone-ease) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchTree"]::before {
+  content: '\u9879\u76EE\u4E0E\u4F1A\u8BDD';
+  display: block;
+  padding: 7px 7px 4px;
+  color: var(--sandrone-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+[data-sandrone-workspaces] [class*="searchResultRow"] {
+  border-radius: 4px !important;
+  padding: 7px 8px !important;
+  transition: background 120ms var(--sandrone-ease) !important;
+  animation: sandrone-row-in 180ms var(--sandrone-ease) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchResultRow"]:hover,
+[data-sandrone-workspaces] [class*="searchResultRow"][class*="selected"] {
+  background: var(--sandrone-accent-soft) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchResultTitle"] {
+  font-size: 12.5px !important;
+  color: var(--sandrone-ink-strong) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchResultWorkspace"],
+[data-sandrone-workspaces] [class*="searchResultSnippet"] {
+  font-size: 10px !important;
+  color: var(--sandrone-muted) !important;
+}
+
+[data-sandrone-workspaces] [class*="searchStatus"],
+[data-sandrone-workspaces] [class*="searchWarning"] {
+  padding: 10px 12px !important;
+  color: var(--sandrone-muted) !important;
+  font-size: 11px !important;
+}
+
+[data-sandrone-workspaces] [class*="searchWarning"] {
+  color: var(--sandrone-red) !important;
+}
+
+@keyframes sandrone-search-in {
+  from { opacity: 0; transform: scaleY(.92); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes sandrone-row-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
 }
 
 [data-sandrone-workspaces] [role="tree"] {
-  padding: 6px 0 0 !important;
+  padding: 8px 0 0 !important;
 }
 
 [data-sandrone-workspaces] [role="treeitem"] {
   position: relative !important;
-  min-height: 44px !important;
-  margin: 2px 0 !important;
-  padding: 10px 11px !important;
+  min-height: 40px !important;
+  margin: 1px 0 !important;
+  padding: 8px 10px !important;
   border: 1px solid transparent !important;
-  border-radius: 9px !important;
+  border-radius: 8px !important;
   background: transparent !important;
 }
 
 [data-sandrone-workspaces] [role="treeitem"][aria-selected="true"],
 [data-sandrone-workspaces] [role="treeitem"][aria-current="true"] {
-  border-color: var(--sandrone-line) !important;
-  background: var(--sandrone-paper-raised) !important;
-  box-shadow: inset 5px 0 0 var(--sandrone-red), var(--sandrone-shadow) !important;
+  border-color: transparent !important;
+  background: var(--sandrone-accent-soft) !important;
+  box-shadow: inset 4px 0 0 var(--sandrone-red) !important;
 }
 
 [data-sandrone-settings] {
@@ -572,118 +596,134 @@ select {
    The controls below are only a visual shell: each action delegates to the
    corresponding Harness-owned button or service, so refresh, search,
    workspace selection, settings and theme state stay authoritative. */
+/* Frameless desktop titlebar, mirrored from SandroneCode's desktop-titlebar:
+   full-width drag strip with history chevrons, a separator, app-menu labels,
+   a flexible drag spacer, and right-aligned window controls. */
 [data-sandrone-topbar] {
   position: absolute;
   top: 0;
   right: 0;
-  left: var(--sandrone-sidebar-width, 280px);
+  left: 0;
   z-index: 30;
   display: flex;
   box-sizing: border-box;
-  height: 56px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 0 18px 0 10px;
+  height: 38px;
+  align-items: stretch;
   border-bottom: 1px solid var(--sandrone-line);
-  background: color-mix(in srgb, var(--sandrone-paper) 96%, transparent);
-  color: var(--sandrone-ink);
-  box-shadow: 0 3px 16px rgb(54 45 37 / 4%);
-  backdrop-filter: blur(12px);
+  background: color-mix(in srgb, var(--sandrone-paper-soft) 92%, var(--sandrone-paper));
+  color: var(--sandrone-muted);
+  -webkit-app-region: drag;
+  user-select: none;
   pointer-events: auto;
 }
 
-.sandrone-topbar-leading,
-.sandrone-topbar-actions {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 5px;
+[data-sandrone-topbar] button {
+  -webkit-app-region: no-drag;
 }
 
-.sandrone-topbar-leading { flex: 1 1 auto; }
-.sandrone-topbar-actions { flex: 0 0 auto; }
+.sandrone-topbar-navigation {
+  display: flex;
+  align-items: stretch;
+  padding-left: 5px;
+  -webkit-app-region: no-drag;
+}
 
-.sandrone-topbar-leading button,
-.sandrone-topbar-actions button {
+.sandrone-topbar-history {
   display: grid;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
+  width: 32px;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--sandrone-line);
-  border-radius: 10px;
-  background: var(--sandrone-paper-raised);
+  border: none;
+  background: transparent;
   color: var(--sandrone-muted);
-  font-family: "Segoe UI Symbol", "Segoe UI", sans-serif;
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
-  transition: border-color 160ms var(--sandrone-ease), background 160ms var(--sandrone-ease), color 160ms var(--sandrone-ease), transform 160ms var(--sandrone-ease);
 }
 
-.sandrone-topbar-leading button:hover,
-.sandrone-topbar-actions button:hover {
-  border-color: var(--sandrone-accent);
+.sandrone-topbar-history:hover {
+  background: color-mix(in srgb, var(--sandrone-ink) 8%, transparent);
+  color: var(--sandrone-ink-strong);
+}
+
+.sandrone-topbar-history svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sandrone-topbar-separator {
+  width: 1px;
+  height: 16px;
+  align-self: center;
+  margin: 0 4px;
+  background: var(--sandrone-line-strong);
+}
+
+.sandrone-topbar-menu-item {
+  min-width: 45px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--sandrone-ink);
+  font-family: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.sandrone-topbar-menu-item:hover {
   background: var(--sandrone-accent-soft);
-  color: var(--sandrone-ink-strong);
-  transform: translateY(-1px);
 }
 
-.sandrone-topbar-leading button:focus-visible,
-.sandrone-topbar-actions button:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--sandrone-red) 45%, transparent);
-  outline-offset: 2px;
+.sandrone-topbar-drag {
+  min-width: 80px;
+  flex: 1;
 }
 
-.sandrone-topbar-nav {
-  width: 28px !important;
-  height: 28px !important;
-  border-color: transparent !important;
-  background: transparent !important;
-  font-size: 20px !important;
+.sandrone-topbar-window {
+  display: flex;
+  margin-left: auto;
+  -webkit-app-region: no-drag;
 }
 
-.sandrone-topbar-menu {
-  margin-left: 4px;
-  font-size: 19px !important;
-}
-
-.sandrone-topbar-title {
-  min-width: 0;
-  max-width: min(520px, 46vw);
-  margin-left: 4px;
-  overflow: hidden;
-  color: var(--sandrone-ink-strong);
-  font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif;
-  font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -.025em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sandrone-topbar-sync {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
+.sandrone-topbar-window button {
+  display: grid;
+  width: 46px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--sandrone-muted);
-  font-size: 10px;
+  cursor: pointer;
+  transition: background 120ms var(--sandrone-ease), color 120ms var(--sandrone-ease);
 }
 
-.sandrone-topbar-sync i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #6c8754;
-  box-shadow: 0 0 0 3px rgb(108 135 84 / 12%);
+.sandrone-topbar-window button:hover {
+  background: color-mix(in srgb, var(--sandrone-ink) 8%, transparent);
+  color: var(--sandrone-ink-strong);
+}
+
+.sandrone-topbar-window button.sandrone-topbar-window-close:hover {
+  background: #b54840;
+  color: #fff;
+}
+
+.sandrone-topbar-window svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 [data-sandrone-center] [data-slot="conversation"] {
   box-sizing: border-box !important;
-  padding-top: 56px !important;
+  padding-top: 38px !important;
 }
 
 [data-sandrone-session-header] {
@@ -737,13 +777,22 @@ select {
   box-shadow: 0 0 0 4px rgb(200 16 46 / 15%), var(--sandrone-shadow-deep) !important;
 }
 
+/* The official composer paints its text through an aria-hidden backdrop layer
+   that sits under the real textarea (@deepseek-ai/dsh-client-ui-conversation,
+   InputBar.module.css keeps the textarea color transparent on purpose). The
+   textarea must stay transparent and share the backdrop's font metrics,
+   otherwise every keystroke renders twice (ghosting) and the caret drifts. */
 [data-sandrone-composer] [data-composer-card] textarea {
-  min-height: 64px !important;
-  padding: 12px 16px 4px !important;
-  color: var(--sandrone-ink) !important;
+  color: transparent !important;
   caret-color: var(--sandrone-red) !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
   line-height: 24px !important;
+}
+
+/* Preserve the official read-only/disabled look: the draft is shown in the
+   tertiary label color by the textarea itself. */
+[data-sandrone-composer] [data-composer-card] textarea:disabled {
+  color: var(--dsw-alias-label-tertiary) !important;
 }
 
 [data-sandrone-composer] [data-composer-card] textarea::placeholder {
@@ -783,18 +832,7 @@ select {
   background: linear-gradient(180deg, transparent 0, var(--sandrone-paper) 18px) !important;
 }
 
-body[data-ds-dark-theme] [data-sandrone-topbar] {
-  background: color-mix(in srgb, var(--sandrone-paper) 94%, transparent);
-}
-
 @media (max-width: 900px) {
-  [data-sandrone-topbar] {
-    left: 56px;
-    padding-right: 10px;
-  }
-
-  .sandrone-topbar-title { max-width: 35vw; }
-  .sandrone-topbar-sync { display: none; }
   [data-sandrone-composer] [data-composer-card] { width: calc(100% - 20px) !important; }
 }
 
@@ -802,11 +840,7 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
   [data-sandrone-sidebar-header] { height: 112px !important; min-height: 112px !important; }
   [data-sandrone-sidebar] [class*="logoRow"] { height: 112px !important; }
   [data-sandrone-sidebar-header] [class*="brand"] { bottom: 12px !important; left: 16px !important; }
-  [data-sandrone-topbar] { gap: 4px; padding-left: 4px; }
-  .sandrone-topbar-leading button, .sandrone-topbar-actions button { width: 32px; height: 32px; }
-  .sandrone-topbar-nav { display: none !important; }
-  .sandrone-topbar-title { max-width: 34vw; font-size: 13px; }
-  .sandrone-topbar-actions { gap: 2px; }
+  [data-sandrone-topbar] { padding-left: 4px; }
   [data-sandrone-center] [data-slot="conversation"] { padding-top: 50px !important; }
 }
 
@@ -963,47 +997,6 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
   padding: 0 12px !important;
 }
 
-[data-sandrone-workspaces] [class*="searchSlot"] {
-  width: auto !important;
-  max-width: none !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-}
-
-[data-sandrone-workspaces] [class*="search"] {
-  position: relative !important;
-  width: 100% !important;
-  max-width: none !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-}
-
-[data-sandrone-workspaces] [class*="searchButton"] {
-  position: absolute !important;
-  z-index: 1 !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 28px !important;
-  min-width: 28px !important;
-  justify-content: center !important;
-  padding: 0 !important;
-}
-
-[data-sandrone-workspaces] [class*="searchButton"]::after {
-  content: none !important;
-}
-
-[data-sandrone-workspaces] [class*="searchInput"] {
-  flex: 1 1 auto !important;
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  pointer-events: auto !important;
-  padding-left: 32px !important;
-}
-
 [data-sandrone-settings] {
   display: block !important;
   width: 100% !important;
@@ -1023,7 +1016,9 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
 
 [data-sandrone-composer] [data-composer-card] textarea {
   min-height: 44px !important;
-  padding: 10px 16px 2px !important;
+  /* Match the official shared padding of input/mirror/backdrop so the caret
+     and IME composition underline sit exactly on the visible backdrop text. */
+  padding: 4px 12px 0 16px !important;
 }
 
 [data-sandrone-composer] [data-composer-card] [class*="scroll"] {
@@ -1063,7 +1058,7 @@ body[data-ds-dark-theme] [data-sandrone-topbar] {
   height: 44px !important;
   min-height: 44px !important;
   max-height: 44px !important;
-  padding: 8px 16px 0 !important;
+  padding: 4px 12px 0 16px !important;
 }
 
 [data-sandrone-composer] [data-composer-card]:has(textarea:placeholder-shown) [class*="row"] {
@@ -1254,17 +1249,20 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   color: var(--sandrone-paper-raised) !important;
 }
 
+/* Settings as a standalone page below the 38px titlebar, not a floating card:
+   the panel fills its overlay (which starts at the titlebar edge), drops the
+   border/radius/shadow, and keeps the soft-paper left navigation. */
 body [role="dialog"][class*="VOzbGW_panel"] {
   box-sizing: border-box !important;
-  width: min(1220px, calc(100vw - 48px)) !important;
-  max-width: calc(100vw - 48px) !important;
-  height: min(800px, calc(100vh - 48px)) !important;
-  max-height: calc(100vh - 48px) !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
   padding: 0 !important;
-  border: 1px solid var(--sandrone-line) !important;
-  border-radius: 18px !important;
-  background: var(--sandrone-paper-raised) !important;
-  box-shadow: var(--sandrone-shadow-deep) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: var(--sandrone-paper) !important;
+  box-shadow: none !important;
   color: var(--sandrone-ink) !important;
 }
 
@@ -1279,10 +1277,6 @@ body [role="dialog"][class*="VOzbGW_panel"] > nav {
 
 body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {
   min-width: 0 !important;
-}
-
-body [role="dialog"][class*="VOzbGW_panel"] [class*="header"] {
-  border-bottom: 1px solid var(--sandrone-line) !important;
 }
 
 @media (max-width: 760px) {
@@ -1421,6 +1415,215 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="header"] {
   [data-sandrone-center] [data-composer-card] {
     transition: none !important;
   }
+
+  [data-sandrone-workspaces] [class*="searchTree"],
+  [data-sandrone-workspaces] [class*="searchResultRow"] {
+    animation: none !important;
+  }
+}
+
+/* Settings as a standalone page instead of a floating dialog, mirroring
+   SandroneCode: the official settings overlay fills the window below the
+   38px titlebar and drops the dimming mask. Class names track the pinned
+   @deepseek-ai/dsh-client-ui-settings-general bundle (VOzbGW_*). */
+[class*="VOzbGW_overlay"] {
+  inset: 38px 0 0 !important;
+  align-items: stretch !important;
+}
+
+[class*="VOzbGW_mask"] {
+  display: none !important;
+}
+
+/* The settings page keeps no close button and no redundant "\u8BBE\u7F6E" nav title:
+   a back-to-workspace row and a section search replace the title. */
+[class*="VOzbGW_close"] {
+  display: none !important;
+}
+
+[class*="VOzbGW_navTitle"] {
+  display: none !important;
+}
+
+.sandrone-settings-chrome {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.sandrone-settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 5px 8px 5px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sandrone-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sandrone-settings-back:hover {
+  background: var(--sandrone-paper-raised);
+  color: var(--sandrone-ink-strong);
+}
+
+.sandrone-settings-back svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sandrone-settings-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--sandrone-line);
+  border-radius: 999px;
+  background: var(--sandrone-paper-raised);
+  cursor: text;
+}
+
+.sandrone-settings-search:focus-within {
+  border-color: var(--sandrone-accent);
+}
+
+.sandrone-settings-search svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: var(--sandrone-muted);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input {
+  min-width: 0;
+  flex: 1;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--sandrone-ink-strong);
+  font-size: 12px;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.sandrone-settings-search input::placeholder {
+  color: var(--sandrone-muted);
+}
+
+/* The official "\u6253\u5F00\u914D\u7F6E\u6587\u4EF6" header action targets a provider document that
+   does not exist in this desktop distribution; hide it (class tracks the
+   pinned dsh-client-ui-settings-general bundle). */
+[class*="me01iq_action"] {
+  display: none !important;
+}
+
+/* Sandrone "\u5176\u4ED6" settings section: one paper card with a toggle switch.
+   Scoped and hardened with !important because the official settings panel
+   stretches generic section children/buttons to fill its flex containers. */
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-other {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 12px !important;
+  background: var(--sandrone-paper-raised) !important;
+}
+
+.sandrone-setting-copy {
+  min-width: 0;
+}
+
+.sandrone-setting-label {
+  color: var(--sandrone-ink-strong);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.sandrone-setting-hint {
+  margin-top: 4px;
+  color: var(--sandrone-muted);
+  font-size: 11.5px;
+  line-height: 18px;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {
+  position: relative !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  flex: 0 0 40px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: var(--sandrone-line-strong) !important;
+  cursor: pointer;
+  transition: background 160ms var(--sandrone-ease);
+}
+
+.sandrone-setting-switch.is-on {
+  background: var(--sandrone-ink-strong) !important;
+}
+
+.sandrone-setting-switch:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.sandrone-setting-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sandrone-paper-raised);
+  box-shadow: 0 1px 2px rgb(54 45 37 / 20%);
+  transition: transform 160ms var(--sandrone-ease);
+}
+
+.sandrone-setting-switch.is-on .sandrone-setting-knob {
+  transform: translateX(18px);
 }
 `;
 function installStyle(ctx) {
@@ -1501,8 +1704,11 @@ function markSurface() {
     const sidebarWidth = sidebarColumn.getBoundingClientRect().width;
     root.style.setProperty("--sandrone-sidebar-width", `${sidebarWidth}px`);
     const sidebarCollapsed = frame.getAttribute("data-sidebar-collapsed") === "true";
-    const canNormalizeDesktopWidth = window.innerWidth > 760 && !sidebarCollapsed && !frame.dataset.sandroneSidebarUserResized && !frame.dataset.sandroneSidebarWidthNormalized && sidebarWidth > 0 && sidebarWidth < DESKTOP_SIDEBAR_WIDTH;
-    if (canNormalizeDesktopWidth) {
+    const desktopShell = Boolean(window.sandroneDesktop);
+    if (desktopShell) root.dataset.sandroneDesktop = "true";
+    const pinDesktopWidth = desktopShell && window.innerWidth > 760 && !sidebarCollapsed && sidebarWidth > 0 && sidebarWidth !== DESKTOP_SIDEBAR_WIDTH;
+    const canNormalizeDesktopWidth = !desktopShell && window.innerWidth > 760 && !sidebarCollapsed && !frame.dataset.sandroneSidebarUserResized && !frame.dataset.sandroneSidebarWidthNormalized && sidebarWidth > 0 && sidebarWidth < DESKTOP_SIDEBAR_WIDTH;
+    if (pinDesktopWidth || canNormalizeDesktopWidth) {
       frame.style.setProperty("transition", "none", "important");
       frame.style.setProperty(
         "grid-template-columns",
@@ -1562,6 +1768,7 @@ function installSurfaceMarkers(ctx) {
     };
     window.setTimeout(expandMobileSidebar, 0);
     const handleSidebarResizeStart = (event) => {
+      if (window.sandroneDesktop) return;
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (!target.closest('[class*="handle"]')) return;
@@ -1595,6 +1802,7 @@ function installSurfaceMarkers(ctx) {
         delete element.dataset.sandroneComposerInput;
         delete element.dataset.sandroneSurfacePart;
         delete element.dataset.sandroneDialog;
+        delete element.dataset.sandroneDesktop;
       });
       document.getElementById("root")?.style.removeProperty("--sandrone-sidebar-width");
     };
@@ -1609,20 +1817,299 @@ function clickOfficial(selector) {
   }) || document.querySelector(selector);
   if (element instanceof HTMLElement) element.click();
 }
-function SandroneTopbar({ toggleTheme }) {
-  const [title, setTitle] = (0, import_react.useState)("\u65B0\u4F1A\u8BDD");
+var textOf = (element) => (element?.textContent || "").replace(/\s+/g, " ").trim();
+function readPageState() {
+  const settingsOpen = Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
+  const sessionRow = document.querySelector('[data-sandrone-workspaces] [role="treeitem"][aria-selected="true"]');
+  const sessionTitle = sessionRow ? textOf(sessionRow.querySelector('[class*="title"]') || sessionRow) : "";
+  const activeTab = document.querySelector('[data-sandrone-session-header] [role="tab"][aria-selected="true"]');
+  const viewLabel = activeTab ? textOf(activeTab) : "";
+  return { settingsOpen, sessionTitle, viewLabel };
+}
+function pageKey(state) {
+  return `${state.settingsOpen ? "1" : "0"}|${state.sessionTitle}|${state.viewLabel}`;
+}
+function clickSessionRow(title) {
+  if (!title) return;
+  const rows = [...document.querySelectorAll('[data-sandrone-workspaces] [role="treeitem"][aria-selected]')];
+  const row = rows.find((candidate) => textOf(candidate.querySelector('[class*="title"]') || candidate) === title);
+  if (row instanceof HTMLElement) row.click();
+}
+function clickViewTab(label) {
+  if (!label) return;
+  const tabs = [...document.querySelectorAll('[data-sandrone-session-header] [role="tab"]')];
+  const tab = tabs.find((candidate) => textOf(candidate) === label);
+  if (tab instanceof HTMLElement) tab.click();
+}
+function usePageNavigation() {
+  const navigateRef = (0, import_react.useRef)(null);
   (0, import_react.useEffect)(() => {
-    const readTitle = () => {
-      const header = document.querySelector("[data-sandrone-session-header]");
-      const next = header?.textContent?.replace(/\s+/g, " ").trim();
-      if (next) setTitle(next.slice(0, 80));
+    const root = document.getElementById("root") || document.body;
+    let currentKey = null;
+    let currentSnapshot = null;
+    let restoring = false;
+    let pending = false;
+    const backStack = [];
+    const forwardStack = [];
+    const settle = () => {
+      pending = false;
+      const state = readPageState();
+      const key = pageKey(state);
+      if (key === currentKey) return;
+      if (restoring || currentKey === null) {
+        currentKey = key;
+        currentSnapshot = state;
+        return;
+      }
+      if (currentSnapshot) backStack.push(currentSnapshot);
+      forwardStack.length = 0;
+      currentKey = key;
+      currentSnapshot = state;
     };
-    readTitle();
-    const observer = new MutationObserver(readTitle);
-    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
+    const scheduleSettle = () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(settle);
+    };
+    const restore = (target) => {
+      if (!target) return;
+      const state = readPageState();
+      restoring = true;
+      try {
+        if (target.settingsOpen && !state.settingsOpen) {
+          clickOfficial("[data-sandrone-settings] button");
+        } else if (!target.settingsOpen && state.settingsOpen) {
+          clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]');
+        }
+        if (target.sessionTitle && state.sessionTitle !== target.sessionTitle) {
+          clickSessionRow(target.sessionTitle);
+        }
+        if (target.viewLabel && state.viewLabel !== target.viewLabel) {
+          clickViewTab(target.viewLabel);
+        }
+      } finally {
+        window.setTimeout(() => {
+          restoring = false;
+          currentSnapshot = readPageState();
+          currentKey = pageKey(currentSnapshot);
+        }, 250);
+      }
+    };
+    navigateRef.current = {
+      back: () => {
+        const target = backStack.pop();
+        if (!target) return;
+        forwardStack.push(currentSnapshot);
+        restore(target);
+      },
+      forward: () => {
+        const target = forwardStack.pop();
+        if (!target) return;
+        backStack.push(currentSnapshot);
+        restore(target);
+      }
+    };
+    const observer = new MutationObserver(scheduleSettle);
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["aria-selected"]
+    });
+    scheduleSettle();
+    return () => {
+      observer.disconnect();
+      navigateRef.current = null;
+    };
   }, []);
-  return /* @__PURE__ */ import_react.default.createElement("header", { className: "sandrone-topbar", "data-sandrone-topbar": true }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-topbar-leading" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-nav", "aria-label": "\u4E0A\u4E00\u4E2A\u9875\u9762", onClick: () => window.history.back() }, "\u2190"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-nav", "aria-label": "\u4E0B\u4E00\u4E2A\u9875\u9762", onClick: () => window.history.forward() }, "\u2192"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-menu", "aria-label": "\u5C55\u5F00\u6216\u6536\u8D77\u4FA7\u8FB9\u680F", onClick: () => clickOfficial('[data-sandrone-sidebar] [aria-label="\u6536\u8D77\u4FA7\u8FB9\u680F"], [data-sandrone-sidebar] [aria-label="\u6253\u5F00\u4FA7\u8FB9\u680F"], [data-sandrone-sidebar] [aria-label="\u5C55\u5F00\u4FA7\u8FB9\u680F"]') }, "\u2630"), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-topbar-title", title }, title), /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-topbar-sync" }, /* @__PURE__ */ import_react.default.createElement("i", null), " \u5DF2\u540C\u6B65")), /* @__PURE__ */ import_react.default.createElement("nav", { className: "sandrone-topbar-actions", "aria-label": "\u5DE5\u4F5C\u53F0\u64CD\u4F5C" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u641C\u7D22\u9879\u76EE\u548C\u4F1A\u8BDD", title: "\u641C\u7D22\u9879\u76EE\u548C\u4F1A\u8BDD", onClick: () => clickOfficial('[data-sandrone-workspaces] [aria-label="\u641C\u7D22\u4F1A\u8BDD"], [aria-label="\u641C\u7D22\u4F1A\u8BDD"]') }, "\u2315"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u5237\u65B0\u5DE5\u4F5C\u53F0", title: "\u5237\u65B0\u5DE5\u4F5C\u53F0", onClick: () => window.location.reload() }, "\u21BB"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u6253\u5F00\u5DE5\u4F5C\u533A", title: "\u6253\u5F00\u5DE5\u4F5C\u533A", onClick: () => clickOfficial('[data-sandrone-workspaces] [aria-label="\u6DFB\u52A0\u5DE5\u4F5C\u533A"], [data-sandrone-workspaces] [aria-label="\u9009\u62E9\u5DE5\u4F5C\u533A"], [aria-label="\u6DFB\u52A0\u5DE5\u4F5C\u533A"]') }, "\u25A3"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u6253\u5F00\u8BBE\u7F6E", title: "\u6253\u5F00\u8BBE\u7F6E", onClick: () => clickOfficial('[data-sandrone-settings] button, [data-slot="settings.trigger"] button, [data-slot="settings.trigger"]') }, "\u2699"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u5207\u6362\u591C\u95F4\u6A21\u5F0F", title: "\u5207\u6362\u591C\u95F4\u6A21\u5F0F", onClick: toggleTheme }, "\u263E")));
+  return navigateRef;
+}
+function WindowControls({ desktop }) {
+  const [maximized, setMaximized] = (0, import_react.useState)(false);
+  (0, import_react.useEffect)(() => {
+    if (!desktop) return void 0;
+    let alive = true;
+    void desktop.isMaximized().then((value) => {
+      if (alive) setMaximized(Boolean(value));
+    }).catch(() => {
+    });
+    const unsubscribe = desktop.onMaximizedChange((value) => setMaximized(Boolean(value)));
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, [desktop]);
+  if (!desktop) return null;
+  const toggleMaximize = () => {
+    desktop.toggleMaximize().then((value) => setMaximized(Boolean(value))).catch(() => {
+    });
+  };
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-topbar-window", "aria-label": "\u7A97\u53E3\u63A7\u5236" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u6700\u5C0F\u5316\u7A97\u53E3", title: "\u6700\u5C0F\u5316", onClick: () => desktop.minimize() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 12 12", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M2 6.5h8" }))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": maximized ? "\u8FD8\u539F\u7A97\u53E3" : "\u6700\u5927\u5316\u7A97\u53E3", title: maximized ? "\u8FD8\u539F" : "\u6700\u5927\u5316", onClick: toggleMaximize }, maximized ? /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 12 12", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M4 2.2h5.8V8M2.2 4H8v5.8H2.2z" })) : /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 12 12", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("rect", { x: "2.2", y: "2.2", width: "7.6", height: "7.6", rx: ".3" }))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-window-close", "aria-label": "\u5173\u95ED\u7A97\u53E3", title: "\u5173\u95ED", onClick: () => desktop.close() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 12 12", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "m2.5 2.5 7 7m0-7-7 7" }))));
+}
+var TOPBAR_MENUS = Object.freeze([
+  { id: "file", label: "\u6587\u4EF6" },
+  { id: "edit", label: "\u7F16\u8F91" },
+  { id: "view", label: "\u89C6\u56FE" },
+  { id: "help", label: "\u5E2E\u52A9" }
+]);
+function GpuAccelerationSection() {
+  const [enabled, setEnabled] = (0, import_react.useState)(null);
+  (0, import_react.useEffect)(() => {
+    const api = window.sandroneDesktop;
+    if (!api || typeof api.getGpuAcceleration !== "function") {
+      setEnabled(true);
+      return void 0;
+    }
+    let alive = true;
+    void api.getGpuAcceleration().then((value) => {
+      if (alive) setEnabled(Boolean(value));
+    }).catch(() => {
+      if (alive) setEnabled(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const toggle = () => {
+    if (enabled === null) return;
+    const next = !enabled;
+    setEnabled(next);
+    window.sandroneDesktop?.setGpuAcceleration?.(next)?.catch(() => {
+    });
+  };
+  return /* @__PURE__ */ import_react.default.createElement("section", { className: "sandrone-settings-other", "aria-label": "\u5176\u4ED6" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-row" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-copy" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-label" }, "\u542F\u7528 GPU \u52A0\u901F"), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-hint" }, "\u5173\u95ED\u540E\u754C\u9762\u6539\u7528\u8F6F\u4EF6\u6E32\u67D3\uFF0C\u53EF\u907F\u514D\u6B8B\u5F71\u7B49\u5408\u6210\u95EE\u9898\u3002\u8C03\u6574\u540E\u4E0B\u4E00\u6B21\u542F\u52A8\u65F6\u751F\u6548\u3002")), /* @__PURE__ */ import_react.default.createElement(
+    "button",
+    {
+      type: "button",
+      role: "switch",
+      "aria-checked": enabled === true,
+      className: `sandrone-setting-switch${enabled ? " is-on" : ""}`,
+      disabled: enabled === null,
+      onClick: toggle
+    },
+    /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-setting-knob", "aria-hidden": "true" })
+  )));
+}
+function SettingsChrome() {
+  const [query, setQuery] = (0, import_react.useState)("");
+  (0, import_react.useEffect)(() => {
+    const needle = query.trim().toLowerCase();
+    const panel = document.querySelector('[role="dialog"][aria-modal="true"]');
+    if (!panel) return;
+    const cells = [...panel.querySelectorAll('[class*="navCell"]')];
+    for (const cell of cells) {
+      const label = (cell.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+      cell.style.display = needle && !label.includes(needle) ? "none" : "";
+    }
+  }, [query]);
+  const closeSettings = () => {
+    clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]');
+  };
+  const submitSearch = (event) => {
+    if (event.key !== "Enter") return;
+    const panel = document.querySelector('[role="dialog"][aria-modal="true"]');
+    const cell = panel && [...panel.querySelectorAll('[class*="navCell"]')].find((node) => node.style.display !== "none");
+    if (cell instanceof HTMLElement) cell.click();
+  };
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-settings-chrome" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-settings-back", onClick: closeSettings }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" })), "\u8FD4\u56DE\u5DE5\u4F5C\u533A"), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-settings-search" }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("circle", { cx: "11", cy: "11", r: "8" }), /* @__PURE__ */ import_react.default.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })), /* @__PURE__ */ import_react.default.createElement("input", { type: "text", placeholder: "\u641C\u7D22\u8BBE\u7F6E...", value: query, onChange: (event) => setQuery(event.target.value), onKeyDown: submitSearch })));
+}
+function NativeDirectoryFlow(props) {
+  const openedRef = (0, import_react.useRef)(false);
+  (0, import_react.useEffect)(() => {
+    if (!props.open) {
+      openedRef.current = false;
+      return;
+    }
+    if (openedRef.current) return;
+    openedRef.current = true;
+    const desktop = window.sandroneDesktop;
+    if (!desktop || typeof desktop.pickDirectory !== "function") {
+      props.onCancel();
+      return;
+    }
+    let alive = true;
+    void desktop.pickDirectory().then((path) => {
+      if (!alive) return;
+      if (path) props.onPicked(path);
+      else props.onCancel();
+    }).catch(() => {
+      if (alive) props.onCancel();
+    });
+    return () => {
+      alive = false;
+    };
+  }, [props.open]);
+  return null;
+}
+function installNativeDirectoryFlow(ctx) {
+  const desktopAvailable = typeof window !== "undefined" && Boolean(window.sandroneDesktop?.pickDirectory);
+  if (!desktopAvailable) return;
+  ctx.slots.inject("conversation.hero.workspace.directoryFlow", () => ctx.slots.inject("sidebar.workspaces.directoryFlow", function* () {
+    yield ctx.slots.register({ name: "conversation.hero.workspace.directoryFlow", priority: -1 }, NativeDirectoryFlow);
+    yield ctx.slots.register({ name: "sidebar.workspaces.directoryFlow", priority: -1 }, NativeDirectoryFlow);
+  }));
+}
+function installSettingsChrome(ctx) {
+  return ctx.effect(() => {
+    let container = null;
+    let root = null;
+    const mount = () => {
+      const nav = document.querySelector('[role="dialog"][aria-modal="true"] > nav');
+      if (!nav || container && container.parentNode === nav) return;
+      if (root) {
+        root.unmount();
+        root = null;
+        container?.remove();
+        container = null;
+      }
+      container = document.createElement("div");
+      nav.insertBefore(container, nav.firstChild);
+      root = (0, import_client.createRoot)(container);
+      root.render(import_react.default.createElement(SettingsChrome));
+    };
+    const observer = new MutationObserver(mount);
+    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
+    mount();
+    return () => {
+      observer.disconnect();
+      root?.unmount();
+      root = null;
+      container?.remove();
+      container = null;
+    };
+  }, "sandrone-ui: settings chrome");
+}
+function SandroneTopbar({ toggleTheme }) {
+  const desktop = window.sandroneDesktop?.window;
+  const navigateRef = usePageNavigation();
+  (0, import_react.useEffect)(() => {
+    const api = window.sandroneDesktop;
+    if (!api || typeof api.onCommand !== "function") return void 0;
+    return api.onCommand((command) => {
+      switch (command) {
+        case "toggle-sidebar":
+          clickOfficial('[data-sandrone-sidebar] [aria-label="\u6536\u8D77\u4FA7\u8FB9\u680F"], [data-sandrone-sidebar] [aria-label="\u6253\u5F00\u4FA7\u8FB9\u680F"], [data-sandrone-sidebar] [aria-label="\u5C55\u5F00\u4FA7\u8FB9\u680F"]');
+          break;
+        case "toggle-theme":
+          toggleTheme();
+          break;
+        case "open-settings":
+          clickOfficial('[data-sandrone-settings] button, [data-slot="settings.trigger"] button, [data-slot="settings.trigger"]');
+          break;
+        case "open-workspace":
+          clickOfficial('[data-sandrone-workspaces] [aria-label="\u6DFB\u52A0\u5DE5\u4F5C\u533A"], [data-sandrone-workspaces] [aria-label="\u9009\u62E9\u5DE5\u4F5C\u533A"], [aria-label="\u6DFB\u52A0\u5DE5\u4F5C\u533A"]');
+          break;
+        default:
+          break;
+      }
+    });
+  }, [toggleTheme]);
+  const openMenu = (menuId, event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    desktop?.showApplicationMenu(menuId, { x: Math.round(rect.left), y: Math.round(rect.bottom) });
+  };
+  return /* @__PURE__ */ import_react.default.createElement("header", { className: "sandrone-topbar", "data-sandrone-topbar": true }, /* @__PURE__ */ import_react.default.createElement("nav", { className: "sandrone-topbar-navigation", "aria-label": "\u5E94\u7528\u5BFC\u822A" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-history", "aria-label": "\u4E0A\u4E00\u4E2A\u9875\u9762", title: "\u4E0A\u4E00\u9875", onClick: () => navigateRef.current?.back() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" }))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-history", "aria-label": "\u4E0B\u4E00\u4E2A\u9875\u9762", title: "\u4E0B\u4E00\u9875", onClick: () => navigateRef.current?.forward() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "m6.25 3.5 4.5 4.5-4.5 4.5M10.5 8h-6" }))), /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-topbar-separator", "aria-hidden": "true" }), desktop ? TOPBAR_MENUS.map((item) => /* @__PURE__ */ import_react.default.createElement("button", { key: item.id, type: "button", className: "sandrone-topbar-menu-item", onClick: (event) => openMenu(item.id, event) }, item.label)) : null), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-topbar-drag", "aria-hidden": "true" }), /* @__PURE__ */ import_react.default.createElement(WindowControls, { desktop }));
 }
 function BuddyOverlay() {
   const [open, setOpen] = (0, import_react.useState)(readBuddyPreference);
@@ -1682,5 +2169,13 @@ function apply(ctx) {
     id: "sandrone-buddy",
     order: 100
   }, BuddyOverlay));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({
+    name: "settings.section",
+    id: "sandrone-other",
+    order: 100,
+    label: () => "\u5176\u4ED6"
+  }, GpuAccelerationSection));
+  installSettingsChrome(ctx);
+  installNativeDirectoryFlow(ctx);
 }
 return module.exports; } });

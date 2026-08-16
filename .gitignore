@@ -1,6 +1,7 @@
 # Sandrone adapter dependencies and generated output. The official
 # DeepSeek checkout keeps its own repository-level ignore policy.
 sandrone-harness/**/node_modules/
+.pnpm-store/
 sandrone-harness/dist/
 sandrone-harness/release/
 sandrone-harness/runtime/

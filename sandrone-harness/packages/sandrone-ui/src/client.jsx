@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 import {
   IconCloseOutline16,
   IconSparkle16,
@@ -83,13 +84,24 @@ function markSurface() {
     const sidebarWidth = sidebarColumn.getBoundingClientRect().width
     root.style.setProperty('--sandrone-sidebar-width', `${sidebarWidth}px`)
     const sidebarCollapsed = frame.getAttribute('data-sidebar-collapsed') === 'true'
-    const canNormalizeDesktopWidth = window.innerWidth > 760
+    const desktopShell = Boolean(window.sandroneDesktop)
+    if (desktopShell) root.dataset.sandroneDesktop = 'true'
+    // The desktop shell pins the sidebar to its brand width: stray resize
+    // drags or page zoom cannot blow the frame apart, and the pin re-applies
+    // on every DOM mutation so the layout heals itself.
+    const pinDesktopWidth = desktopShell
+      && window.innerWidth > 760
+      && !sidebarCollapsed
+      && sidebarWidth > 0
+      && sidebarWidth !== DESKTOP_SIDEBAR_WIDTH
+    const canNormalizeDesktopWidth = !desktopShell
+      && window.innerWidth > 760
       && !sidebarCollapsed
       && !frame.dataset.sandroneSidebarUserResized
       && !frame.dataset.sandroneSidebarWidthNormalized
       && sidebarWidth > 0
       && sidebarWidth < DESKTOP_SIDEBAR_WIDTH
-    if (canNormalizeDesktopWidth) {
+    if (pinDesktopWidth || canNormalizeDesktopWidth) {
       frame.style.setProperty('transition', 'none', 'important')
       frame.style.setProperty(
         'grid-template-columns',
@@ -150,6 +162,9 @@ function installSurfaceMarkers(ctx) {
     }
     window.setTimeout(expandMobileSidebar, 0)
     const handleSidebarResizeStart = event => {
+      // The desktop shell keeps a fixed sidebar width; only the web app
+      // releases the normalization when the user drags the resize handle.
+      if (window.sandroneDesktop) return
       const target = event.target
       if (!(target instanceof Element)) return
       if (!target.closest('[class*="handle"]')) return
@@ -183,6 +198,7 @@ function installSurfaceMarkers(ctx) {
         delete element.dataset.sandroneComposerInput
         delete element.dataset.sandroneSurfacePart
         delete element.dataset.sandroneDialog
+        delete element.dataset.sandroneDesktop
       })
       document.getElementById('root')?.style.removeProperty('--sandrone-sidebar-width')
     }
@@ -199,37 +215,392 @@ function clickOfficial(selector) {
   if (element instanceof HTMLElement) element.click()
 }
 
-function SandroneTopbar({ toggleTheme }) {
-  const [title, setTitle] = useState('新会话')
+const textOf = element => (element?.textContent || '').replace(/\s+/g, ' ').trim()
+
+/* The titlebar arrows switch between the app's pages (settings page, active
+   session, conversation view tab) without touching browser history — going
+   back through window.history would land on the Electron loading page. */
+function readPageState() {
+  const settingsOpen = Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'))
+  const sessionRow = document.querySelector('[data-sandrone-workspaces] [role="treeitem"][aria-selected="true"]')
+  const sessionTitle = sessionRow ? textOf(sessionRow.querySelector('[class*="title"]') || sessionRow) : ''
+  const activeTab = document.querySelector('[data-sandrone-session-header] [role="tab"][aria-selected="true"]')
+  const viewLabel = activeTab ? textOf(activeTab) : ''
+  return { settingsOpen, sessionTitle, viewLabel }
+}
+
+function pageKey(state) {
+  return `${state.settingsOpen ? '1' : '0'}|${state.sessionTitle}|${state.viewLabel}`
+}
+
+function clickSessionRow(title) {
+  if (!title) return
+  const rows = [...document.querySelectorAll('[data-sandrone-workspaces] [role="treeitem"][aria-selected]')]
+  const row = rows.find(candidate => textOf(candidate.querySelector('[class*="title"]') || candidate) === title)
+  if (row instanceof HTMLElement) row.click()
+}
+
+function clickViewTab(label) {
+  if (!label) return
+  const tabs = [...document.querySelectorAll('[data-sandrone-session-header] [role="tab"]')]
+  const tab = tabs.find(candidate => textOf(candidate) === label)
+  if (tab instanceof HTMLElement) tab.click()
+}
+
+function usePageNavigation() {
+  const navigateRef = useRef(null)
 
   useEffect(() => {
-    const readTitle = () => {
-      const header = document.querySelector('[data-sandrone-session-header]')
-      const next = header?.textContent?.replace(/\s+/g, ' ').trim()
-      if (next) setTitle(next.slice(0, 80))
+    const root = document.getElementById('root') || document.body
+    let currentKey = null
+    let currentSnapshot = null
+    let restoring = false
+    let pending = false
+    const backStack = []
+    const forwardStack = []
+
+    const settle = () => {
+      pending = false
+      const state = readPageState()
+      const key = pageKey(state)
+      if (key === currentKey) return
+      if (restoring || currentKey === null) {
+        currentKey = key
+        currentSnapshot = state
+        return
+      }
+      if (currentSnapshot) backStack.push(currentSnapshot)
+      forwardStack.length = 0
+      currentKey = key
+      currentSnapshot = state
     }
-    readTitle()
-    const observer = new MutationObserver(readTitle)
-    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true, characterData: true })
-    return () => observer.disconnect()
+    const scheduleSettle = () => {
+      if (pending) return
+      pending = true
+      requestAnimationFrame(settle)
+    }
+
+    const restore = target => {
+      if (!target) return
+      const state = readPageState()
+      restoring = true
+      try {
+        if (target.settingsOpen && !state.settingsOpen) {
+          clickOfficial('[data-sandrone-settings] button')
+        } else if (!target.settingsOpen && state.settingsOpen) {
+          clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]')
+        }
+        if (target.sessionTitle && state.sessionTitle !== target.sessionTitle) {
+          clickSessionRow(target.sessionTitle)
+        }
+        if (target.viewLabel && state.viewLabel !== target.viewLabel) {
+          clickViewTab(target.viewLabel)
+        }
+      } finally {
+        window.setTimeout(() => {
+          restoring = false
+          currentSnapshot = readPageState()
+          currentKey = pageKey(currentSnapshot)
+        }, 250)
+      }
+    }
+
+    navigateRef.current = {
+      back: () => {
+        const target = backStack.pop()
+        if (!target) return
+        forwardStack.push(currentSnapshot)
+        restore(target)
+      },
+      forward: () => {
+        const target = forwardStack.pop()
+        if (!target) return
+        backStack.push(currentSnapshot)
+        restore(target)
+      },
+    }
+
+    const observer = new MutationObserver(scheduleSettle)
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['aria-selected'],
+    })
+    scheduleSettle()
+    return () => {
+      observer.disconnect()
+      navigateRef.current = null
+    }
   }, [])
+
+  return navigateRef
+}
+
+function WindowControls({ desktop }) {
+  const [maximized, setMaximized] = useState(false)
+
+  useEffect(() => {
+    if (!desktop) return undefined
+    let alive = true
+    void desktop.isMaximized()
+      .then(value => { if (alive) setMaximized(Boolean(value)) })
+      .catch(() => {})
+    const unsubscribe = desktop.onMaximizedChange(value => setMaximized(Boolean(value)))
+    return () => {
+      alive = false
+      unsubscribe()
+    }
+  }, [desktop])
+
+  if (!desktop) return null
+
+  const toggleMaximize = () => {
+    desktop.toggleMaximize()
+      .then(value => setMaximized(Boolean(value)))
+      .catch(() => {})
+  }
+
+  return (
+    <div className="sandrone-topbar-window" aria-label="窗口控制">
+      <button type="button" aria-label="最小化窗口" title="最小化" onClick={() => desktop.minimize()}>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5h8" /></svg>
+      </button>
+      <button type="button" aria-label={maximized ? '还原窗口' : '最大化窗口'} title={maximized ? '还原' : '最大化'} onClick={toggleMaximize}>
+        {maximized
+          ? <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.2h5.8V8M2.2 4H8v5.8H2.2z" /></svg>
+          : <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.2" y="2.2" width="7.6" height="7.6" rx=".3" /></svg>}
+      </button>
+      <button type="button" className="sandrone-topbar-window-close" aria-label="关闭窗口" title="关闭" onClick={() => desktop.close()}>
+        <svg viewBox="0 0 12 12" aria-hidden="true"><path d="m2.5 2.5 7 7m0-7-7 7" /></svg>
+      </button>
+    </div>
+  )
+}
+
+const TOPBAR_MENUS = Object.freeze([
+  { id: 'file', label: '文件' },
+  { id: 'edit', label: '编辑' },
+  { id: 'view', label: '视图' },
+  { id: 'help', label: '帮助' },
+])
+
+function GpuAccelerationSection() {
+  const [enabled, setEnabled] = useState(null)
+
+  useEffect(() => {
+    const api = window.sandroneDesktop
+    if (!api || typeof api.getGpuAcceleration !== 'function') {
+      setEnabled(true)
+      return undefined
+    }
+    let alive = true
+    void api.getGpuAcceleration()
+      .then(value => { if (alive) setEnabled(Boolean(value)) })
+      .catch(() => { if (alive) setEnabled(true) })
+    return () => { alive = false }
+  }, [])
+
+  const toggle = () => {
+    if (enabled === null) return
+    const next = !enabled
+    setEnabled(next)
+    window.sandroneDesktop?.setGpuAcceleration?.(next)?.catch(() => {})
+  }
+
+  return (
+    <section className="sandrone-settings-other" aria-label="其他">
+      <div className="sandrone-setting-row">
+        <div className="sandrone-setting-copy">
+          <div className="sandrone-setting-label">启用 GPU 加速</div>
+          <div className="sandrone-setting-hint">关闭后界面改用软件渲染，可避免残影等合成问题。调整后下一次启动时生效。</div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled === true}
+          className={`sandrone-setting-switch${enabled ? ' is-on' : ''}`}
+          disabled={enabled === null}
+          onClick={toggle}
+        >
+          <span className="sandrone-setting-knob" aria-hidden="true" />
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/* Settings chrome: a back-to-workspace row and a section-search box injected
+   above the official settings nav. Search hides non-matching nav entries and
+   Enter activates the first remaining one. */
+function SettingsChrome() {
+  const [query, setQuery] = useState('')
+
+  useEffect(() => {
+    const needle = query.trim().toLowerCase()
+    const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+    if (!panel) return
+    const cells = [...panel.querySelectorAll('[class*="navCell"]')]
+    for (const cell of cells) {
+      const label = (cell.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase()
+      cell.style.display = needle && !label.includes(needle) ? 'none' : ''
+    }
+  }, [query])
+
+  const closeSettings = () => {
+    clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]')
+  }
+
+  const submitSearch = event => {
+    if (event.key !== 'Enter') return
+    const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+    const cell = panel && [...panel.querySelectorAll('[class*="navCell"]')].find(node => node.style.display !== 'none')
+    if (cell instanceof HTMLElement) cell.click()
+  }
+
+  return (
+    <div className="sandrone-settings-chrome">
+      <button type="button" className="sandrone-settings-back" onClick={closeSettings}>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" /></svg>
+        返回工作区
+      </button>
+      <label className="sandrone-settings-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+        <input type="text" placeholder="搜索设置..." value={query} onChange={event => setQuery(event.target.value)} onKeyDown={submitSearch} />
+      </label>
+    </div>
+  )
+}
+
+/* Directory-flow occupant backed by the OS-native folder dialog: when the
+   owner opens the flow, Electron shows the system directory picker and the
+   confirmed path is reported through onPicked (dismissal through onCancel). */
+function NativeDirectoryFlow(props) {
+  const openedRef = useRef(false)
+
+  useEffect(() => {
+    if (!props.open) {
+      openedRef.current = false
+      return
+    }
+    if (openedRef.current) return
+    openedRef.current = true
+    const desktop = window.sandroneDesktop
+    if (!desktop || typeof desktop.pickDirectory !== 'function') {
+      props.onCancel()
+      return
+    }
+    let alive = true
+    void desktop.pickDirectory()
+      .then(path => {
+        if (!alive) return
+        if (path) props.onPicked(path)
+        else props.onCancel()
+      })
+      .catch(() => {
+        if (alive) props.onCancel()
+      })
+    return () => { alive = false }
+  }, [props.open])
+
+  return null
+}
+
+function installNativeDirectoryFlow(ctx) {
+  const desktopAvailable = typeof window !== 'undefined'
+    && Boolean(window.sandroneDesktop?.pickDirectory)
+  if (!desktopAvailable) return
+  // Priority -1 shadows the official native-picker client's priority-0 flow
+  // registrations (single slots render the lowest priority), so the Electron
+  // bridge drives every directory flow in the desktop shell.
+  ctx.slots.inject('conversation.hero.workspace.directoryFlow', () => ctx.slots.inject('sidebar.workspaces.directoryFlow', function* () {
+    yield ctx.slots.register({ name: 'conversation.hero.workspace.directoryFlow', priority: -1 }, NativeDirectoryFlow)
+    yield ctx.slots.register({ name: 'sidebar.workspaces.directoryFlow', priority: -1 }, NativeDirectoryFlow)
+  }))
+}
+
+function installSettingsChrome(ctx) {
+  return ctx.effect(() => {
+    let container = null
+    let root = null
+    const mount = () => {
+      const nav = document.querySelector('[role="dialog"][aria-modal="true"] > nav')
+      if (!nav || (container && container.parentNode === nav)) return
+      if (root) {
+        root.unmount()
+        root = null
+        container?.remove()
+        container = null
+      }
+      container = document.createElement('div')
+      nav.insertBefore(container, nav.firstChild)
+      root = createRoot(container)
+      root.render(React.createElement(SettingsChrome))
+    }
+    const observer = new MutationObserver(mount)
+    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true })
+    mount()
+    return () => {
+      observer.disconnect()
+      root?.unmount()
+      root = null
+      container?.remove()
+      container = null
+    }
+  }, 'sandrone-ui: settings chrome')
+}
+
+function SandroneTopbar({ toggleTheme }) {
+  const desktop = window.sandroneDesktop?.window
+  const navigateRef = usePageNavigation()
+
+  useEffect(() => {
+    const api = window.sandroneDesktop
+    if (!api || typeof api.onCommand !== 'function') return undefined
+    return api.onCommand(command => {
+      switch (command) {
+        case 'toggle-sidebar':
+          clickOfficial('[data-sandrone-sidebar] [aria-label="收起侧边栏"], [data-sandrone-sidebar] [aria-label="打开侧边栏"], [data-sandrone-sidebar] [aria-label="展开侧边栏"]')
+          break
+        case 'toggle-theme':
+          toggleTheme()
+          break
+        case 'open-settings':
+          clickOfficial('[data-sandrone-settings] button, [data-slot="settings.trigger"] button, [data-slot="settings.trigger"]')
+          break
+        case 'open-workspace':
+          clickOfficial('[data-sandrone-workspaces] [aria-label="添加工作区"], [data-sandrone-workspaces] [aria-label="选择工作区"], [aria-label="添加工作区"]')
+          break
+        default:
+          break
+      }
+    })
+  }, [toggleTheme])
+
+  const openMenu = (menuId, event) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    desktop?.showApplicationMenu(menuId, { x: Math.round(rect.left), y: Math.round(rect.bottom) })
+  }
 
   return (
     <header className="sandrone-topbar" data-sandrone-topbar>
-      <div className="sandrone-topbar-leading">
-        <button type="button" className="sandrone-topbar-nav" aria-label="上一个页面" onClick={() => window.history.back()}>←</button>
-        <button type="button" className="sandrone-topbar-nav" aria-label="下一个页面" onClick={() => window.history.forward()}>→</button>
-        <button type="button" className="sandrone-topbar-menu" aria-label="展开或收起侧边栏" onClick={() => clickOfficial('[data-sandrone-sidebar] [aria-label="收起侧边栏"], [data-sandrone-sidebar] [aria-label="打开侧边栏"], [data-sandrone-sidebar] [aria-label="展开侧边栏"]')}>☰</button>
-        <div className="sandrone-topbar-title" title={title}>{title}</div>
-        <span className="sandrone-topbar-sync"><i /> 已同步</span>
-      </div>
-      <nav className="sandrone-topbar-actions" aria-label="工作台操作">
-        <button type="button" aria-label="搜索项目和会话" title="搜索项目和会话" onClick={() => clickOfficial('[data-sandrone-workspaces] [aria-label="搜索会话"], [aria-label="搜索会话"]')}>⌕</button>
-        <button type="button" aria-label="刷新工作台" title="刷新工作台" onClick={() => window.location.reload()}>↻</button>
-        <button type="button" aria-label="打开工作区" title="打开工作区" onClick={() => clickOfficial('[data-sandrone-workspaces] [aria-label="添加工作区"], [data-sandrone-workspaces] [aria-label="选择工作区"], [aria-label="添加工作区"]')}>▣</button>
-        <button type="button" aria-label="打开设置" title="打开设置" onClick={() => clickOfficial('[data-sandrone-settings] button, [data-slot="settings.trigger"] button, [data-slot="settings.trigger"]')}>⚙</button>
-        <button type="button" aria-label="切换夜间模式" title="切换夜间模式" onClick={toggleTheme}>☾</button>
+      <nav className="sandrone-topbar-navigation" aria-label="应用导航">
+        <button type="button" className="sandrone-topbar-history" aria-label="上一个页面" title="上一页" onClick={() => navigateRef.current?.back()}>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" /></svg>
+        </button>
+        <button type="button" className="sandrone-topbar-history" aria-label="下一个页面" title="下一页" onClick={() => navigateRef.current?.forward()}>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6.25 3.5 4.5 4.5-4.5 4.5M10.5 8h-6" /></svg>
+        </button>
+        <span className="sandrone-topbar-separator" aria-hidden="true" />
+        {desktop ? TOPBAR_MENUS.map(item => (
+          <button key={item.id} type="button" className="sandrone-topbar-menu-item" onClick={event => openMenu(item.id, event)}>
+            {item.label}
+          </button>
+        )) : null}
       </nav>
+      <div className="sandrone-topbar-drag" aria-hidden="true" />
+      <WindowControls desktop={desktop} />
     </header>
   )
 }
@@ -306,4 +677,12 @@ export function apply(ctx) {
     id: 'sandrone-buddy',
     order: 100,
   }, BuddyOverlay))
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'sandrone-other',
+    order: 100,
+    label: () => '其他',
+  }, GpuAccelerationSection))
+  installSettingsChrome(ctx)
+  installNativeDirectoryFlow(ctx)
 }
