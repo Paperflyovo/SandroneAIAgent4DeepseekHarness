@@ -524,21 +524,23 @@ select {
   background: var(--sandrone-paper-soft) !important;
 }
 
-[data-sandrone-dialog] {
+/* Modal styling applies only to compact dialogs — never to the full-page
+   settings panel (which is also [role=dialog] and must keep its own shell). */
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {
   border: 1px solid var(--sandrone-line) !important;
   border-radius: 14px !important;
   background: var(--sandrone-paper-raised) !important;
   box-shadow: var(--sandrone-shadow-deep) !important;
 }
 
-[data-sandrone-dialog] h2 {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) h2 {
   color: var(--sandrone-ink-strong) !important;
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
   font-weight: 500 !important;
 }
 
-[data-sandrone-dialog] button[data-variant="primary"],
-[data-sandrone-dialog] button[class*="primary"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) button[data-variant="primary"],
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) button[class*="primary"] {
   border-radius: 999px !important;
   background: var(--sandrone-ink-strong) !important;
 }
@@ -1027,7 +1029,7 @@ select {
   padding: 0 8px !important;
 }
 
-[data-sandrone-dialog] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {
   width: min(420px, calc(100vw - 40px)) !important;
   max-width: calc(100vw - 40px) !important;
   padding: 25px !important;
@@ -1038,14 +1040,14 @@ select {
   color: var(--sandrone-ink) !important;
 }
 
-[data-sandrone-dialog] [class*="content"],
-[data-sandrone-dialog] [class*="body"],
-[data-sandrone-dialog] [class*="editor"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="content"],
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="body"],
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="editor"] {
   width: 100% !important;
 }
 
-[data-sandrone-dialog] h2,
-[data-sandrone-dialog] [class*="title"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) h2,
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="title"] {
   margin: 0 0 7px !important;
   color: var(--sandrone-ink-strong) !important;
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
@@ -1054,8 +1056,8 @@ select {
   letter-spacing: -.02em !important;
 }
 
-[data-sandrone-dialog] p,
-[data-sandrone-dialog] [class*="description"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) p,
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="description"] {
   margin: 0 0 18px !important;
   color: var(--sandrone-muted) !important;
   font-size: 12px !important;
@@ -1088,15 +1090,15 @@ select {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;
 }
 
-[data-sandrone-dialog] [class*="editorActions"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="editorActions"] {
   display: flex !important;
   justify-content: flex-end !important;
   gap: 8px !important;
   margin-top: 12px !important;
 }
 
-[data-sandrone-dialog] [class*="secondaryButton"],
-[data-sandrone-dialog] [class*="primaryButton"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"],
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"] {
   min-width: 76px !important;
   min-height: 36px !important;
   padding: 8px 14px !important;
@@ -1105,22 +1107,22 @@ select {
   font-size: 12px !important;
 }
 
-[data-sandrone-dialog] [class*="secondaryButton"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"] {
   background: transparent !important;
   color: var(--sandrone-ink) !important;
 }
 
-[data-sandrone-dialog] [class*="secondaryButton"]:hover {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"]:hover {
   background: var(--sandrone-paper-soft) !important;
 }
 
-[data-sandrone-dialog] [class*="primaryButton"] {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"] {
   border-color: var(--sandrone-ink-strong) !important;
   background: var(--sandrone-ink-strong) !important;
   color: var(--sandrone-paper-raised) !important;
 }
 
-[data-sandrone-dialog] [class*="primaryButton"]:disabled {
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"]:disabled {
   opacity: .42 !important;
 }
 
