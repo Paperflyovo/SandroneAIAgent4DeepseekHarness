@@ -193,16 +193,17 @@ function rebuildUi() {
 }
 
 /**
- * Ctrl+R dev loop: rebuild the Sandrone UI bundle, redeploy it into DSH_HOME,
- * then hard-reload the renderer. The harness serves plugin bundles from disk
- * with cache-control: no-cache, and its client-hmr poll notices the redeployed
- * files, so the next paint reflects the new bundle without relaunching.
+ * Ctrl+R reload. From source: rebuild the Sandrone UI bundle, redeploy it into
+ * DSH_HOME, then hard-reload the renderer. Packaged builds ship no build tooling,
+ * so Ctrl+R falls back to a plain hard reload of the shipped bundle.
  */
 function reloadUi() {
   if (reloadUiInFlight) return reloadUiInFlight
   reloadUiInFlight = (async () => {
-    await rebuildUi()
-    deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
+    if (!app.isPackaged) {
+      await rebuildUi()
+      deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
+    }
     if (mainWindow && !mainWindow.isDestroyed()) {
       await mainWindow.webContents.reloadIgnoringCache()
     }
@@ -214,8 +215,8 @@ function reloadUi() {
 
 function triggerReloadUi() {
   reloadUi().catch(error => {
-    console.error(`[sandrone-desktop] UI rebuild failed: ${String(error)}`)
-    dialog.showErrorBox('Sandrone UI 重建失败', String(error))
+    console.error(`[sandrone-desktop] UI reload failed: ${String(error)}`)
+    dialog.showErrorBox(app.isPackaged ? '界面刷新失败' : 'Sandrone UI 重建失败', String(error))
   })
 }
 
@@ -358,7 +359,7 @@ function createApplicationMenu() {
         { label: '切换夜间模式', click: () => sendDesktopCommand('toggle-theme') },
         { label: 'GPU 硬件加速', type: 'checkbox', checked: desktopSettings.gpuAcceleration, click: item => toggleGpuAcceleration(item.checked) },
         { type: 'separator' },
-        { label: '重建并刷新界面', accelerator: 'CmdOrCtrl+R', click: triggerReloadUi },
+        { label: app.isPackaged ? '刷新界面' : '刷新界面（重建 UI）', accelerator: 'CmdOrCtrl+R', click: triggerReloadUi },
         { type: 'separator' },
         { role: 'resetZoom', label: '实际大小' },
         { role: 'togglefullscreen', label: '全屏' },

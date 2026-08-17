@@ -1111,7 +1111,7 @@ select {
   font-weight: 650 !important;
 }
 
-[data-sandrone-dialog] input {
+[data-sandrone-dialog] input:not([type="checkbox"]):not([type="radio"]) {
   box-sizing: border-box !important;
   width: 100% !important;
   height: 34px !important;
@@ -1123,7 +1123,7 @@ select {
   font-size: 12px !important;
 }
 
-[data-sandrone-dialog] input:focus {
+[data-sandrone-dialog] input:not([type="checkbox"]):not([type="radio"]):focus {
   border-color: var(--sandrone-accent) !important;
   outline: none !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;
