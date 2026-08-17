@@ -1281,6 +1281,28 @@ body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {
   min-width: 0 !important;
 }
 
+/* Provider editor cards must size to their own content; a fixed-height card
+   lets the model catalog overflow into the sibling custom-provider card,
+   which overlaps it. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="editor"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="rowCard"] {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  flex: 0 0 auto !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalog"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelEntry"] {
+  min-width: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="editorHeader"] {
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
 @media (max-width: 760px) {
   body [role="dialog"][class*="VOzbGW_panel"] {
     width: calc(100vw - 24px) !important;
@@ -1626,6 +1648,336 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {
 
 .sandrone-setting-switch.is-on .sandrone-setting-knob {
   transform: translateX(18px);
+}
+
+/* ============================================================
+   Settings page \u2014 consolidated section-content layer.
+   One coherent pass over every settings section (general, models,
+   plugins, presets): section shells, cards, headings, fields,
+   inputs/selects, model catalogs, footers, hints, errors, notices.
+   Panel-scoped and !important so it wins over any official internals.
+   ============================================================ */
+
+/* Section shell: max width, natural column flow, comfortable gaps. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="section"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 760px !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  padding: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="content"] {
+  box-sizing: border-box !important;
+  padding: 18px 24px 28px !important;
+  overflow-y: auto !important;
+}
+
+/* Section titles, intros, notices. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="title"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="heading"] {
+  color: var(--sandrone-ink-strong) !important;
+  font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  letter-spacing: -.02em !important;
+  line-height: 24px !important;
+  margin: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="intro"] {
+  color: var(--sandrone-muted) !important;
+  font-size: 12.5px !important;
+  line-height: 20px !important;
+  margin: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="notice"] {
+  color: var(--sandrone-muted) !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  margin: 0 !important;
+}
+
+/* Provider / plugin cards. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="rowCard"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="editor"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  flex: 0 0 auto !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  padding: 14px 16px !important;
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 12px !important;
+  background: var(--sandrone-paper-raised) !important;
+  overflow: visible !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="rowHead"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="editorHeader"] {
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="rowName"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="editorTitle"] {
+  color: var(--sandrone-ink-strong) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="rowTag"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="tag"] {
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 5px !important;
+  padding: 1px 7px !important;
+  color: var(--sandrone-muted) !important;
+  font-size: 11px !important;
+}
+
+/* Fields: label above control, full width. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="field"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelField"] {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 5px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="fieldLabel"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelFieldLabel"] {
+  display: block !important;
+  margin: 0 !important;
+  color: var(--sandrone-muted) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 16px !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"]),
+body [role="dialog"][class*="VOzbGW_panel"] select,
+body [role="dialog"][class*="VOzbGW_panel"] textarea {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 11px !important;
+  border: 1px solid var(--sandrone-line-strong) !important;
+  border-radius: 8px !important;
+  outline: none !important;
+  background: var(--sandrone-paper) !important;
+  color: var(--sandrone-ink-strong) !important;
+  font: inherit !important;
+  font-size: 13px !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"]):focus,
+body [role="dialog"][class*="VOzbGW_panel"] select:focus,
+body [role="dialog"][class*="VOzbGW_panel"] textarea:focus {
+  border-color: var(--sandrone-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"])::placeholder,
+body [role="dialog"][class*="VOzbGW_panel"] textarea::placeholder {
+  color: var(--sandrone-muted) !important;
+}
+
+/* Model catalog rows: two text inputs + actions in one line. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelRow"] {
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelRow"] input {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="iconButton"] {
+  display: inline-flex !important;
+  width: 28px !important;
+  height: 28px !important;
+  flex: 0 0 28px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: var(--sandrone-muted) !important;
+  cursor: pointer !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="iconButton"]:hover {
+  background: var(--sandrone-paper-soft) !important;
+  color: var(--sandrone-ink-strong) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelAdvanced"] {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  width: 100% !important;
+  padding-top: 2px !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelAdvanced"] [class*="modelField"] {
+  flex: 1 1 200px !important;
+}
+
+/* Model list actions (fetch / add / reset). */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelListHead"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalogHeading"] {
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalogTitle"] {
+  color: var(--sandrone-ink-strong) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalogMeta"] {
+  color: var(--sandrone-muted) !important;
+  font-size: 11px !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="linkButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="addModelButton"] {
+  box-sizing: border-box !important;
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--sandrone-line-strong) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--sandrone-ink) !important;
+  font: inherit !important;
+  font-size: 12.5px !important;
+  cursor: pointer !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="linkButton"]:hover,
+body [role="dialog"][class*="VOzbGW_panel"] [class*="addModelButton"]:hover {
+  background: var(--sandrone-accent-soft) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="modelEmpty"] {
+  color: var(--sandrone-muted) !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  margin: 0 !important;
+}
+
+/* Editor footers and action buttons. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="editorFooter"] {
+  box-sizing: border-box !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding-top: 4px !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="addButton"] {
+  box-sizing: border-box !important;
+  min-height: 36px !important;
+  padding: 0 16px !important;
+  border-radius: 999px !important;
+  font: inherit !important;
+  font-size: 13px !important;
+  cursor: pointer !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="addButton"] {
+  border: 1px solid var(--sandrone-ink-strong) !important;
+  background: var(--sandrone-ink-strong) !important;
+  color: var(--sandrone-paper-raised) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"]:hover:not(:disabled),
+body [role="dialog"][class*="VOzbGW_panel"] [class*="addButton"]:hover:not(:disabled) {
+  background: var(--sandrone-red) !important;
+  border-color: var(--sandrone-red) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"] {
+  border: 1px solid var(--sandrone-line-strong) !important;
+  background: transparent !important;
+  color: var(--sandrone-ink) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"]:hover:not(:disabled) {
+  background: var(--sandrone-paper-soft) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"]:disabled,
+body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"]:disabled {
+  opacity: .45 !important;
+  cursor: default !important;
+}
+
+/* Hints, errors, saved notices. */
+body [role="dialog"][class*="VOzbGW_panel"] [class*="hint"] {
+  color: var(--sandrone-muted) !important;
+  font-size: 11.5px !important;
+  line-height: 18px !important;
+  margin: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="error"] {
+  color: var(--sandrone-red) !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  margin: 0 !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="savedNotice"] {
+  color: var(--sandrone-red) !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  margin: 0 !important;
+}
+
+/* Candidate checkboxes in the fetch modal and any list rows keep native size. */
+body [role="dialog"] [class*="candidate"] input[type="checkbox"],
+body [role="dialog"] [class*="row"] input[type="checkbox"] {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  padding: 0 !important;
+  border: 1px solid var(--sandrone-line-strong) !important;
+  border-radius: 4px !important;
+  accent-color: var(--sandrone-ink-strong) !important;
 }
 `;
 function installStyle(ctx) {
