@@ -40,24 +40,7 @@ const TOKEN_LAYER = Object.freeze({
   '--dsw-specific-sidebar-nav-item-hover': { light: '#e9e3da', dark: '#302d29' },
 })
 
-const BUDDY_KEY = 'sandrone.harness.buddy.v1'
 const DESKTOP_SIDEBAR_WIDTH = 380
-
-function readBuddyPreference() {
-  try {
-    return window.localStorage.getItem(BUDDY_KEY) !== 'hidden'
-  } catch {
-    return true
-  }
-}
-
-function writeBuddyPreference(visible) {
-  try {
-    window.localStorage.setItem(BUDDY_KEY, visible ? 'visible' : 'hidden')
-  } catch {
-    // A blocked storage area only makes the preference session-local.
-  }
-}
 
 function markSurface() {
   const root = document.getElementById('root')
@@ -148,11 +131,19 @@ function markSurface() {
 function installSurfaceMarkers(ctx) {
   return ctx.effect(() => {
     markSurface()
-    const observer = new MutationObserver(() => markSurface())
-    observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true })
-    const resizeObserver = new ResizeObserver(() => markSurface())
-    const resizeTarget = document.querySelector('[data-sandrone-sidebar-column]')
-    if (resizeTarget) resizeObserver.observe(resizeTarget)
+    const observedRoot = document.getElementById('root') || document.body
+    let frameId = 0
+    const scheduleMark = () => {
+      if (frameId !== 0) return
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0
+        markSurface()
+      })
+    }
+    const observer = new MutationObserver(scheduleMark)
+    observer.observe(observedRoot, { childList: true, subtree: true })
+    const resizeObserver = new ResizeObserver(scheduleMark)
+    resizeObserver.observe(observedRoot)
     let mobileAutoExpanded = false
     const expandMobileSidebar = () => {
       if (mobileAutoExpanded || window.innerWidth > 760) return
@@ -175,10 +166,13 @@ function installSurfaceMarkers(ctx) {
       frame.style.removeProperty('grid-template-columns')
     }
     document.addEventListener('pointerdown', handleSidebarResizeStart, true)
+    window.addEventListener('resize', scheduleMark, { passive: true })
     return () => {
       observer.disconnect()
       resizeObserver.disconnect()
       document.removeEventListener('pointerdown', handleSidebarResizeStart, true)
+      window.removeEventListener('resize', scheduleMark)
+      if (frameId !== 0) window.cancelAnimationFrame(frameId)
       document.querySelectorAll('[data-sandrone-shell], [data-sandrone-frame], [data-sandrone-sidebar-column], [data-sandrone-sidebar], [data-sandrone-sidebar-header], [data-sandrone-workspaces], [data-sandrone-settings], [data-sandrone-center], [data-sandrone-details], [data-sandrone-overlay], [data-sandrone-session-header], [data-sandrone-session-body], [data-sandrone-composer], [data-sandrone-new-session], [data-sandrone-sidebar-action], [data-sandrone-composer-input], [data-sandrone-surface-part], [data-sandrone-dialog]').forEach(element => {
         delete element.dataset.sandroneShell
         delete element.dataset.sandroneFrame
@@ -605,8 +599,229 @@ function SandroneTopbar({ toggleTheme }) {
   )
 }
 
+/* Sandrone's own model seat for the composer (replaces the official
+   conversation.input.model entry). The official dropdown could be washed out
+   by theme/CSS interference, so this picker is fully self-styled: a row
+   trigger in the input bar, and a self-contained menu (model list grouped by
+   provider, plus reasoning effort levels) that pops up above the row with a
+   high z-index so nothing can cover it. Data and submission ride the shared
+   per-session ModelDirectory (ui-model-selection's modelDirectories service). */
+function SandroneModelPicker({ locked, available, directory, load, select }) {
+  const [state, setState] = useState(() => directory.getSnapshot())
+  const [open, setOpen] = useState(false)
+  const [pane, setPane] = useState('root')
+  const [busy, setBusy] = useState(false)
+  const rootRef = useRef(null)
+
+  useEffect(() => directory.subscribe(() => setState(directory.getSnapshot())), [directory])
+
+  useEffect(() => {
+    if (available) load()
+  }, [available, load])
+
+  useEffect(() => {
+    if (!open) return
+    const closeOutside = (event) => {
+      if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', closeOutside)
+    return () => document.removeEventListener('mousedown', closeOutside)
+  }, [open])
+
+  if (!available) return null
+
+  const choices = state.groups.flatMap(group =>
+    group.models.map(model => ({
+      group,
+      model,
+      selection: {
+        provider: group.id,
+        model: model.id,
+        ...(model.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: model.reasoning.defaultEffort }),
+      },
+    })),
+  )
+  const current = state.current
+  const currentChoice = current === null ? undefined : choices.find(c =>
+    c.selection.provider === current.provider && c.selection.model === current.model)
+  const reasoning = currentChoice?.model.reasoning
+  const effectiveEffort = current?.reasoningEffort ?? reasoning?.defaultEffort
+  const effortLabel = reasoning === undefined
+    ? undefined
+    : effectiveEffort === undefined
+      ? '提供方默认'
+      : (reasoning.efforts.find(level => level.id === effectiveEffort)?.name ?? effectiveEffort)
+  const modelLabel = currentChoice?.model.name ?? '选择模型'
+  const triggerLabel = effortLabel === undefined ? modelLabel : `${modelLabel} · ${effortLabel}`
+
+  const close = () => setOpen(false)
+
+  const choose = (selection) => {
+    if (current && current.provider === selection.provider && current.model === selection.model) {
+      close()
+      return
+    }
+    setBusy(true)
+    select(selection).then(ok => {
+      setBusy(false)
+      if (ok) close()
+    })
+  }
+
+  const chooseEffort = (effort) => {
+    if (!current) return
+    if (effectiveEffort === effort) {
+      close()
+      return
+    }
+    setBusy(true)
+    select({
+      provider: current.provider,
+      model: current.model,
+      ...(effort === undefined ? {} : { reasoningEffort: effort }),
+    }).then(ok => {
+      setBusy(false)
+      if (ok) close()
+    })
+  }
+
+  const effortChoices = reasoning === undefined ? [] : [
+    ...(reasoning.defaultEffort === undefined ? [{ key: 'provider-default', effort: undefined, label: '提供方默认' }] : []),
+    ...reasoning.efforts.map(level => ({ key: `effort:${level.id}`, effort: level.id, label: level.name })),
+  ]
+
+  return (
+    <span
+      ref={rootRef}
+      className="sandrone-model-picker"
+      data-sandrone-model-picker=""
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && open) {
+          event.preventDefault()
+          if (pane !== 'root') setPane('root')
+          else close()
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="sandrone-model-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={triggerLabel}
+        disabled={locked}
+        onClick={() => {
+          if (open) close()
+          else {
+            setPane('root')
+            setOpen(true)
+            load()
+          }
+        }}
+      >
+        <span className="sandrone-model-trigger-label">{triggerLabel}</span>
+        <svg className={`sandrone-model-chevron${open ? ' open' : ''}`} viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5L6 7.5L9 4.5" /></svg>
+      </button>
+      {open ? (
+        <div className="sandrone-model-menu" role="menu">
+          {pane === 'root' ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="sandrone-model-cell"
+                onClick={() => {
+                  setPane('models')
+                  load()
+                }}
+              >
+                <span className="sandrone-model-cell-label">模型</span>
+                <span className="sandrone-model-cell-value">{modelLabel}</span>
+                <svg className="sandrone-model-cell-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 3L7.5 6L4.5 9" /></svg>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="sandrone-model-cell"
+                disabled={reasoning === undefined}
+                onClick={() => setPane('efforts')}
+              >
+                <span className="sandrone-model-cell-label">推理等级</span>
+                <span className="sandrone-model-cell-value">{effortLabel ?? '—'}</span>
+                <svg className="sandrone-model-cell-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 3L7.5 6L4.5 9" /></svg>
+              </button>
+            </>
+          ) : null}
+          {pane === 'models' ? (
+            <div className="sandrone-model-groups">
+              {state.groups.map(group => (
+                <section key={group.id} role="group" className="sandrone-model-group">
+                  <div className="sandrone-model-group-title">{group.name}</div>
+                  {group.models.map(model => {
+                    const selected = !!current && current.provider === group.id && current.model === model.id
+                    return (
+                      <button
+                        key={model.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={selected}
+                        className={`sandrone-model-option${selected ? ' selected' : ''}`}
+                        title={model.name}
+                        disabled={busy}
+                        onClick={() => choose({ provider: group.id, model: model.id })}
+                      >
+                        <span className="sandrone-model-option-copy">
+                          <span className="sandrone-model-option-name">{model.name}</span>
+                          {model.description ? <span className="sandrone-model-option-desc">{model.description}</span> : null}
+                        </span>
+                        <span className="sandrone-model-check">{selected ? '✓' : ''}</span>
+                      </button>
+                    )
+                  })}
+                </section>
+              ))}
+              {state.status === 'loading' ? <div className="sandrone-model-status">加载中…</div> : null}
+              {state.groups.length === 0 && state.status !== 'loading' ? (
+                <div className={`sandrone-model-status${state.error ? ' error' : ''}`}>
+                  {state.error ? `加载失败：${state.error}` : '暂无可用模型'}
+                </div>
+              ) : null}
+              {state.failures.map(failure => (
+                <div key={failure.id} className="sandrone-model-status error">{failure.name}：{failure.message}</div>
+              ))}
+            </div>
+          ) : null}
+          {pane === 'efforts' ? (
+            <div className="sandrone-model-groups">
+              {effortChoices.map(choice => {
+                const selected = effectiveEffort === choice.effort
+                return (
+                  <button
+                    key={choice.key}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={selected}
+                    className={`sandrone-model-option${selected ? ' selected' : ''}`}
+                    disabled={busy}
+                    onClick={() => chooseEffort(choice.effort)}
+                  >
+                    <span className="sandrone-model-option-copy">
+                      <span className="sandrone-model-option-name">{choice.label}</span>
+                    </span>
+                    <span className="sandrone-model-check">{selected ? '✓' : ''}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </span>
+  )
+}
+
 function BuddyOverlay() {
-  const [open, setOpen] = useState(readBuddyPreference)
+  const [open, setOpen] = useState(false)
   const [awake, setAwake] = useState(false)
 
   useEffect(() => {
@@ -614,19 +829,14 @@ function BuddyOverlay() {
     return () => window.clearTimeout(timer)
   }, [])
 
-  const setVisible = (visible) => {
-    setOpen(visible)
-    writeBuddyPreference(visible)
-  }
-
   if (!open) {
     return (
       <button
-        className="sandrone-buddy-launcher"
+        className="sandrone-buddy-trigger"
         type="button"
         aria-label="Open Sandrone Buddy"
-        title="Open Buddy"
-        onClick={() => setVisible(true)}
+        title="Buddy"
+        onClick={() => setOpen(true)}
       >
         <span aria-hidden="true" className="sandrone-buddy-face compact"><i /><i /></span>
       </button>
@@ -634,24 +844,26 @@ function BuddyOverlay() {
   }
 
   return (
-    <aside className="sandrone-buddy" aria-label="Sandrone Buddy">
-      <div className="sandrone-buddy-heading">
-        <span className="sandrone-buddy-kicker"><IconSparkle16 size={14} /> Buddy</span>
-        <button type="button" title="Hide Buddy" aria-label="Hide Buddy" onClick={() => setVisible(false)}>
-          <IconCloseOutline16 size={15} />
+    <span className="sandrone-buddy-anchor">
+      <aside className="sandrone-buddy" aria-label="Sandrone Buddy">
+        <div className="sandrone-buddy-heading">
+          <span className="sandrone-buddy-kicker"><IconSparkle16 size={14} /> Buddy</span>
+          <button type="button" title="Hide Buddy" aria-label="Hide Buddy" onClick={() => setOpen(false)}>
+            <IconCloseOutline16 size={15} />
+          </button>
+        </div>
+        <button
+          className={`sandrone-buddy-body${awake ? ' is-awake' : ''}`}
+          type="button"
+          title="Say hello"
+          onClick={() => setAwake(value => !value)}
+        >
+          <span aria-hidden="true" className="sandrone-buddy-face"><i /><i /><b /></span>
+          <span><strong>{awake ? 'Still with you' : 'Quietly watching'}</strong><small>Tap to check in</small></span>
         </button>
-      </div>
-      <button
-        className={`sandrone-buddy-body${awake ? ' is-awake' : ''}`}
-        type="button"
-        title="Say hello"
-        onClick={() => setAwake(value => !value)}
-      >
-        <span aria-hidden="true" className="sandrone-buddy-face"><i /><i /><b /></span>
-        <span><strong>{awake ? 'Still with you' : 'Quietly watching'}</strong><small>Tap to check in</small></span>
-      </button>
-      <p>Official Harness handles the work. Buddy only keeps you company.</p>
-    </aside>
+        <p>Official Harness handles the work. Buddy only keeps you company.</p>
+      </aside>
+    </span>
   )
 }
 
@@ -672,11 +884,34 @@ export function apply(ctx) {
     order: -100,
     inject: () => ({ toggleTheme }),
   }, SandroneTopbar))
-  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
-    name: 'shell.overlay',
+  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
+    name: 'conversation.input.right',
     id: 'sandrone-buddy',
-    order: 100,
+    order: 90,
   }, BuddyOverlay))
+  // Own model seat: registering through the modelDirectories service scope
+  // guarantees our entry lands after ui-model-selection's. The shipped entry
+  // sits at priority 0; shadowing needs a DIFFERENT priority and the lowest
+  // one renders — so register explicitly at -100.
+  ctx.inject(['modelDirectories', 'sessions'], (scope) => {
+    scope.slots.inject('conversation.input.model', () => scope.slots.register({
+      name: 'conversation.input.model',
+      id: 'sandrone-model-picker',
+      priority: -100,
+      inject: (sessionId) => {
+        const directory = scope.modelDirectories.directoryFor(sessionId)
+        const available = scope.sessions.subagentAddress(sessionId) === void 0
+        return {
+          available,
+          directory: directory.store,
+          load: () => {
+            if (available) directory.load().catch(() => {})
+          },
+          select: (selection) => available ? directory.select(selection).then(() => true, () => false) : Promise.resolve(false),
+        }
+      },
+    }, SandroneModelPicker))
+  })
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',
     id: 'sandrone-other',

@@ -1,7 +1,7 @@
 // One-off audit: open the settings page and scan it for layout anomalies —
 // overlapping text, clipped text, overflowing/zero-size elements — so the
 // rebuild can be driven by evidence instead of eyeballing.
-import { mkdtemp, realpath, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, readFile, rm } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -39,6 +39,8 @@ async function loadDriver() {
 const driver = await loadDriver()
 const electronExecutable = await realpath(join(root, 'node_modules', 'electron', 'dist', 'electron.exe'))
 const profileRoot = await mkdtemp(join(tmpdir(), 'sandrone-settings-audit-'))
+const screenshotRoot = join(root, 'runtime', 'tmp', 'settings-audit')
+await mkdir(screenshotRoot, { recursive: true })
 const launchEnvironment = {
   ...process.env,
   APPDATA: profileRoot,
@@ -70,22 +72,24 @@ async function waitForHarness(timeoutMs = 300_000) {
 
 try {
   await waitForHarness()
-  const onboarding = window.getByRole('dialog').filter({ hasText: /添加一个 API Key|Add an API Key/i }).first()
-  try {
-    await onboarding.waitFor({ state: 'visible', timeout: 10_000 })
-    await onboarding.getByRole('button', { name: /稍后配置|Configure later/i }).click()
-    await onboarding.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => {})
-  } catch {}
   const notice = window.getByRole('dialog').filter({ hasText: /内测声明|Preview Notice/i }).first()
   try {
     await notice.waitFor({ state: 'visible', timeout: 5_000 })
     await notice.getByRole('button', { name: /继续|Continue/i }).click()
     await notice.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => {})
   } catch {}
+  for (let round = 0; round < 3; round += 1) {
+    const onboarding = window.getByRole('dialog').filter({ hasText: /添加一个 API Key|Add an API Key/i }).first()
+    try {
+      await onboarding.waitFor({ state: 'visible', timeout: 5_000 })
+      await onboarding.getByRole('button', { name: /稍后配置|Configure later/i }).click()
+      await onboarding.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
+    } catch { break }
+  }
 
   await window.evaluate(() => document.querySelector('[data-sandrone-settings] button')?.click())
   await new Promise(resolve => setTimeout(resolve, 800))
-  const panel = window.locator('[role="dialog"][aria-modal="true"]')
+  const panel = window.locator('[role="dialog"][aria-modal="true"][class*="VOzbGW_panel"]')
   await panel.waitFor({ state: 'visible', timeout: 30_000 })
 
   // Visit every settings section and audit each one.
@@ -97,8 +101,9 @@ try {
       await nav.click()
       await new Promise(resolve => setTimeout(resolve, 700))
     } catch {}
+    await window.screenshot({ path: join(screenshotRoot, `${label}.png`), fullPage: false })
     const audit = await window.evaluate(() => {
-      const panelEl = document.querySelector('[role="dialog"][aria-modal="true"]')
+      const panelEl = document.querySelector('[role="dialog"][aria-modal="true"][class*="VOzbGW_panel"]')
       if (!panelEl) return { error: 'no panel' }
       const panel = panelEl.getBoundingClientRect()
       const textNodes = []
@@ -147,7 +152,27 @@ try {
     })
     report.push({ section: label, ...audit })
   }
-  console.log(JSON.stringify({ report }, null, 1))
+  await window.setViewportSize({ width: 900, height: 620 })
+  await window.getByRole('button', { name: '模型', exact: false }).first().click()
+  await new Promise(resolve => setTimeout(resolve, 500))
+  await window.screenshot({ path: join(screenshotRoot, '最小窗口-模型.png'), fullPage: false })
+  const minimumWindow = await window.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"][class*="VOzbGW_panel"]')
+    const outside = [...panel.querySelectorAll('*')].flatMap(element => {
+      const style = getComputedStyle(element)
+      const rect = element.getBoundingClientRect()
+      if (style.display === 'none' || style.visibility === 'hidden' || rect.width === 0 || rect.height === 0) return []
+      if (rect.left >= -1 && rect.right <= innerWidth + 1) return []
+      return [{ tag: element.tagName, cls: String(element.className).slice(0, 48), left: Math.round(rect.left), right: Math.round(rect.right) }]
+    })
+    return {
+      viewport: [innerWidth, innerHeight],
+      documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      panelOverflow: panel.scrollWidth - panel.clientWidth,
+      outside: outside.slice(0, 12),
+    }
+  })
+  console.log(JSON.stringify({ report, minimumWindow }, null, 1))
 } catch (error) {
   console.error('[audit]', error)
 } finally {

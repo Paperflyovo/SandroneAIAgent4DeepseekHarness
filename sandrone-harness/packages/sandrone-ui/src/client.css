@@ -481,7 +481,7 @@ select {
 }
 
 [data-sandrone-center] [data-composer-card] {
-  border: 1px solid var(--sandrone-red) !important;
+  border: 1px solid var(--sandrone-line-strong) !important;
   border-radius: 14px !important;
   background: var(--sandrone-paper-raised) !important;
   box-shadow: var(--sandrone-shadow) !important;
@@ -489,8 +489,8 @@ select {
 }
 
 [data-sandrone-center] [data-composer-card]:focus-within {
-  border-color: var(--sandrone-red) !important;
-  box-shadow: 0 0 0 3px rgb(200 16 46 / 16%), var(--sandrone-shadow) !important;
+  border-color: var(--sandrone-accent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sandrone-accent) 18%, transparent), var(--sandrone-shadow) !important;
 }
 
 [data-sandrone-composer-input] {
@@ -546,6 +546,8 @@ select {
 }
 
 [data-sandrone-overlay] {
+  position: relative;
+  z-index: 100;
   pointer-events: none;
 }
 
@@ -561,7 +563,7 @@ select {
    full-width drag strip with history chevrons, a separator, app-menu labels,
    a flexible drag spacer, and right-aligned window controls. */
 [data-sandrone-topbar] {
-  position: absolute;
+  position: fixed;
   top: 0;
   right: 0;
   left: 0;
@@ -727,15 +729,15 @@ select {
   width: min(calc(100% - 48px), 1200px) !important;
   max-width: 1200px !important;
   min-height: 126px !important;
-  border: 1px solid var(--sandrone-red) !important;
+  border: 1px solid var(--sandrone-line-strong) !important;
   border-radius: 14px !important;
   background: var(--sandrone-paper-raised) !important;
-  box-shadow: 0 0 0 3px rgb(200 16 46 / 10%), var(--sandrone-shadow-deep) !important;
+  box-shadow: var(--sandrone-shadow-deep) !important;
 }
 
 [data-sandrone-composer] [data-composer-card]:focus-within {
-  border-color: var(--sandrone-red) !important;
-  box-shadow: 0 0 0 4px rgb(200 16 46 / 15%), var(--sandrone-shadow-deep) !important;
+  border-color: var(--sandrone-accent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sandrone-accent) 18%, transparent), var(--sandrone-shadow-deep) !important;
 }
 
 /* The official composer paints its text through an aria-hidden backdrop layer
@@ -777,14 +779,17 @@ select {
   background: var(--sandrone-red) !important;
 }
 
-[data-sandrone-composer] [data-composer-card] button:not([class*="primary"]),
-[data-sandrone-composer] [data-composer-card] summary {
+/* Toolbar buttons inside the composer card get the Sandrone treatment — but
+   popup menus (the model picker, role=menu) must keep their own colors, so
+   they are excluded from these rules. */
+[data-sandrone-composer] [data-composer-card] button:not([class*="primary"]):not([role="menu"] *):not([data-sandrone-model-picker] *),
+[data-sandrone-composer] [data-composer-card] summary:not([role="menu"] *):not([data-sandrone-model-picker] *) {
   border-radius: 8px !important;
   color: var(--sandrone-muted) !important;
 }
 
-[data-sandrone-composer] [data-composer-card] button:not([class*="primary"]):hover,
-[data-sandrone-composer] [data-composer-card] summary:hover {
+[data-sandrone-composer] [data-composer-card] button:not([class*="primary"]):not([role="menu"] *):not([data-sandrone-model-picker] *):hover,
+[data-sandrone-composer] [data-composer-card] summary:not([role="menu"] *):not([data-sandrone-model-picker] *):hover {
   background: var(--sandrone-paper-soft) !important;
   color: var(--sandrone-ink-strong) !important;
 }
@@ -838,17 +843,47 @@ select {
   line-height: 14px !important;
 }
 
+/* Buddy lives INSIDE the composer's input row (conversation.input.right), so
+   it can never float over the model picker or the send button. Collapsed it
+   is a small face button in the row; expanded, the card pops up above the
+   row like the model menu and stays clear of composer controls by
+   construction. */
 .sandrone-buddy,
-.sandrone-buddy-launcher {
+.sandrone-buddy-trigger {
   pointer-events: auto;
   font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
   letter-spacing: 0;
 }
 
+.sandrone-buddy-anchor {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.sandrone-buddy-trigger {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--sandrone-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sandrone-buddy-trigger:hover {
+  background: var(--sandrone-paper-soft);
+  color: var(--sandrone-ink-strong);
+}
+
 .sandrone-buddy {
   position: absolute;
-  right: 18px;
-  bottom: 18px;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
   width: min(242px, calc(100vw - 36px));
   box-sizing: border-box;
   padding: 12px;
@@ -865,9 +900,7 @@ select {
 .sandrone-buddy-body { display: flex; align-items: center; }
 .sandrone-buddy-heading { justify-content: space-between; margin-bottom: 9px; }
 .sandrone-buddy-kicker { gap: 5px; color: var(--sandrone-muted); font-size: 12px; font-weight: 650; }
-.sandrone-buddy-heading button,
-.sandrone-buddy-launcher { display: grid; place-items: center; padding: 0; border: 0; color: var(--sandrone-muted); background: transparent; cursor: pointer; }
-.sandrone-buddy-heading button { width: 28px; height: 28px; border-radius: 7px; }
+.sandrone-buddy-heading button { display: grid; place-items: center; padding: 0; border: 0; color: var(--sandrone-muted); background: transparent; cursor: pointer; width: 28px; height: 28px; border-radius: 7px; }
 .sandrone-buddy-heading button:hover { background: var(--sandrone-paper-soft); color: var(--sandrone-ink-strong); }
 .sandrone-buddy-body { width: 100%; min-height: 58px; gap: 10px; padding: 8px; border: 0; border-radius: 8px; color: inherit; text-align: left; background: var(--sandrone-paper-soft); cursor: pointer; }
 .sandrone-buddy-body:hover { background: var(--sandrone-accent-soft); }
@@ -883,16 +916,244 @@ select {
 .sandrone-buddy-face b { position: absolute; left: 50%; bottom: 8px; width: 8px; height: 3px; border-bottom: 1px solid var(--sandrone-muted); border-radius: 50%; transform: translateX(-50%); }
 .sandrone-buddy-body.is-awake .sandrone-buddy-face { animation: sandrone-nod 360ms var(--sandrone-ease); }
 .sandrone-buddy-body:not(.is-awake) .sandrone-buddy-face i { height: 2px; }
-.sandrone-buddy-launcher { position: absolute; right: 18px; bottom: 18px; width: 42px; height: 42px; border: 1px solid var(--sandrone-line-strong); border-radius: 50%; background: var(--sandrone-paper-raised); box-shadow: var(--sandrone-shadow); }
-.sandrone-buddy-launcher:hover { border-color: var(--sandrone-red); }
 .sandrone-buddy-face.compact { width: 26px; height: 26px; }
 .sandrone-buddy-face.compact::before, .sandrone-buddy-face.compact::after { width: 9px; height: 11px; top: -4px; }
 .sandrone-buddy-face.compact i { top: 10px; width: 3px; height: 4px; }
 .sandrone-buddy-face.compact i:first-child { left: 7px; } .sandrone-buddy-face.compact i:nth-child(2) { right: 7px; }
 @keyframes sandrone-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes sandrone-nod { 0%, 100% { transform: rotate(0deg); } 45% { transform: rotate(-5deg) translateY(-2px); } }
-@media (max-width: 620px) { .sandrone-buddy { right: 10px; bottom: 10px; } .sandrone-buddy-launcher { right: 10px; bottom: 10px; } }
 @media (prefers-reduced-motion: reduce) { .sandrone-buddy, .sandrone-buddy-body.is-awake .sandrone-buddy-face { animation: none; } }
+
+/* ============================================================
+   Sandrone model picker — the composer's own model seat
+   (replaces the official conversation.input.model entry). Fully
+   self-contained styles: nothing can wash the menu out, and it
+   pops up above the input row with a high z-index so no overlay
+   can cover it.
+   ============================================================ */
+[data-sandrone-model-picker] {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  min-width: 0;
+}
+
+[data-sandrone-model-picker] .sandrone-model-trigger {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 220px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sandrone-muted) !important;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+[data-sandrone-model-picker] .sandrone-model-trigger:hover:not(:disabled) {
+  background: var(--sandrone-paper-soft);
+  color: var(--sandrone-ink-strong) !important;
+}
+
+[data-sandrone-model-picker] .sandrone-model-trigger:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+[data-sandrone-model-picker] .sandrone-model-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-sandrone-model-picker] .sandrone-model-chevron {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 120ms ease;
+}
+
+[data-sandrone-model-picker] .sandrone-model-chevron.open {
+  transform: rotate(180deg);
+}
+
+[data-sandrone-model-picker] .sandrone-model-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 200;
+  box-sizing: border-box;
+  width: min(248px, calc(100vw - 32px));
+  max-height: min(360px, calc(100vh - 96px));
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--sandrone-line-strong);
+  border-radius: 12px;
+  background: var(--sandrone-paper-raised);
+  color: var(--sandrone-ink-strong);
+  box-shadow: var(--sandrone-shadow-deep);
+  overflow: hidden;
+}
+
+[data-sandrone-model-picker] .sandrone-model-cell {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sandrone-ink-strong) !important;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
+  cursor: pointer;
+}
+
+[data-sandrone-model-picker] .sandrone-model-cell:hover:not(:disabled) {
+  background: var(--sandrone-paper-soft);
+}
+
+[data-sandrone-model-picker] .sandrone-model-cell:disabled {
+  color: var(--sandrone-muted) !important;
+  cursor: default;
+}
+
+[data-sandrone-model-picker] .sandrone-model-cell-label {
+  flex: none;
+}
+
+[data-sandrone-model-picker] .sandrone-model-cell-value {
+  min-width: 0;
+  flex: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sandrone-muted);
+  text-align: right;
+}
+
+[data-sandrone-model-picker] .sandrone-model-cell-chevron {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+[data-sandrone-model-picker] .sandrone-model-groups {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+[data-sandrone-model-picker] .sandrone-model-group + .sandrone-model-group {
+  margin-top: 4px;
+}
+
+[data-sandrone-model-picker] .sandrone-model-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 5px 8px 3px;
+  background: var(--sandrone-paper-raised);
+  color: var(--sandrone-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+[data-sandrone-model-picker] .sandrone-model-option {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--sandrone-ink-strong) !important;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+[data-sandrone-model-picker] .sandrone-model-option:hover:not(:disabled) {
+  background: var(--sandrone-paper-soft);
+}
+
+[data-sandrone-model-picker] .sandrone-model-option:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+[data-sandrone-model-picker] .sandrone-model-option-copy {
+  min-width: 0;
+  flex: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-sandrone-model-picker] .sandrone-model-option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+[data-sandrone-model-picker] .sandrone-model-option-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--sandrone-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+[data-sandrone-model-picker] .sandrone-model-check {
+  flex: 0 0 18px;
+  display: grid;
+  place-items: center;
+  color: var(--sandrone-red);
+  font-size: 14px;
+}
+
+[data-sandrone-model-picker] .sandrone-model-status {
+  padding: 10px;
+  color: var(--sandrone-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+[data-sandrone-model-picker] .sandrone-model-status.error {
+  color: var(--sandrone-red);
+}
 
 [data-sandrone-sidebar-header] {
   height: 78px !important;
@@ -1243,20 +1504,20 @@ body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {
 /* Provider editor cards must size to their own content; a fixed-height card
    lets the model catalog overflow into the sibling custom-provider card,
    which overlaps it. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="editor"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="rowCard"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_editor "]),
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowCard"], [class*="_rowCard "]) {
   height: auto !important;
   max-height: none !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   flex: 0 0 auto !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalog"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelEntry"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelCatalog"], [class*="_modelCatalog "]),
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelEntry"], [class*="_modelEntry "]) {
   min-width: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="editorHeader"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class*="_editorHeader "]) {
   align-items: center !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
@@ -1384,11 +1645,6 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="editorHeader"] {
 
   [data-sandrone-composer] [data-composer-card] {
     width: calc(100% - 20px) !important;
-  }
-
-  .sandrone-buddy {
-    top: calc(46vh + 52px);
-    bottom: auto;
   }
 }
 
@@ -1618,7 +1874,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {
    ============================================================ */
 
 /* Section shell: max width, natural column flow, comfortable gaps. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="section"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_section"], [class*="_section "]) {
   box-sizing: border-box !important;
   width: 100% !important;
   max-width: 760px !important;
@@ -1628,15 +1884,15 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="section"] {
   padding: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="content"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_content"], [class*="_content "]):not([class*="VOzbGW_content"]) {
   box-sizing: border-box !important;
   padding: 18px 24px 28px !important;
   overflow-y: auto !important;
 }
 
 /* Section titles, intros, notices. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="title"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="heading"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_title"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_heading"] {
   color: var(--sandrone-ink-strong) !important;
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
   font-size: 17px !important;
@@ -1646,14 +1902,14 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="heading"] {
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="intro"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_intro"] {
   color: var(--sandrone-muted) !important;
   font-size: 12.5px !important;
   line-height: 20px !important;
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="notice"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_notice"] {
   color: var(--sandrone-muted) !important;
   font-size: 12px !important;
   line-height: 18px !important;
@@ -1661,8 +1917,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="notice"] {
 }
 
 /* Provider / plugin cards. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="rowCard"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="editor"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowCard"], [class*="_rowCard "]),
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_editor "]) {
   box-sizing: border-box !important;
   width: 100% !important;
   height: auto !important;
@@ -1675,11 +1931,11 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="editor"] {
   border: 1px solid var(--sandrone-line) !important;
   border-radius: 12px !important;
   background: var(--sandrone-paper-raised) !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="rowHead"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="editorHeader"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowHead"], [class*="_rowHead "]),
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class*="_editorHeader "]) {
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -1689,15 +1945,15 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="editorHeader"] {
   width: 100% !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="rowName"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="editorTitle"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_rowName"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorTitle"] {
   color: var(--sandrone-ink-strong) !important;
   font-size: 14px !important;
   font-weight: 600 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="rowTag"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="tag"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_rowTag"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_tag"] {
   border: 1px solid var(--sandrone-line) !important;
   border-radius: 5px !important;
   padding: 1px 7px !important;
@@ -1706,8 +1962,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="tag"] {
 }
 
 /* Fields: label above control, full width. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="field"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelField"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_field"], [class*="_field "]),
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelField"], [class*="_modelField "]) {
   box-sizing: border-box !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1717,8 +1973,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="modelField"] {
   min-width: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="fieldLabel"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelFieldLabel"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_fieldLabel"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelFieldLabel"] {
   display: block !important;
   margin: 0 !important;
   color: var(--sandrone-muted) !important;
@@ -1757,7 +2013,7 @@ body [role="dialog"][class*="VOzbGW_panel"] textarea::placeholder {
 }
 
 /* Model catalog rows: two text inputs + actions in one line. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelRow"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_modelRow "]) {
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -1765,12 +2021,12 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="modelRow"] {
   width: 100% !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelRow"] input {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_modelRow "]) input {
   flex: 1 1 0 !important;
   min-width: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="iconButton"] {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*="_iconButton "]) {
   display: inline-flex !important;
   width: 28px !important;
   height: 28px !important;
@@ -1785,12 +2041,12 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="iconButton"] {
   cursor: pointer !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="iconButton"]:hover {
+body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*="_iconButton "]):hover {
   background: var(--sandrone-paper-soft) !important;
   color: var(--sandrone-ink-strong) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelAdvanced"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] {
   box-sizing: border-box !important;
   display: flex !important;
   flex-wrap: wrap !important;
@@ -1799,13 +2055,13 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="modelAdvanced"] {
   padding-top: 2px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelAdvanced"] [class*="modelField"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] [class*="_modelField"] {
   flex: 1 1 200px !important;
 }
 
 /* Model list actions (fetch / add / reset). */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelListHead"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalogHeading"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelListHead"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogHeading"] {
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -1815,19 +2071,19 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalogHeading"] {
   width: 100% !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalogTitle"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogTitle"] {
   color: var(--sandrone-ink-strong) !important;
   font-size: 13px !important;
   font-weight: 600 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelCatalogMeta"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogMeta"] {
   color: var(--sandrone-muted) !important;
   font-size: 11px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="linkButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="addModelButton"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_linkButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"] {
   box-sizing: border-box !important;
   min-height: 32px !important;
   padding: 0 12px !important;
@@ -1840,12 +2096,12 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="addModelButton"] {
   cursor: pointer !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="linkButton"]:hover,
-body [role="dialog"][class*="VOzbGW_panel"] [class*="addModelButton"]:hover {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_linkButton"]:hover,
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"]:hover {
   background: var(--sandrone-accent-soft) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="modelEmpty"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelEmpty"] {
   color: var(--sandrone-muted) !important;
   font-size: 12px !important;
   line-height: 18px !important;
@@ -1853,7 +2109,7 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="modelEmpty"] {
 }
 
 /* Editor footers and action buttons. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="editorFooter"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorFooter"] {
   box-sizing: border-box !important;
   display: flex !important;
   justify-content: flex-end !important;
@@ -1863,9 +2119,9 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="editorFooter"] {
   padding-top: 4px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="addButton"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {
   box-sizing: border-box !important;
   min-height: 36px !important;
   padding: 0 16px !important;
@@ -1875,51 +2131,51 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="addButton"] {
   cursor: pointer !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="addButton"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"],
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {
   border: 1px solid var(--sandrone-ink-strong) !important;
   background: var(--sandrone-ink-strong) !important;
   color: var(--sandrone-paper-raised) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"]:hover:not(:disabled),
-body [role="dialog"][class*="VOzbGW_panel"] [class*="addButton"]:hover:not(:disabled) {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"]:hover:not(:disabled),
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"]:hover:not(:disabled) {
   background: var(--sandrone-red) !important;
   border-color: var(--sandrone-red) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"] {
   border: 1px solid var(--sandrone-line-strong) !important;
   background: transparent !important;
   color: var(--sandrone-ink) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"]:hover:not(:disabled) {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"]:hover:not(:disabled) {
   background: var(--sandrone-paper-soft) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="primaryButton"]:disabled,
-body [role="dialog"][class*="VOzbGW_panel"] [class*="secondaryButton"]:disabled {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"]:disabled,
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"]:disabled {
   opacity: .45 !important;
   cursor: default !important;
 }
 
 /* Hints, errors, saved notices. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="hint"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_hint"] {
   color: var(--sandrone-muted) !important;
   font-size: 11.5px !important;
   line-height: 18px !important;
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="error"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_error"] {
   color: var(--sandrone-red) !important;
   font-size: 12px !important;
   line-height: 18px !important;
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="savedNotice"] {
+body [role="dialog"][class*="VOzbGW_panel"] [class*="_savedNotice"] {
   color: var(--sandrone-red) !important;
   font-size: 12px !important;
   line-height: 18px !important;
@@ -1937,4 +2193,231 @@ body [role="dialog"] [class*="row"] input[type="checkbox"] {
   border: 1px solid var(--sandrone-line-strong) !important;
   border-radius: 4px !important;
   accent-color: var(--sandrone-ink-strong) !important;
+}
+
+/* ============================================================
+   Layout guardrails
+   Keep upstream surfaces authoritative while preventing a single long
+   label, path, model id, tool output or narrow viewport from widening or
+   overlapping the desktop shell.
+   ============================================================ */
+:where([data-sandrone-shell], [data-sandrone-shell] *) {
+  box-sizing: border-box;
+}
+
+[data-sandrone-shell],
+[data-sandrone-frame] {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+[data-sandrone-frame] > *,
+[data-sandrone-sidebar-column],
+[data-sandrone-center],
+[data-sandrone-details],
+[data-sandrone-overlay],
+[data-sandrone-center] [data-slot="conversation"],
+[data-sandrone-center] [data-conversation-scroll],
+[data-sandrone-center] [data-composer-seat] {
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+[data-sandrone-topbar] {
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+.sandrone-topbar-navigation,
+.sandrone-topbar-window {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.sandrone-topbar-drag {
+  min-width: 0;
+}
+
+[data-sandrone-sidebar],
+[data-sandrone-workspaces],
+[data-sandrone-settings],
+[data-sandrone-sidebar] [role="tree"],
+[data-sandrone-sidebar] [role="treeitem"] {
+  max-width: 100%;
+  min-width: 0 !important;
+}
+
+[data-sandrone-sidebar],
+[data-sandrone-workspaces] {
+  overflow-x: hidden;
+}
+
+[data-sandrone-sidebar] [role="treeitem"] > *,
+[data-sandrone-sidebar] [class*="_row"] > *,
+[data-sandrone-sidebar] [class*="_identity"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-sandrone-sidebar] :where([class*="_title"], [class*="_name"], [class*="_label"], [class*="_path"]) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-sandrone-center] [data-conversation-scroll] {
+  max-width: 100%;
+  padding-top: 38px !important;
+  scroll-padding-top: 38px;
+  overflow-x: hidden !important;
+}
+
+[data-sandrone-session-body] [data-chat-flow-kind] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-sandrone-session-body] [data-chat-flow-kind] :where(p, li, a, span, code),
+[data-sandrone-dialog] :where(p, li, label, small),
+.sandrone-model-status,
+.sandrone-setting-hint {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[data-sandrone-session-body] :where(pre, table) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+[data-sandrone-session-body] :where(img, video, canvas, svg) {
+  max-width: 100%;
+}
+
+[data-sandrone-center] [data-composer-seat] {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+[data-sandrone-center] [data-composer-card] {
+  width: min(800px, calc(100% - 32px)) !important;
+  max-width: calc(100% - 32px) !important;
+  min-width: 0 !important;
+  overflow: visible;
+}
+
+[data-sandrone-composer] [data-composer-card] > *,
+[data-sandrone-composer] [data-composer-card] [class*="_row"],
+[data-sandrone-composer] [data-composer-card] [class*="_grow"],
+[data-sandrone-composer] [data-composer-card] [class*="_scroll"] {
+  min-width: 0 !important;
+  max-width: 100%;
+}
+
+[data-sandrone-composer] [data-composer-card] :where([class*="_backdrop"], [class*="_mirror"]) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[data-sandrone-model-picker],
+.sandrone-buddy-anchor {
+  max-width: 100%;
+}
+
+[data-sandrone-model-picker] .sandrone-model-menu,
+.sandrone-buddy {
+  max-width: calc(100vw - 24px);
+}
+
+[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {
+  max-height: calc(100vh - 64px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] > [class*="VOzbGW_content"] {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] [class*="VOzbGW_options"] {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] :where(
+  [class*="_section"],
+  [class*="_rowCard"],
+  [class*="_editor"],
+  [class*="_field"],
+  [class*="_modelField"],
+  [class*="_modelCatalog"],
+  [class*="_modelEntry"],
+  [class*="_modelRow"]
+) {
+  min-width: 0 !important;
+  max-width: 100%;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] :where(
+  [class*="_rowName"],
+  [class*="_editorTitle"],
+  [class*="_editorRoute"],
+  [class*="_fieldLabel"],
+  [class*="_modelFieldLabel"],
+  [class*="_modelCatalogTitle"],
+  [class*="_modelCatalogMeta"],
+  [class*="_hint"],
+  [class*="_error"],
+  [class*="_notice"]
+) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  [class*="VOzbGW_overlay"] {
+    inset: 50px 0 0 !important;
+  }
+
+  body [role="dialog"][class*="VOzbGW_panel"] {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    max-height: none !important;
+  }
+
+  [data-sandrone-center] [data-composer-card] {
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+  }
+
+  [data-sandrone-center] [data-conversation-scroll] {
+    padding-top: 50px !important;
+    scroll-padding-top: 50px;
+  }
+
+  [data-sandrone-model-picker] .sandrone-model-trigger {
+    max-width: 156px;
+  }
+
+  .sandrone-topbar-menu-item {
+    min-width: 0;
+    padding-inline: 7px;
+  }
+
+  .sandrone-topbar-window button {
+    width: 40px;
+  }
 }
