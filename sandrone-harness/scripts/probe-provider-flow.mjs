@@ -77,15 +77,53 @@ const clickByText = text => window.evaluate(t => {
   return false
 }, text)
 
-const setInput = (label, value) => window.evaluate(([l, v]) => {
+const customCard = () => window.evaluate(() => {
   const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
-  const el = [...panel.querySelectorAll('input')].find(i => (i.getAttribute('aria-label') || '') === l)
-  if (!el) return false
+  if (!panel) return null
+  const route = [...panel.querySelectorAll('input')].find(i => (i.getAttribute('aria-label') || '') === 'Provider ID')
+  let el = route
+  while (el && el !== panel) {
+    const cls = String(el.className || '')
+    if (/editor/i.test(cls) && !/Footer|Header|Actions/i.test(cls)) return el
+    el = el.parentElement
+  }
+  return null
+})
+
+const setInput = (label, value) => window.evaluate(async ([l, v]) => {
+  const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+  const route = [...panel.querySelectorAll('input')].find(i => (i.getAttribute('aria-label') || '') === 'Provider ID')
+  let el = route
+  let card = null
+  while (el && el !== panel) {
+    const cls = String(el.className || '')
+    if (/editor/i.test(cls) && !/Footer|Header|Actions/i.test(cls)) { card = el; break }
+    el = el.parentElement
+  }
+  const scope = card || panel
+  const input = [...scope.querySelectorAll('input')].find(i => (i.getAttribute('aria-label') || '') === l)
+  if (!input) return false
   const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
-  setter.call(el, v)
-  el.dispatchEvent(new Event('input', { bubbles: true }))
+  setter.call(input, v)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
   return true
 }, [label, value])
+
+const cardButton = text => window.evaluate(t => {
+  const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+  const route = [...panel.querySelectorAll('input')].find(i => (i.getAttribute('aria-label') || '') === 'Provider ID')
+  let el = route
+  let card = null
+  while (el && el !== panel) {
+    const cls = String(el.className || '')
+    if (/editor/i.test(cls) && !/Footer|Header|Actions/i.test(cls)) { card = el; break }
+    el = el.parentElement
+  }
+  if (!card) return false
+  const btn = [...card.querySelectorAll('button')].find(b => new RegExp(t).test((b.textContent || '')))
+  if (btn && !btn.disabled) { btn.click(); return true }
+  return false
+}, text)
 
 const dump = () => window.evaluate(() => {
   const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
@@ -141,14 +179,34 @@ try {
   await setInput('API 地址', 'https://app.soruxgpt.com/api/codex')
   await setInput('API 密钥', 'sk-probe-dummy-0000')
   await window.evaluate(() => {
-    const sel = document.querySelector('body [role="dialog"][class*="VOzbGW_panel"] select')
+    const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+    const route = [...panel.querySelectorAll('input')].find(i => (i.getAttribute('aria-label') || '') === 'Provider ID')
+    let el = route
+    while (el && el !== panel) {
+      const cls = String(el.className || '')
+      if (/editor/i.test(cls) && !/Footer|Header|Actions/i.test(cls)) break
+      el = el.parentElement
+    }
+    const sel = el?.querySelector('select')
     if (sel) { sel.value = 'openai'; sel.dispatchEvent(new Event('change', { bubbles: true })) }
   })
   await wait(400)
   step('filled', await dump())
 
-  const fetched = await clickByText('获取可用模型')
-  step('fetch clicked', { fetched })
+  const fetchState = await window.evaluate(() => {
+    const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+    const route = [...panel.querySelectorAll('input')].find(i => (i.getAttribute('aria-label') || '') === 'Provider ID')
+    let el = route
+    while (el && el !== panel) {
+      const cls = String(el.className || '')
+      if (/editor/i.test(cls) && !/Footer|Header|Actions/i.test(cls)) break
+      el = el.parentElement
+    }
+    const btn = el && [...el.querySelectorAll('button')].find(b => /获取可用模型/.test((b.textContent || '')))
+    return { found: Boolean(btn), disabled: btn?.disabled ?? null }
+  })
+  step('fetch button', fetchState)
+  await cardButton('获取可用模型')
   await wait(15_000)
   step('after fetch', await dump())
 

@@ -59,6 +59,17 @@ software compositing — the remedy for afterimage/ghosting artifacts on GPU
 drivers with broken accelerated compositing. The menu change offers an
 immediate restart; the settings switch simply takes effect on the next launch.
 
+The **其他** section also includes **版本更新**. In the packaged desktop build,
+the action checks the latest GitHub Release for the current platform and
+architecture, downloads only the exact platform asset over Electron's
+proxy-aware network stack, verifies its size and GitHub SHA-256 digest, then
+lets you confirm before handing it to the platform installer (Windows starts
+NSIS; macOS/Linux open the downloaded package with the system installer).
+Windows `.exe` files also pass a PE-header check. Downloads are staged under
+the app's user-data `updates` directory; partial files are removed after
+failures. Source/web runs keep the control hidden because they are not
+installed desktop builds.
+
 ## Cross-platform desktop sandbox
 
 `pnpm run desktop:pack` now selects a native Builder profile from the current host and CPU. Windows produces NSIS, macOS produces DMG and ZIP, and Linux produces AppImage and DEB. `pnpm run desktop:dir` creates only the unpacked application for the current platform. Cross-compilation is deliberately rejected: platform-native dependencies are installed and packaged on matching runners.

@@ -1,32 +1,32 @@
 :root {
-  --sandrone-paper: #f5f2ec;
-  --sandrone-paper-raised: #fffdf9;
-  --sandrone-paper-soft: #efeae2;
-  --sandrone-ink: #2e2a26;
-  --sandrone-ink-strong: #1e1b18;
-  --sandrone-muted: #706a63;
-  --sandrone-line: #ddd6cc;
-  --sandrone-line-strong: #c6bcb0;
-  --sandrone-accent: #b99f86;
-  --sandrone-accent-soft: #ece5dc;
-  --sandrone-red: #c8102e;
+  --sandrone-paper: #faf8f4;
+  --sandrone-paper-raised: #fffdfa;
+  --sandrone-paper-soft: #f0ece6;
+  --sandrone-ink: #4b4640;
+  --sandrone-ink-strong: #292522;
+  --sandrone-muted: #78716a;
+  --sandrone-line: #e1dbd2;
+  --sandrone-line-strong: #c9c0b6;
+  --sandrone-accent: #c5213d;
+  --sandrone-accent-soft: #f6e6e4;
+  --sandrone-red: #c5213d;
   --sandrone-shadow: 0 1px 3px rgb(54 45 37 / 5%), 0 10px 28px rgb(54 45 37 / 7%);
   --sandrone-shadow-deep: 0 2px 6px rgb(54 45 37 / 6%), 0 24px 64px rgb(54 45 37 / 12%);
   --sandrone-ease: cubic-bezier(.2, .7, .2, 1);
 }
 
 [data-ds-dark-theme] {
-  --sandrone-paper: #1c1a18;
-  --sandrone-paper-raised: #2c2926;
-  --sandrone-paper-soft: #252220;
-  --sandrone-ink: #d4cfc8;
-  --sandrone-ink-strong: #f1ece5;
-  --sandrone-muted: #9a948c;
-  --sandrone-line: #3d3832;
-  --sandrone-line-strong: #544e46;
-  --sandrone-accent: #c8a882;
-  --sandrone-accent-soft: #3d3228;
-  --sandrone-red: #c8102e;
+  --sandrone-paper: #1d1b1a;
+  --sandrone-paper-raised: #2b2927;
+  --sandrone-paper-soft: #252321;
+  --sandrone-ink: #d0c9c1;
+  --sandrone-ink-strong: #f2ece5;
+  --sandrone-muted: #a39a91;
+  --sandrone-line: #403b37;
+  --sandrone-line-strong: #59504a;
+  --sandrone-accent: #e07083;
+  --sandrone-accent-soft: #442a2f;
+  --sandrone-red: #e07083;
   --sandrone-shadow: 0 1px 3px rgb(0 0 0 / 20%), 0 10px 28px rgb(0 0 0 / 18%);
   --sandrone-shadow-deep: 0 2px 6px rgb(0 0 0 / 25%), 0 24px 64px rgb(0 0 0 / 35%);
 }
@@ -104,12 +104,12 @@ select {
 [data-sandrone-sidebar-header]::after {
   content: '';
   position: absolute;
-  inset: auto 14px 13px 18px;
-  height: 49px;
-  border: 1px solid rgb(255 255 255 / 24%);
-  border-radius: 9px;
-  background: rgb(25 22 20 / 78%);
-  box-shadow: 0 8px 24px rgb(35 27 22 / 18%);
+  inset: 0;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--sandrone-paper-soft) 94%, transparent) 0%, color-mix(in srgb, var(--sandrone-paper-soft) 72%, transparent) 44%, transparent 82%);
+  box-shadow: none;
   pointer-events: none;
 }
 
@@ -127,7 +127,7 @@ select {
   border-radius: 6px !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: #f9f5ef !important;
+  color: var(--sandrone-ink-strong) !important;
   text-align: left !important;
 }
 
@@ -139,12 +139,17 @@ select {
   font-weight: 650;
   letter-spacing: -.04em;
   line-height: 23px;
+  color: transparent;
+  background: linear-gradient(90deg, var(--sandrone-red) 0 14%, var(--sandrone-ink-strong) 14% 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 [data-sandrone-sidebar-header] [class*="brand"]::after {
   content: '“盈金未阑，夕阳已远”';
   display: block;
-  color: rgb(249 245 239 / 72%);
+  color: color-mix(in srgb, var(--sandrone-muted) 78%, transparent);
   font-size: 9px;
   font-weight: 400;
   letter-spacing: .02em;
@@ -156,7 +161,7 @@ select {
 }
 
 [data-sandrone-shell] [data-sandrone-sidebar-header] [class*="brand"] {
-  color: #f9f5ef !important;
+  color: var(--sandrone-ink-strong) !important;
 }
 
 [data-sandrone-sidebar-header] [class*="iconButton"] {
@@ -270,7 +275,7 @@ select {
 
 [data-sandrone-sidebar] [aria-current="true"],
 [data-sandrone-sidebar] [aria-selected="true"] {
-  background: var(--sandrone-accent-soft) !important;
+  background: var(--sandrone-paper-raised) !important;
   color: var(--sandrone-ink-strong) !important;
 }
 
@@ -417,7 +422,7 @@ select {
 [data-sandrone-workspaces] [role="treeitem"][aria-selected="true"],
 [data-sandrone-workspaces] [role="treeitem"][aria-current="true"] {
   border-color: transparent !important;
-  background: var(--sandrone-accent-soft) !important;
+  background: var(--sandrone-paper-raised) !important;
   box-shadow: inset 4px 0 0 var(--sandrone-red) !important;
 }
 
@@ -489,8 +494,8 @@ select {
 }
 
 [data-sandrone-center] [data-composer-card]:focus-within {
-  border-color: var(--sandrone-accent) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sandrone-accent) 18%, transparent), var(--sandrone-shadow) !important;
+  border-color: var(--sandrone-red) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sandrone-red) 18%, transparent), var(--sandrone-shadow) !important;
 }
 
 [data-sandrone-composer-input] {
@@ -506,6 +511,15 @@ select {
 
 [data-sandrone-center] [data-composer-card] [class*="primary"] {
   background: var(--sandrone-ink-strong) !important;
+  color: var(--sandrone-paper-raised) !important;
+}
+
+[data-sandrone-center] [data-composer-card] [class*="primary"]:not(:disabled) {
+  background: var(--sandrone-red) !important;
+}
+
+[data-sandrone-center] [data-composer-card] [class*="primary"]:disabled {
+  background: var(--sandrone-line-strong) !important;
   color: var(--sandrone-paper-raised) !important;
 }
 
@@ -1865,6 +1879,82 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {
   transform: translateX(18px);
 }
 
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action {
+  box-sizing: border-box !important;
+  width: auto !important;
+  min-width: 92px !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  flex: 0 0 auto !important;
+  padding: 0 13px !important;
+  border: 1px solid var(--sandrone-line-strong) !important;
+  border-radius: 8px !important;
+  background: var(--sandrone-paper-raised) !important;
+  color: var(--sandrone-ink-strong) !important;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 140ms var(--sandrone-ease), background 140ms var(--sandrone-ease);
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:hover:not(:disabled) {
+  border-color: var(--sandrone-accent) !important;
+  background: var(--sandrone-accent-soft) !important;
+}
+
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:disabled {
+  opacity: .58;
+  cursor: default;
+}
+
+.sandrone-update-row .sandrone-setting-copy {
+  flex: 1 1 auto;
+}
+
+.sandrone-setting-hint.is-error {
+  color: #b54840;
+}
+
+.sandrone-update-progress {
+  width: min(320px, 100%);
+  height: 4px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--sandrone-line);
+}
+
+.sandrone-update-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--sandrone-ink-strong);
+  transition: width 160ms var(--sandrone-ease);
+}
+
+.sandrone-update-release-link {
+  display: inline-block;
+  margin-top: 7px;
+  color: var(--sandrone-red) !important;
+  font-size: 11.5px;
+  text-decoration: none;
+}
+
+.sandrone-update-release-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  body [role="dialog"][class*="VOzbGW_panel"] .sandrone-update-row {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+}
+
 /* ============================================================
    Settings page — consolidated section-content layer.
    One coherent pass over every settings section (general, models,
@@ -2289,6 +2379,88 @@ body [role="dialog"] [class*="row"] input[type="checkbox"] {
   max-width: 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.sandrone-image-capability {
+  margin-top: 12px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding-top: 6px;
+}
+
+.sandrone-image-capability-heading {
+  align-items: flex-start;
+}
+
+.sandrone-image-model-row {
+  padding-block: 9px;
+}
+
+.sandrone-image-empty,
+.sandrone-image-capability-note {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  padding: 4px 0 8px;
+}
+
+.sandrone-image-attach {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  order: -20;
+}
+
+[data-sandrone-composer] button[aria-label="命令"],
+[data-sandrone-composer] button[aria-label="Commands"] {
+  display: none !important;
+}
+
+.sandrone-image-attach-button {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.sandrone-image-attach-button:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-brand-primary);
+}
+
+.sandrone-image-attach-button:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.sandrone-provider-image-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  margin: 8px 4px 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.sandrone-provider-image-field input {
+  width: 15px !important;
+  height: 15px !important;
+  min-height: 0 !important;
+  accent-color: var(--dsw-alias-brand-primary);
+}
+
+.sandrone-image-capability-note {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  margin-top: 5px;
+  padding-top: 10px;
 }
 
 [data-sandrone-session-body] :where(pre, table) {

@@ -10,6 +10,7 @@ const {
   dialog,
   ipcMain,
   Menu,
+  net,
   screen,
   shell,
 } = require('electron')
@@ -19,6 +20,8 @@ const { classifyNavigation, isInternalHarnessUrl } = require('./lib/navigation-p
 const { assertTrustedIpcSender } = require('./lib/ipc-policy.cjs')
 const { createQuitCoordinator } = require('./lib/quit-coordinator.cjs')
 const { packageBin } = require('./lib/resolve-package.cjs')
+const { UpdateService } = require('./lib/update-service.cjs')
+const { relaxImageAdmission } = require('./lib/relax-image-admission.cjs')
 
 const APP_NAME = 'Sandrone AI Agent'
 const ROOT = path.resolve(__dirname, '..', '..')
@@ -40,6 +43,7 @@ let navigationRetry = 0
 let navigationTimer = null
 let quitting = false
 let reloadUiInFlight = null
+let updateService = null
 
 function desktopSettingsPath() {
   return path.join(app.getPath('userData'), 'desktop-settings.json')
@@ -65,6 +69,19 @@ function writeDesktopSettings(settings) {
     try { fs.rmSync(temporary, { force: true }) } catch {}
     console.error(`[sandrone-desktop] could not persist desktop settings: ${String(error)}`)
   }
+}
+
+function getUpdateService() {
+  if (!updateService) {
+    updateService = new UpdateService({
+      appVersion: app.getVersion(),
+      userDataPath: app.getPath('userData'),
+      platform: process.platform,
+      arch: process.arch,
+      fetchImpl: (url, options) => net.fetch(url, options),
+    })
+  }
+  return updateService
 }
 
 let desktopSettings = readDesktopSettings()
@@ -152,6 +169,10 @@ function writeWindowState() {
 }
 
 function launchHarness() {
+  // Images are intentionally admitted by the desktop shell. The selected
+  // upstream model remains responsible for deciding whether it can interpret
+  // them; text-only models may reject them at the provider boundary.
+  relaxImageAdmission(ROOT)
   const bin = packageBin('@deepseek-ai/dsh', 'dsh', path.join(ROOT, 'package.json'))
   deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
   return fork(RUNNER, [], {
@@ -236,6 +257,11 @@ function sendStatus(status = supervisor.snapshot()) {
 function sendMaximizedState() {
   if (!mainWindow || mainWindow.isDestroyed()) return
   mainWindow.webContents.send('desktop:maximized-changed', mainWindow.isMaximized())
+}
+
+function sendUpdateStatus(status) {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('desktop:update-status', status)
 }
 
 function sendDesktopCommand(command) {
@@ -473,6 +499,32 @@ function registerIpc() {
     writeDesktopSettings(desktopSettings)
     syncGpuMenuState()
     return desktopSettings.gpuAcceleration
+  })
+  ipcMain.handle('desktop:get-update-state', event => {
+    assertTrusted(event)
+    return getUpdateService().snapshot()
+  })
+  ipcMain.handle('desktop:check-for-updates', async (event, options = {}) => {
+    assertTrusted(event)
+    const result = await getUpdateService().check({ force: options?.force === true })
+    sendUpdateStatus(result)
+    return result
+  })
+  ipcMain.handle('desktop:download-update', async event => {
+    assertTrusted(event)
+    sendUpdateStatus({ ...getUpdateService().snapshot(), status: 'downloading', percent: 0 })
+    const result = await getUpdateService().download({
+      onProgress: progress => sendUpdateStatus({ ...getUpdateService().snapshot(), status: 'downloading', ...progress }),
+    })
+    sendUpdateStatus(result)
+    return result
+  })
+  ipcMain.handle('desktop:install-update', async event => {
+    assertTrusted(event)
+    const result = await getUpdateService().install()
+    sendUpdateStatus(result)
+    if (result.status === 'installing') setTimeout(() => app.quit(), 200).unref?.()
+    return result
   })
   ipcMain.handle('desktop:pick-directory', async event => {
     assertTrusted(event)

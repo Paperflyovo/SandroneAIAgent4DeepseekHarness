@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   IconCloseOutline16,
+  IconPaperclipOutline16,
   IconSparkle16,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { installStyle } from './client.css'
@@ -9,35 +10,35 @@ import { installStyle } from './client.css'
 export const inject = ['slots', 'theme']
 
 const TOKEN_LAYER = Object.freeze({
-  '--dsw-alias-brand-primary': { light: '#b99f86', dark: '#c8a882' },
-  '--dsw-alias-brand-text': { light: '#514c46', dark: '#d4cfc8' },
-  '--dsw-alias-button-primary-fill': { light: '#514c46', dark: '#d4cfc8' },
-  '--dsw-alias-button-primary-hover': { light: '#2e2a26', dark: '#e8e3dc' },
-  '--dsw-alias-bg-base': { light: '#f5f2ec', dark: '#1c1a18' },
-  '--dsw-alias-bg-layer-1': { light: '#fbfaf7', dark: '#252220' },
-  '--dsw-alias-bg-layer-2': { light: '#fffdf9', dark: '#2c2926' },
-  '--dsw-alias-bg-layer-3': { light: '#fffdf9', dark: '#302d29' },
-  '--dsw-alias-border-l1': { light: '#ddd6cc', dark: '#3d3832' },
-  '--dsw-alias-border-l2': { light: '#c6bcb0', dark: '#544e46' },
-  '--dsw-alias-border-l2-darkmode-thin': { light: '#ddd6cc', dark: '#3d3832' },
-  '--dsw-alias-label-primary': { light: '#2e2a26', dark: '#d4cfc8' },
-  '--dsw-alias-label-primary-dimmed': { light: '#514c46', dark: '#b5aea4' },
-  '--dsw-alias-label-secondary': { light: '#514c46', dark: '#b5aea4' },
-  '--dsw-alias-label-tertiary': { light: '#706a63', dark: '#9a948c' },
-  '--dsw-alias-label-caption': { light: '#8b8379', dark: '#817a72' },
-  '--dsw-alias-interactive-bg-hover': { light: '#e9e3da', dark: '#3a3632' },
-  '--dsw-alias-interactive-bg-hover-solid': { light: '#ece7df', dark: '#35322e' },
-  '--dsw-alias-button-elevated-fill': { light: '#fffdf9', dark: '#2c2926' },
-  '--dsw-alias-button-floating-fill': { light: '#fffdf9', dark: '#2c2926' },
-  '--dsw-alias-button-floating-hover': { light: '#e9e3da', dark: '#3a3632' },
-  '--dsw-alias-button-info-fill': { light: '#514c46', dark: '#d4cfc8' },
-  '--dsw-alias-button-info-hover': { light: '#2e2a26', dark: '#e8e3dc' },
-  '--dsw-specific-bubble': { light: '#ece5dc', dark: '#3d3228' },
-  '--dsw-specific-input-major': { light: '#fffdf9', dark: '#2c2926' },
-  '--dsw-specific-selector': { light: '#ece7df', dark: '#35322e' },
-  '--dsw-specific-sidebar-fill': { light: '#efeae2', dark: '#252220' },
-  '--dsw-specific-sidebar-nav-item-active': { light: '#e9e3da', dark: '#3d3228' },
-  '--dsw-specific-sidebar-nav-item-hover': { light: '#e9e3da', dark: '#302d29' },
+  '--dsw-alias-brand-primary': { light: '#c5213d', dark: '#e07083' },
+  '--dsw-alias-brand-text': { light: '#a91c35', dark: '#f0a0ad' },
+  '--dsw-alias-button-primary-fill': { light: '#c5213d', dark: '#d76276' },
+  '--dsw-alias-button-primary-hover': { light: '#a91c35', dark: '#f08a9a' },
+  '--dsw-alias-bg-base': { light: '#faf8f4', dark: '#1d1b1a' },
+  '--dsw-alias-bg-layer-1': { light: '#f0ece6', dark: '#252321' },
+  '--dsw-alias-bg-layer-2': { light: '#fffdfa', dark: '#2b2927' },
+  '--dsw-alias-bg-layer-3': { light: '#fffdfa', dark: '#302d2b' },
+  '--dsw-alias-border-l1': { light: '#e1dbd2', dark: '#403b37' },
+  '--dsw-alias-border-l2': { light: '#c9c0b6', dark: '#59504a' },
+  '--dsw-alias-border-l2-darkmode-thin': { light: '#e1dbd2', dark: '#403b37' },
+  '--dsw-alias-label-primary': { light: '#292522', dark: '#f2ece5' },
+  '--dsw-alias-label-primary-dimmed': { light: '#4b4640', dark: '#d0c9c1' },
+  '--dsw-alias-label-secondary': { light: '#5d5750', dark: '#bdb4aa' },
+  '--dsw-alias-label-tertiary': { light: '#78716a', dark: '#a39a91' },
+  '--dsw-alias-label-caption': { light: '#918981', dark: '#877e76' },
+  '--dsw-alias-interactive-bg-hover': { light: '#f6e6e4', dark: '#442a2f' },
+  '--dsw-alias-interactive-bg-hover-solid': { light: '#f2e9e2', dark: '#39312e' },
+  '--dsw-alias-button-elevated-fill': { light: '#fffdfa', dark: '#2b2927' },
+  '--dsw-alias-button-floating-fill': { light: '#fffdfa', dark: '#2b2927' },
+  '--dsw-alias-button-floating-hover': { light: '#f6e6e4', dark: '#442a2f' },
+  '--dsw-alias-button-info-fill': { light: '#c5213d', dark: '#d76276' },
+  '--dsw-alias-button-info-hover': { light: '#a91c35', dark: '#f08a9a' },
+  '--dsw-specific-bubble': { light: '#f3e5df', dark: '#442f2a' },
+  '--dsw-specific-input-major': { light: '#fffdfa', dark: '#2b2927' },
+  '--dsw-specific-selector': { light: '#f1ebe4', dark: '#393532' },
+  '--dsw-specific-sidebar-fill': { light: '#f0ece6', dark: '#252321' },
+  '--dsw-specific-sidebar-nav-item-active': { light: '#fffdfa', dark: '#442a2f' },
+  '--dsw-specific-sidebar-nav-item-hover': { light: '#f6f0ea', dark: '#302d2b' },
 })
 
 const DESKTOP_SIDEBAR_WIDTH = 380
@@ -166,11 +167,25 @@ function installSurfaceMarkers(ctx) {
       frame.style.removeProperty('grid-template-columns')
     }
     document.addEventListener('pointerdown', handleSidebarResizeStart, true)
+    const handleComposerEnterFallback = event => {
+      if (event.defaultPrevented || event.key !== 'Enter' || event.shiftKey || event.isComposing) return
+      if (!(event.target instanceof HTMLTextAreaElement) || !event.target.matches('[data-sandrone-composer-input]')) return
+      window.setTimeout(() => {
+        const composer = event.target.closest('[data-sandrone-composer]') || document
+        const send = [...composer.querySelectorAll('button')].find(button => {
+          const label = button.getAttribute('aria-label') || ''
+          return /^(发送|Send)$/.test(label) && !button.disabled
+        })
+        if (send instanceof HTMLElement) send.click()
+      }, 0)
+    }
+    document.addEventListener('keydown', handleComposerEnterFallback)
     window.addEventListener('resize', scheduleMark, { passive: true })
     return () => {
       observer.disconnect()
       resizeObserver.disconnect()
       document.removeEventListener('pointerdown', handleSidebarResizeStart, true)
+      document.removeEventListener('keydown', handleComposerEnterFallback)
       window.removeEventListener('resize', scheduleMark)
       if (frameId !== 0) window.cancelAnimationFrame(frameId)
       document.querySelectorAll('[data-sandrone-shell], [data-sandrone-frame], [data-sandrone-sidebar-column], [data-sandrone-sidebar], [data-sandrone-sidebar-header], [data-sandrone-workspaces], [data-sandrone-settings], [data-sandrone-center], [data-sandrone-details], [data-sandrone-overlay], [data-sandrone-session-header], [data-sandrone-session-body], [data-sandrone-composer], [data-sandrone-new-session], [data-sandrone-sidebar-action], [data-sandrone-composer-input], [data-sandrone-surface-part], [data-sandrone-dialog]').forEach(element => {
@@ -404,7 +419,7 @@ function GpuAccelerationSection() {
   }
 
   return (
-    <section className="sandrone-settings-other" aria-label="其他">
+    <>
       <div className="sandrone-setting-row">
         <div className="sandrone-setting-copy">
           <div className="sandrone-setting-label">启用 GPU 加速</div>
@@ -421,6 +436,378 @@ function GpuAccelerationSection() {
           <span className="sandrone-setting-knob" aria-hidden="true" />
         </button>
       </div>
+    </>
+  )
+}
+
+function formatUpdateSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return ''
+  return `${(bytes / 1024 / 1024).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1)} MB`
+}
+
+function updateStatusText(state) {
+  switch (state.status) {
+    case 'checking': return '正在连接 GitHub 检查最新版本…'
+    case 'available': return `发现新版本 v${state.latestVersion}，准备下载。`
+    case 'downloading': {
+      const size = formatUpdateSize(state.totalBytes)
+      const progress = Number.isFinite(state.percent) ? `${state.percent}%` : formatUpdateSize(state.receivedBytes)
+      return `正在从 GitHub 下载 v${state.latestVersion}${progress ? ` · ${progress}` : ''}${size ? ` / ${size}` : ''}`
+    }
+    case 'downloaded': return `v${state.latestVersion} 已下载并校验完成，可以安装。`
+    case 'installing': return '安装程序已启动，应用即将退出。'
+    case 'manual': return '安装包已打开，请按系统提示完成更新。'
+    case 'up-to-date': return `当前已是最新版本 v${state.currentVersion}。`
+    case 'asset-unavailable': return `GitHub 已发布 v${state.latestVersion}，但没有适用于本机的安装包。`
+    case 'unsupported': return '当前系统暂不支持应用内自动更新。'
+    case 'error': return state.message || '检查更新失败，请稍后重试。'
+    default: return `当前版本 v${state.currentVersion || '—'}。检查到新版本后会自动从 GitHub 下载。`
+  }
+}
+
+function VersionUpdateRow() {
+  const desktop = window.sandroneDesktop
+  const [state, setState] = useState({ status: 'idle', currentVersion: null })
+
+  useEffect(() => {
+    if (!desktop?.getUpdateState) return undefined
+    let alive = true
+    void desktop.getUpdateState()
+      .then(value => { if (alive && value) setState(value) })
+      .catch(error => { if (alive) setState(current => ({ ...current, status: 'error', message: error?.message || '读取版本状态失败。' })) })
+    const unsubscribe = desktop.onUpdateStatus?.(value => {
+      if (alive && value) setState(value)
+    })
+    return () => {
+      alive = false
+      unsubscribe?.()
+    }
+  }, [desktop])
+
+  if (!desktop?.checkForUpdates) return null
+
+  const busy = state.status === 'checking' || state.status === 'downloading' || state.status === 'installing'
+  const checkAndDownload = async () => {
+    if (busy) return
+    setState(current => ({ ...current, status: 'checking', message: null }))
+    try {
+      const result = await desktop.checkForUpdates({ force: true })
+      setState(result)
+      if (result.status === 'available') {
+        setState(current => ({ ...current, status: 'downloading', percent: 0 }))
+        setState(await desktop.downloadUpdate())
+      }
+    } catch (error) {
+      setState(current => ({ ...current, status: 'error', message: error?.message || '检查更新失败，请稍后重试。' }))
+    }
+  }
+
+  const install = async () => {
+    if (state.status !== 'downloaded') return
+    const handoff = desktop.platform === 'win32'
+      ? '应用将退出并启动安装程序。'
+      : '系统将打开安装包，你可以按系统提示完成安装。'
+    const accepted = window.confirm(`安装 Sandrone AI Agent v${state.latestVersion}？\n\n${handoff}`)
+    if (!accepted) return
+    setState(current => ({ ...current, status: 'installing' }))
+    try {
+      setState(await desktop.installUpdate())
+    } catch (error) {
+      setState(current => ({ ...current, status: 'error', message: error?.message || '启动安装程序失败。' }))
+    }
+  }
+
+  const actionLabel = state.status === 'downloaded'
+    ? '打开安装包'
+    : state.status === 'checking'
+      ? '正在检查…'
+      : state.status === 'downloading'
+        ? `下载中${Number.isFinite(state.percent) ? ` ${state.percent}%` : '…'}`
+        : state.status === 'installing'
+          ? '正在启动…'
+          : state.status === 'up-to-date'
+            ? '重新检查'
+            : '检查更新'
+
+  return (
+    <div className="sandrone-setting-row sandrone-update-row" data-sandrone-update-row>
+      <div className="sandrone-setting-copy">
+        <div className="sandrone-setting-label">版本更新</div>
+        <div className={`sandrone-setting-hint${state.status === 'error' ? ' is-error' : ''}`} aria-live="polite">
+          {updateStatusText(state)}
+        </div>
+        {state.status === 'downloading' && (
+          <div
+            className="sandrone-update-progress"
+            role="progressbar"
+            aria-label="更新下载进度"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={Number.isFinite(state.percent) ? state.percent : undefined}
+          >
+            <span style={{ width: `${Number.isFinite(state.percent) ? state.percent : 8}%` }} />
+          </div>
+        )}
+        {(state.status === 'asset-unavailable' || state.status === 'error') && state.releaseUrl && (
+          <a className="sandrone-update-release-link" href={state.releaseUrl} target="_blank" rel="noreferrer">打开 GitHub 发布页</a>
+        )}
+      </div>
+      <button
+        type="button"
+        className="sandrone-setting-action"
+        disabled={busy || state.status === 'unsupported' || state.status === 'asset-unavailable'}
+        onClick={state.status === 'downloaded' ? install : checkAndDownload}
+      >
+        {actionLabel}
+      </button>
+    </div>
+  )
+}
+
+function OtherSettingsSection() {
+  return (
+    <section className="sandrone-settings-other" aria-label="其他">
+      <GpuAccelerationSection />
+      <VersionUpdateRow />
+    </section>
+  )
+}
+
+function insertFallbackFileText(files) {
+  const textarea = document.querySelector('[data-sandrone-composer-input]')
+  if (!(textarea instanceof HTMLTextAreaElement)) return
+  const names = files.map(file => `[${file.name || 'image.png'}]`).join(' ')
+  const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
+  if (!setter) return
+  const prefix = textarea.value.trim() === '' ? '' : `${textarea.value.endsWith(' ') ? '' : ' '}`
+  setter.call(textarea, `${textarea.value}${prefix}${names}`)
+  textarea.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function dispatchFilesToOfficialInput(files) {
+  const textarea = document.querySelector('[data-sandrone-composer-input]')
+  if (!(textarea instanceof HTMLTextAreaElement)) return false
+  try {
+    const transfer = new DataTransfer()
+    files.forEach(file => transfer.items.add(file))
+    textarea.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, clipboardData: transfer }))
+    return true
+  } catch {
+    return false
+  }
+}
+
+function SandroneImageAttach({ connection, sessionId, locked }) {
+  const inputRef = useRef(null)
+  const [busy, setBusy] = useState(false)
+  const choose = () => {
+    if (!locked) inputRef.current?.click()
+  }
+  const onChange = async event => {
+    const files = [...event.target.files || []].filter(file => file.type.startsWith('image/'))
+    event.target.value = ''
+    if (files.length === 0 || busy) return
+    setBusy(true)
+    try {
+      // Always admit images. The selected upstream model decides whether it
+      // can interpret them; a text-only model may reject them at request time.
+      if (!dispatchFilesToOfficialInput(files)) insertFallbackFileText(files)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <span className="sandrone-image-attach">
+      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden onChange={onChange} />
+      <button type="button" className="sandrone-image-attach-button" aria-label="添加图片" title="添加图片" disabled={locked || busy} onMouseDown={event => event.preventDefault()} onClick={choose}>
+        <IconPaperclipOutline16 size={16} />
+      </button>
+    </span>
+  )
+}
+
+function installProviderImageFields(connection) {
+  return () => {
+    const root = document.getElementById('root') || document.body
+    const pending = new Map()
+    let frame = 0
+    let decorating = false
+    const refresh = () => {
+      if (frame || decorating) return
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        void decorate()
+      })
+    }
+    const snapshot = async () => {
+      const response = await connection?.api?.settings?.describe?.({}).catch(() => null)
+      return response?.result?.ok ? response.result.value?.namespaces?.find(item => item.ns === 'llm-pi-ai') : null
+    }
+    const persist = async (route, modelId, enabled) => {
+      const namespace = await snapshot()
+      const models = namespace?.value?.providers?.[route]?.models
+      const index = Array.isArray(models) ? models.findIndex(model => String(model?.id) === modelId) : -1
+      if (!namespace || index < 0) {
+        pending.set(`${route}:${modelId}`, enabled)
+        return false
+      }
+      const result = await connection.api.settings.mutate({
+        ns: 'llm-pi-ai',
+        ops: [{ op: 'set', path: ['providers', route, 'models', index, 'input'], value: enabled ? ['text', 'image'] : ['text'] }],
+        expectedRevision: namespace.revision,
+      }).catch(() => null)
+      if (result?.result?.ok) pending.delete(`${route}:${modelId}`)
+      return result?.result?.ok === true
+    }
+    const decorate = async () => {
+      const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+      if (!panel || !connection?.api?.settings?.describe) return
+      decorating = true
+      const namespace = await snapshot()
+      decorating = false
+      if (!namespace) return
+      const routeInput = [...panel.querySelectorAll('input')].find(input => input.getAttribute('aria-label') === 'Provider ID')
+      const editor = routeInput?.closest('[class*="_editor"]')
+      const route = routeInput?.value?.trim()
+      if (!editor || !route) return
+      const provider = namespace.value?.providers?.[route]
+      const rows = [...editor.querySelectorAll('[class*="_modelEntry"]')]
+      rows.forEach(row => {
+        const modelInput = [...row.querySelectorAll('input')].find(input => /模型 ID|Model ID/.test(input.getAttribute('aria-label') || ''))
+        const modelId = modelInput?.value?.trim()
+        if (!modelId) return
+        const model = Array.isArray(provider?.models) ? provider.models.find(item => String(item?.id) === modelId) : null
+        const key = `${route}:${modelId}`
+        if (row.querySelector('[data-sandrone-provider-image-field]')) {
+          if (pending.has(key) && model) void persist(route, modelId, pending.get(key)).then(saved => { if (saved) refresh() })
+          return
+        }
+        const label = document.createElement('label')
+        label.dataset.sandroneProviderImageField = 'true'
+        label.className = 'sandrone-provider-image-field'
+        const checkbox = document.createElement('input')
+        checkbox.type = 'checkbox'
+        checkbox.checked = pending.get(key) ?? (Array.isArray(model?.input) && model.input.includes('image'))
+        checkbox.addEventListener('change', async () => {
+          const enabled = checkbox.checked
+          pending.set(key, enabled)
+          checkbox.disabled = true
+          const saved = await persist(route, modelId, enabled)
+          checkbox.disabled = false
+          if (!saved && namespace.value?.providers?.[route]) checkbox.checked = !enabled
+        })
+        const text = document.createElement('span')
+        text.textContent = '支持图片'
+        label.append(checkbox, text)
+        row.append(label)
+        if (pending.has(key) && model) void persist(route, modelId, pending.get(key)).then(saved => { if (saved) refresh() })
+      })
+    }
+    const observer = new MutationObserver(refresh)
+    observer.observe(root, { childList: true, subtree: true })
+    refresh()
+    return () => {
+      observer.disconnect()
+      if (frame) window.cancelAnimationFrame(frame)
+      document.querySelectorAll('[data-sandrone-provider-image-field]').forEach(element => element.remove())
+    }
+  }
+}
+
+export function imageCapabilityModels(namespace) {
+  const value = namespace?.value
+  const providers = value?.providers
+  if (!providers || typeof providers !== 'object') return []
+  const rows = []
+  for (const [route, provider] of Object.entries(providers)) {
+    if (!provider || typeof provider !== 'object') continue
+    const models = Array.isArray(provider.models) ? provider.models : []
+    models.forEach((model, index) => {
+      if (!model || typeof model !== 'object' || !model.id) return
+      const input = Array.isArray(model.input) && model.input.length > 0
+        ? model.input
+        : (Array.isArray(provider.defaultInput) && provider.defaultInput.length > 0 ? provider.defaultInput : ['text'])
+      rows.push({ route, index, modelId: String(model.id), modelName: String(model.name || model.id), input, path: ['providers', route, 'models', index, 'input'] })
+    })
+    const overrides = provider.modelOverrides
+    if (overrides && typeof overrides === 'object') {
+      for (const [modelId, override] of Object.entries(overrides)) {
+        if (!override || typeof override !== 'object') continue
+        const input = Array.isArray(override.input) && override.input.length > 0
+          ? override.input
+          : (Array.isArray(provider.defaultInput) && provider.defaultInput.length > 0 ? provider.defaultInput : ['text'])
+        rows.push({ route, modelId, modelName: String(override.name || modelId), input, path: ['providers', route, 'modelOverrides', modelId, 'input'] })
+      }
+    }
+  }
+  return rows
+}
+
+function ImageCapabilitySection({ connection }) {
+  const [state, setState] = useState({ status: 'loading', rows: [], revision: null, error: '' })
+  const load = async () => {
+    if (!connection?.api?.settings?.describe) return
+    setState(current => ({ ...current, status: 'loading', error: '' }))
+    try {
+      const response = await Promise.race([
+        connection.api.settings.describe({}),
+        new Promise((_, reject) => window.setTimeout(() => reject(new Error('读取模型能力超时，请重载页面后重试')), 4000)),
+      ])
+      if (!response?.result?.ok) throw new Error(response?.result?.error?.message || '读取模型设置失败')
+      const namespace = response.result.value?.namespaces?.find(item => item.ns === 'llm-pi-ai')
+      setState({ status: namespace ? 'ready' : 'unsupported', rows: imageCapabilityModels(namespace), revision: namespace?.revision ?? null, error: '' })
+    } catch (error) {
+      setState(current => ({ ...current, status: 'error', error: error?.message || '读取模型设置失败' }))
+    }
+  }
+
+  useEffect(() => { void load() }, [connection])
+
+  const toggle = async (row, enabled) => {
+    if (!connection?.api?.settings?.mutate || state.revision == null) return
+    const input = enabled ? ['text', 'image'] : ['text']
+    setState(current => ({ ...current, status: 'saving', error: '' }))
+    try {
+      const response = await connection.api.settings.mutate({
+        ns: 'llm-pi-ai',
+        ops: [{ op: 'set', path: row.path, value: input }],
+        expectedRevision: state.revision,
+      })
+      if (!response?.result?.ok) throw new Error(response?.result?.error?.message || '保存图片能力失败')
+      await load()
+    } catch (error) {
+      setState(current => ({ ...current, status: 'error', error: error?.message || '保存图片能力失败' }))
+      await load()
+    }
+  }
+
+  return (
+    <section className="sandrone-image-capability" aria-label="图片输入能力">
+      <div className="sandrone-setting-row sandrone-image-capability-heading">
+        <div className="sandrone-setting-copy">
+          <div className="sandrone-setting-label">图片输入</div>
+          <div className={`sandrone-setting-hint${state.status === 'error' ? ' is-error' : ''}`} aria-live="polite">
+            {state.status === 'loading' || state.status === 'saving' ? '正在读取模型能力…' : state.status === 'unsupported' ? '当前没有可配置的 OpenAI-compatible 模型。' : state.error || '只对 llm-pi-ai 自定义 provider 生效；请确认上游模型真的支持图片。'}
+          </div>
+        </div>
+        <button type="button" className="sandrone-setting-action" onClick={() => void load()} disabled={state.status === 'loading' || state.status === 'saving'}>刷新</button>
+      </div>
+      {state.status === 'ready' && state.rows.length === 0 && <div className="sandrone-image-empty">请先在“模型”中添加自定义 provider 和模型。</div>}
+      {state.rows.map(row => {
+        const enabled = row.input.includes('image')
+        return (
+          <div className="sandrone-setting-row sandrone-image-model-row" key={`${row.route}:${row.modelId}:${row.path.join('.')}`}>
+            <div className="sandrone-setting-copy">
+              <div className="sandrone-setting-label">{row.modelName}</div>
+              <div className="sandrone-setting-hint">{row.route} · {enabled ? '文本 + 图片' : '仅文本'}</div>
+            </div>
+            <button type="button" role="switch" aria-checked={enabled} className={`sandrone-setting-switch${enabled ? ' is-on' : ''}`} disabled={state.status === 'saving'} onClick={() => void toggle(row, !enabled)}>
+              <span className="sandrone-setting-knob" aria-hidden="true" />
+            </button>
+          </div>
+        )
+      })}
+      <div className="sandrone-image-capability-note">DeepSeek 官方 provider（llm-deepseek）当前为文本专用，不能通过开关强行开启图片。</div>
     </section>
   )
 }
@@ -889,6 +1276,15 @@ export function apply(ctx) {
     id: 'sandrone-buddy',
     order: 90,
   }, BuddyOverlay))
+  ctx.inject(['connection'], (connection) => {
+    ctx.effect(installProviderImageFields(connection), 'sandrone-ui: provider image capability fields')
+    ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
+      name: 'conversation.input.left',
+      id: 'sandrone-image-attach',
+      order: -100,
+      inject: (sessionId) => ({ connection, sessionId }),
+    }, SandroneImageAttach))
+  })
   // Own model seat: registering through the modelDirectories service scope
   // guarantees our entry lands after ui-model-selection's. The shipped entry
   // sits at priority 0; shadowing needs a DIFFERENT priority and the lowest
@@ -917,7 +1313,7 @@ export function apply(ctx) {
     id: 'sandrone-other',
     order: 100,
     label: () => '其他',
-  }, GpuAccelerationSection))
+  }, OtherSettingsSection))
   installSettingsChrome(ctx)
   installNativeDirectoryFlow(ctx)
 }
