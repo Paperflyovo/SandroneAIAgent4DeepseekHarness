@@ -41,6 +41,24 @@ test('host plugin removes unavailable escalation fields for full-access sessions
   assert.match(source, /justification/)
 })
 
+test('settings styles use a reversible semantic panel boundary', async () => {
+  const [component, stylesheet] = await Promise.all([
+    readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
+    readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
+  ])
+  assert.match(component, /mark\(panel,\s*['"]data-sandrone-settings-panel['"]\)/)
+  assert.match(component, /markedElements\.push\(\[element, attribute\]\)/)
+  assert.match(component, /element\.removeAttribute\(attribute\)/)
+  assert.match(component, /className=['"]sandrone-settings-search-input['"]/)
+  assert.match(component, /data-sandrone-settings-control/)
+  assert.match(component, /data-sandrone-settings-nav-cell/)
+  assert.doesNotMatch(component, /cell\.style\.display/)
+  assert.match(stylesheet, /\[data-sandrone-settings-panel\]/)
+  assert.match(stylesheet, /input\[data-sandrone-settings-control\]/)
+  assert.match(stylesheet, /\[data-sandrone-settings-nav-cell\]\[data-sandrone-filtered\]/)
+  assert.doesNotMatch(stylesheet, /VOzbGW_panel|VOzbGW_overlay|VOzbGW_mask|VOzbGW_close|VOzbGW_navTitle|VOzbGW_content|VOzbGW_options|me01iq_action/)
+})
+
 test('built client bundle self-registers and stylesheet ownership is reversible', async () => {
   const bundle = await readFile(join(root, 'packages/sandrone-ui/lib/client.js'), 'utf8')
   assert.match(bundle, /__ModuleLoader__\.load\(\{\s*id:\s*['"]@sandrone\/harness-ui['"]/)
@@ -48,6 +66,21 @@ test('built client bundle self-registers and stylesheet ownership is reversible'
   assert.match(bundle, /ctx\.slots\.register\s*\(/)
   assert.match(bundle, /data-plugin-css|dataset\.pluginCss/)
   assert.match(bundle, /removeChild|\.remove\(\)/)
+})
+
+test('UI build and sync verification share a complete source fingerprint', async () => {
+  const [buildScript, verifyScript, fingerprintScript] = await Promise.all([
+    readFile(join(root, 'scripts/build-ui.mjs'), 'utf8'),
+    readFile(join(root, 'scripts/verify-ui-sync.mjs'), 'utf8'),
+    readFile(join(root, 'scripts/ui-source-fingerprint.mjs'), 'utf8'),
+  ])
+  assert.match(buildScript, /fingerprintUiSources\(packageRoot\)/)
+  assert.match(buildScript, /sandrone-ui-source-sha256:/)
+  assert.match(verifyScript, /fingerprintUiSources\(packageRoot\)/)
+  assert.match(verifyScript, /sandrone-ui-source-sha256:\(\[a-f0-9\]\{64\}\)/)
+  for (const input of ['client.jsx', 'client.css', 'index.js', 'header-bg.png', 'header-bg-dark.png']) {
+    assert.match(fingerprintScript, new RegExp(input.replace('.', '\\.')))
+  }
 })
 
 test('UI build script inserts CSS through an effect-owned disposer at a stable marker', async () => {

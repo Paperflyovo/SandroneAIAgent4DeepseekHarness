@@ -2,11 +2,12 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
-
+import { fingerprintUiSources } from './ui-source-fingerprint.mjs'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const packageRoot = join(root, 'packages', 'sandrone-ui')
 const output = join(packageRoot, 'lib')
 const packageId = '@sandrone/harness-ui'
+const sourceFingerprint = await fingerprintUiSources(packageRoot)
 const headerImages = {
   light: `data:image/png;base64,${(await readFile(join(packageRoot, 'src', 'assets', 'header-bg.png'))).toString('base64')}`,
   dark: `data:image/png;base64,${(await readFile(join(packageRoot, 'src', 'assets', 'header-bg-dark.png'))).toString('base64')}`,
@@ -58,7 +59,7 @@ await build({
     },
   }],
   banner: {
-    js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(packageId)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;`,
+    js: `/* sandrone-ui-source-sha256:${sourceFingerprint} */\nwindow.__ModuleLoader__.load({ id: ${JSON.stringify(packageId)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;`,
   },
   footer: { js: 'return module.exports; } });' },
 })

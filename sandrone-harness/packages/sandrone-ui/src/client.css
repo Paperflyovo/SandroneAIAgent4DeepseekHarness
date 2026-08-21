@@ -540,21 +540,21 @@ select {
 
 /* Modal styling applies only to compact dialogs — never to the full-page
    settings panel (which is also [role=dialog] and must keep its own shell). */
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) {
   border: 1px solid var(--sandrone-line) !important;
   border-radius: 14px !important;
   background: var(--sandrone-paper-raised) !important;
   box-shadow: var(--sandrone-shadow-deep) !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) h2 {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) h2 {
   color: var(--sandrone-ink-strong) !important;
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
   font-weight: 500 !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) button[data-variant="primary"],
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) button[class*="primary"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) button[data-variant="primary"],
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) button[class*="primary"] {
   border-radius: 999px !important;
   background: var(--sandrone-ink-strong) !important;
 }
@@ -1304,7 +1304,7 @@ select {
   padding: 0 8px !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) {
   width: min(420px, calc(100vw - 40px)) !important;
   max-width: calc(100vw - 40px) !important;
   padding: 25px !important;
@@ -1315,14 +1315,14 @@ select {
   color: var(--sandrone-ink) !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="content"],
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="body"],
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="editor"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="content"],
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="body"],
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="editor"] {
   width: 100% !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) h2,
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="title"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) h2,
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="title"] {
   margin: 0 0 7px !important;
   color: var(--sandrone-ink-strong) !important;
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
@@ -1331,8 +1331,8 @@ select {
   letter-spacing: -.02em !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) p,
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="description"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) p,
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="description"] {
   margin: 0 0 18px !important;
   color: var(--sandrone-muted) !important;
   font-size: 12px !important;
@@ -1347,7 +1347,7 @@ select {
   font-weight: 650 !important;
 }
 
-[data-sandrone-dialog] input:not([type="checkbox"]):not([type="radio"]) {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) input:not([type="checkbox"]):not([type="radio"]) {
   box-sizing: border-box !important;
   width: 100% !important;
   height: 34px !important;
@@ -1359,21 +1359,21 @@ select {
   font-size: 12px !important;
 }
 
-[data-sandrone-dialog] input:not([type="checkbox"]):not([type="radio"]):focus {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) input:not([type="checkbox"]):not([type="radio"]):focus {
   border-color: var(--sandrone-accent) !important;
   outline: none !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="editorActions"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="editorActions"] {
   display: flex !important;
   justify-content: flex-end !important;
   gap: 8px !important;
   margin-top: 12px !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"],
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="secondaryButton"],
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="primaryButton"] {
   min-width: 76px !important;
   min-height: 36px !important;
   padding: 8px 14px !important;
@@ -1382,26 +1382,26 @@ select {
   font-size: 12px !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="secondaryButton"] {
   background: transparent !important;
   color: var(--sandrone-ink) !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"]:hover {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="secondaryButton"]:hover {
   background: var(--sandrone-paper-soft) !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"] {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="primaryButton"] {
   border-color: var(--sandrone-ink-strong) !important;
   background: var(--sandrone-ink-strong) !important;
   color: var(--sandrone-paper-raised) !important;
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"]:disabled {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="primaryButton"]:disabled {
   opacity: .42 !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) {
   box-sizing: border-box !important;
   width: min(420px, calc(100vw - 40px)) !important;
   max-width: calc(100vw - 40px) !important;
@@ -1413,14 +1413,14 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) {
   color: var(--sandrone-ink) !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) > [class*="content"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) > [class*="content"] {
   box-sizing: border-box !important;
   width: 100% !important;
   padding: 0 !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) h2,
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="title"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) h2,
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="title"] {
   margin: 0 0 7px !important;
   color: var(--sandrone-ink-strong) !important;
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
@@ -1429,15 +1429,15 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   letter-spacing: -.02em !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) p,
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="description"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) p,
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="description"] {
   margin: 0 0 18px !important;
   color: var(--sandrone-muted) !important;
   font-size: 12px !important;
   line-height: 1.55 !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="fieldLabel"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="fieldLabel"] {
   display: block !important;
   margin-bottom: 6px !important;
   color: var(--sandrone-muted) !important;
@@ -1445,7 +1445,7 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   font-weight: 650 !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) input {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) input {
   box-sizing: border-box !important;
   width: 100% !important;
   height: 34px !important;
@@ -1457,15 +1457,15 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) in
   font-size: 12px !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="editorActions"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="editorActions"] {
   display: flex !important;
   justify-content: flex-end !important;
   gap: 8px !important;
   margin-top: 12px !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="secondaryButton"],
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="primaryButton"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="secondaryButton"],
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="primaryButton"] {
   min-width: 76px !important;
   min-height: 36px !important;
   padding: 8px 14px !important;
@@ -1474,12 +1474,12 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   font-size: 12px !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="secondaryButton"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="secondaryButton"] {
   background: transparent !important;
   color: var(--sandrone-ink) !important;
 }
 
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="primaryButton"] {
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="primaryButton"] {
   border-color: var(--sandrone-ink-strong) !important;
   background: var(--sandrone-ink-strong) !important;
   color: var(--sandrone-paper-raised) !important;
@@ -1488,7 +1488,7 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
 /* Settings as a standalone page below the 38px titlebar, not a floating card:
    the panel fills its overlay (which starts at the titlebar edge), drops the
    border/radius/shadow, and keeps the soft-paper left navigation. */
-body [role="dialog"][class*="VOzbGW_panel"] {
+body [role="dialog"][data-sandrone-settings-panel] {
   box-sizing: border-box !important;
   width: 100% !important;
   max-width: none !important;
@@ -1502,7 +1502,7 @@ body [role="dialog"][class*="VOzbGW_panel"] {
   color: var(--sandrone-ink) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] > nav {
+body [role="dialog"][data-sandrone-settings-panel] > nav {
   box-sizing: border-box !important;
   width: 220px !important;
   flex: 0 0 220px !important;
@@ -1511,34 +1511,34 @@ body [role="dialog"][class*="VOzbGW_panel"] > nav {
   background: var(--sandrone-paper-soft) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {
+body [role="dialog"][data-sandrone-settings-panel] > [class*="content"] {
   min-width: 0 !important;
 }
 
 /* Provider editor cards must size to their own content; a fixed-height card
    lets the model catalog overflow into the sibling custom-provider card,
    which overlaps it. */
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_editor "]),
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowCard"], [class*="_rowCard "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editor"], [class*="_editor "]),
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowCard"], [class*="_rowCard "]) {
   height: auto !important;
   max-height: none !important;
   overflow: hidden !important;
   flex: 0 0 auto !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelCatalog"], [class*="_modelCatalog "]),
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelEntry"], [class*="_modelEntry "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelCatalog"], [class*="_modelCatalog "]),
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelEntry"], [class*="_modelEntry "]) {
   min-width: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class*="_editorHeader "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"], [class*="_editorHeader "]) {
   align-items: center !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
 }
 
 @media (max-width: 760px) {
-  body [role="dialog"][class*="VOzbGW_panel"] {
+  body [role="dialog"][data-sandrone-settings-panel] {
     width: calc(100vw - 24px) !important;
     max-width: calc(100vw - 24px) !important;
     height: calc(100vh - 24px) !important;
@@ -1546,7 +1546,7 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
     flex-direction: column !important;
   }
 
-  body [role="dialog"][class*="VOzbGW_panel"] > nav {
+  body [role="dialog"][data-sandrone-settings-panel] > nav {
     width: 100% !important;
     flex: 0 0 auto !important;
     padding: 12px !important;
@@ -1554,7 +1554,7 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
     border-bottom: 1px solid var(--sandrone-line) !important;
   }
 
-  body [role="dialog"][class*="VOzbGW_panel"] [class*="navList"] {
+  body [role="dialog"][data-sandrone-settings-panel] [class*="navList"] {
     width: 100% !important;
     flex-direction: row !important;
     gap: 4px !important;
@@ -1562,13 +1562,13 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
     padding-bottom: 4px !important;
   }
 
-  body [role="dialog"][class*="VOzbGW_panel"] [class*="navCell"] {
+  body [role="dialog"][data-sandrone-settings-panel] [class*="navCell"] {
     width: auto !important;
     min-width: 108px !important;
     flex: 0 0 auto !important;
   }
 
-  body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {
+  body [role="dialog"][data-sandrone-settings-panel] > [class*="content"] {
     width: 100% !important;
     min-height: 0 !important;
   }
@@ -1675,26 +1675,28 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   }
 }
 
-/* Settings as a standalone page instead of a floating dialog, mirroring
-   SandroneCode: the official settings overlay fills the window below the
-   38px titlebar and drops the dimming mask. Class names track the pinned
-   @deepseek-ai/dsh-client-ui-settings-general bundle (VOzbGW_*). */
-[class*="VOzbGW_overlay"] {
+/* Settings as a standalone page instead of a floating dialog. Stable Sandrone
+   markers identify the official settings structure after it mounts. */
+[data-sandrone-settings-overlay] {
   inset: 38px 0 0 !important;
   align-items: stretch !important;
 }
 
-[class*="VOzbGW_mask"] {
+[data-sandrone-settings-mask] {
   display: none !important;
 }
 
 /* The settings page keeps no close button and no redundant "设置" nav title:
    a back-to-workspace row and a section search replace the title. */
-[class*="VOzbGW_close"] {
+[data-sandrone-settings-close] {
   display: none !important;
 }
 
-[class*="VOzbGW_navTitle"] {
+[data-sandrone-settings-nav-title] {
+  display: none !important;
+}
+
+[data-sandrone-settings-nav-cell][data-sandrone-filtered] {
   display: none !important;
 }
 
@@ -1740,9 +1742,14 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   gap: 8px;
   height: 30px;
   padding: 0 12px;
-  border: none;
-  background: transparent;
+  border: 1px solid var(--sandrone-line);
+  border-radius: 999px;
+  background: var(--sandrone-paper-raised);
   cursor: text;
+}
+
+.sandrone-settings-search:focus-within {
+  border-color: var(--sandrone-accent);
 }
 
 .sandrone-settings-search svg {
@@ -1756,43 +1763,20 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   stroke-linejoin: round;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input {
-  min-width: 0;
-  flex: 1;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  height: auto !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  outline: none !important;
-  background: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  color: var(--sandrone-ink-strong);
-  font-size: 12px;
-}
-
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input:focus {
-  border: none !important;
-  box-shadow: none !important;
-}
-
 .sandrone-settings-search input::placeholder {
   color: var(--sandrone-muted);
 }
 
-/* The official "打开配置文件" header action targets a provider document that
-   does not exist in this desktop distribution; hide it (class tracks the
-   pinned dsh-client-ui-settings-general bundle). */
-[class*="me01iq_action"] {
+/* The official settings header action targets a provider document that does
+   not exist in this desktop distribution. */
+[data-sandrone-settings-actions] {
   display: none !important;
 }
 
 /* Sandrone "其他" settings section: one paper card with a toggle switch.
    Scoped and hardened with !important because the official settings panel
    stretches generic section children/buttons to fill its flex containers. */
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-other {
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-other {
   display: flex !important;
   flex-direction: column !important;
   gap: 12px !important;
@@ -1802,7 +1786,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-other {
   height: auto !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-row {
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-row {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -1835,7 +1819,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-row {
   line-height: 18px;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-switch {
   position: relative !important;
   width: 40px !important;
   min-width: 40px !important;
@@ -1877,7 +1861,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {
   transform: translateX(18px);
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action {
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action {
   box-sizing: border-box !important;
   width: auto !important;
   min-width: 92px !important;
@@ -1898,12 +1882,12 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action {
   transition: border-color 140ms var(--sandrone-ease), background 140ms var(--sandrone-ease);
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:hover:not(:disabled) {
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action:hover:not(:disabled) {
   border-color: var(--sandrone-accent) !important;
   background: var(--sandrone-accent-soft) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:disabled {
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action:disabled {
   opacity: .58;
   cursor: default;
 }
@@ -1947,7 +1931,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:disabled {
 }
 
 @media (max-width: 720px) {
-  body [role="dialog"][class*="VOzbGW_panel"] .sandrone-update-row {
+  body [role="dialog"][data-sandrone-settings-panel] .sandrone-update-row {
     align-items: flex-start !important;
     flex-direction: column !important;
   }
@@ -1962,7 +1946,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:disabled {
    ============================================================ */
 
 /* Section shell: max width, natural column flow, comfortable gaps. */
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_section"], [class*="_section "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_section"], [class*="_section "]) {
   box-sizing: border-box !important;
   width: 100% !important;
   max-width: 760px !important;
@@ -1972,15 +1956,15 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_section"], [class*="_s
   padding: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_content"], [class*="_content "]):not([class*="VOzbGW_content"]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_content"], [class*="_content "]):not([data-sandrone-settings-content]) {
   box-sizing: border-box !important;
   padding: 18px 24px 28px !important;
   overflow-y: auto !important;
 }
 
 /* Section titles, intros, notices. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_title"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_heading"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_title"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_heading"] {
   color: var(--sandrone-ink-strong) !important;
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
   font-size: 17px !important;
@@ -1990,14 +1974,14 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_heading"] {
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_intro"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_intro"] {
   color: var(--sandrone-muted) !important;
   font-size: 12.5px !important;
   line-height: 20px !important;
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_notice"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_notice"] {
   color: var(--sandrone-muted) !important;
   font-size: 12px !important;
   line-height: 18px !important;
@@ -2005,8 +1989,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_notice"] {
 }
 
 /* Provider / plugin cards. */
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowCard"], [class*="_rowCard "]),
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_editor "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowCard"], [class*="_rowCard "]),
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editor"], [class*="_editor "]) {
   box-sizing: border-box !important;
   width: 100% !important;
   height: auto !important;
@@ -2022,8 +2006,8 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_ed
   overflow: hidden !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowHead"], [class*="_rowHead "]),
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class*="_editorHeader "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowHead"], [class*="_rowHead "]),
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"], [class*="_editorHeader "]) {
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -2033,15 +2017,15 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   width: 100% !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_rowName"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorTitle"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_rowName"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_editorTitle"] {
   color: var(--sandrone-ink-strong) !important;
   font-size: 14px !important;
   font-weight: 600 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_rowTag"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_tag"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_rowTag"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_tag"] {
   border: 1px solid var(--sandrone-line) !important;
   border-radius: 5px !important;
   padding: 1px 7px !important;
@@ -2050,8 +2034,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_tag"] {
 }
 
 /* Fields: label above control, full width. */
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_field"], [class*="_field "]),
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelField"], [class*="_modelField "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_field"], [class*="_field "]),
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelField"], [class*="_modelField "]) {
   box-sizing: border-box !important;
   display: flex !important;
   flex-direction: column !important;
@@ -2061,8 +2045,8 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelField"], [class*=
   min-width: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_fieldLabel"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelFieldLabel"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_fieldLabel"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelFieldLabel"] {
   display: block !important;
   margin: 0 !important;
   color: var(--sandrone-muted) !important;
@@ -2071,9 +2055,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelFieldLabel"] {
   line-height: 16px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"]),
-body [role="dialog"][class*="VOzbGW_panel"] select,
-body [role="dialog"][class*="VOzbGW_panel"] textarea {
+body [role="dialog"][data-sandrone-settings-panel] input[data-sandrone-settings-control],
+body [role="dialog"][data-sandrone-settings-panel] select[data-sandrone-settings-control] {
   box-sizing: border-box !important;
   width: 100% !important;
   height: 34px !important;
@@ -2088,20 +2071,57 @@ body [role="dialog"][class*="VOzbGW_panel"] textarea {
   font-size: 13px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"]):focus,
-body [role="dialog"][class*="VOzbGW_panel"] select:focus,
-body [role="dialog"][class*="VOzbGW_panel"] textarea:focus {
+body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-height: 72px !important;
+  padding: 8px 11px !important;
+  resize: vertical;
+  border: 1px solid var(--sandrone-line-strong) !important;
+  border-radius: 8px !important;
+  outline: none !important;
+  background: var(--sandrone-paper) !important;
+  color: var(--sandrone-ink-strong) !important;
+  font: inherit !important;
+  font-size: 13px !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] input[data-sandrone-settings-control]:focus,
+body [role="dialog"][data-sandrone-settings-panel] select[data-sandrone-settings-control]:focus,
+body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control]:focus {
   border-color: var(--sandrone-accent) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"])::placeholder,
-body [role="dialog"][class*="VOzbGW_panel"] textarea::placeholder {
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-control]::placeholder,
+body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control]::placeholder {
   color: var(--sandrone-muted) !important;
 }
 
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input,
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input:hover,
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input:focus,
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input:focus-visible {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  flex: 1 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: var(--sandrone-ink-strong) !important;
+  font-size: 12px !important;
+}
+
 /* Model catalog rows: two text inputs + actions in one line. */
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_modelRow "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelRow"], [class*="_modelRow "]) {
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -2109,12 +2129,12 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_
   width: 100% !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_modelRow "]) input {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelRow"], [class*="_modelRow "]) input {
   flex: 1 1 0 !important;
   min-width: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*="_iconButton "]) {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_iconButton"], [class*="_iconButton "]) {
   display: inline-flex !important;
   width: 28px !important;
   height: 28px !important;
@@ -2129,12 +2149,12 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*=
   cursor: pointer !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*="_iconButton "]):hover {
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_iconButton"], [class*="_iconButton "]):hover {
   background: var(--sandrone-paper-soft) !important;
   color: var(--sandrone-ink-strong) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelAdvanced"] {
   box-sizing: border-box !important;
   display: flex !important;
   flex-wrap: wrap !important;
@@ -2143,13 +2163,13 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] {
   padding-top: 2px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] [class*="_modelField"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelAdvanced"] [class*="_modelField"] {
   flex: 1 1 200px !important;
 }
 
 /* Model list actions (fetch / add / reset). */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelListHead"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogHeading"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelListHead"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelCatalogHeading"] {
   box-sizing: border-box !important;
   display: flex !important;
   align-items: center !important;
@@ -2159,19 +2179,19 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogHeading"] {
   width: 100% !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogTitle"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelCatalogTitle"] {
   color: var(--sandrone-ink-strong) !important;
   font-size: 13px !important;
   font-weight: 600 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogMeta"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelCatalogMeta"] {
   color: var(--sandrone-muted) !important;
   font-size: 11px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_linkButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_linkButton"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addModelButton"] {
   box-sizing: border-box !important;
   min-height: 32px !important;
   padding: 0 12px !important;
@@ -2184,12 +2204,12 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"] {
   cursor: pointer !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_linkButton"]:hover,
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"]:hover {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_linkButton"]:hover,
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addModelButton"]:hover {
   background: var(--sandrone-accent-soft) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelEmpty"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelEmpty"] {
   color: var(--sandrone-muted) !important;
   font-size: 12px !important;
   line-height: 18px !important;
@@ -2197,7 +2217,7 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelEmpty"] {
 }
 
 /* Editor footers and action buttons. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorFooter"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_editorFooter"] {
   box-sizing: border-box !important;
   display: flex !important;
   justify-content: flex-end !important;
@@ -2207,9 +2227,9 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorFooter"] {
   padding-top: 4px !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"] {
   box-sizing: border-box !important;
   min-height: 36px !important;
   padding: 0 16px !important;
@@ -2219,60 +2239,59 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {
   cursor: pointer !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"],
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"],
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"] {
   border: 1px solid var(--sandrone-ink-strong) !important;
   background: var(--sandrone-ink-strong) !important;
   color: var(--sandrone-paper-raised) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"]:hover:not(:disabled),
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"]:hover:not(:disabled) {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"]:hover:not(:disabled),
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"]:hover:not(:disabled) {
   background: var(--sandrone-red) !important;
   border-color: var(--sandrone-red) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"] {
   border: 1px solid var(--sandrone-line-strong) !important;
   background: transparent !important;
   color: var(--sandrone-ink) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"]:hover:not(:disabled) {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"]:hover:not(:disabled) {
   background: var(--sandrone-paper-soft) !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"]:disabled,
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"]:disabled {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"]:disabled,
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"]:disabled {
   opacity: .45 !important;
   cursor: default !important;
 }
 
 /* Hints, errors, saved notices. */
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_hint"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_hint"] {
   color: var(--sandrone-muted) !important;
   font-size: 11.5px !important;
   line-height: 18px !important;
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_error"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_error"] {
   color: var(--sandrone-red) !important;
   font-size: 12px !important;
   line-height: 18px !important;
   margin: 0 !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_savedNotice"] {
+body [role="dialog"][data-sandrone-settings-panel] [class*="_savedNotice"] {
   color: var(--sandrone-red) !important;
   font-size: 12px !important;
   line-height: 18px !important;
   margin: 0 !important;
 }
 
-/* Candidate checkboxes in the fetch modal and any list rows keep native size. */
-body [role="dialog"] [class*="candidate"] input[type="checkbox"],
-body [role="dialog"] [class*="row"] input[type="checkbox"] {
+/* Candidate checkboxes opt in to Sandrone's compact control treatment. */
+body [role="dialog"] [data-sandrone-settings-candidate-checkbox] {
   width: 14px !important;
   height: 14px !important;
   min-width: 14px !important;
@@ -2506,26 +2525,26 @@ body [role="dialog"] [class*="row"] input[type="checkbox"] {
   max-width: calc(100vw - 24px);
 }
 
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) {
   max-height: calc(100vh - 64px) !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] > [class*="VOzbGW_content"] {
+body [role="dialog"][data-sandrone-settings-panel] > [data-sandrone-settings-content] {
   min-width: 0 !important;
   min-height: 0 !important;
   overflow: hidden !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] [class*="VOzbGW_options"] {
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-options] {
   min-width: 0 !important;
   min-height: 0 !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :where(
+body [role="dialog"][data-sandrone-settings-panel] :where(
   [class*="_section"],
   [class*="_rowCard"],
   [class*="_editor"],
@@ -2539,7 +2558,7 @@ body [role="dialog"][class*="VOzbGW_panel"] :where(
   max-width: 100%;
 }
 
-body [role="dialog"][class*="VOzbGW_panel"] :where(
+body [role="dialog"][data-sandrone-settings-panel] :where(
   [class*="_rowName"],
   [class*="_editorTitle"],
   [class*="_editorRoute"],
@@ -2557,11 +2576,11 @@ body [role="dialog"][class*="VOzbGW_panel"] :where(
 }
 
 @media (max-width: 760px) {
-  [class*="VOzbGW_overlay"] {
+  [data-sandrone-settings-overlay] {
     inset: 50px 0 0 !important;
   }
 
-  body [role="dialog"][class*="VOzbGW_panel"] {
+  body [role="dialog"][data-sandrone-settings-panel] {
     width: 100% !important;
     max-width: none !important;
     height: 100% !important;

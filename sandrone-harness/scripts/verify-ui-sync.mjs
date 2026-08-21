@@ -1,16 +1,16 @@
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { fingerprintUiSources } from './ui-source-fingerprint.mjs'
 
 const root = resolve(import.meta.dirname, '..')
-const source = await readFile(join(root, 'packages', 'sandrone-ui', 'src', 'client.css'), 'utf8')
-const bundle = await readFile(join(root, 'packages', 'sandrone-ui', 'lib', 'client.js'), 'utf8')
-const markers = [
-  '.sandrone-settings-search',
-  '.sandrone-image-attach-button',
-  'sandrone-image-capability',
-]
-for (const marker of markers) {
-  if (!source.includes(marker)) throw new Error(`source marker missing: ${marker}`)
-  if (!bundle.includes(marker)) throw new Error(`compiled UI marker missing: ${marker}`)
+const packageRoot = join(root, 'packages', 'sandrone-ui')
+const bundle = await readFile(join(packageRoot, 'lib', 'client.js'), 'utf8')
+const expectedFingerprint = await fingerprintUiSources(packageRoot)
+const fingerprintMatch = bundle.match(/sandrone-ui-source-sha256:([a-f0-9]{64})/)
+
+if (!fingerprintMatch) throw new Error('compiled UI fingerprint missing; rebuild with pnpm run build:ui')
+if (fingerprintMatch[1] !== expectedFingerprint) {
+  throw new Error(`compiled UI is stale: expected ${expectedFingerprint}, found ${fingerprintMatch[1]}`)
 }
-console.log(`[verify:ui-sync] ${markers.length} markers present in source and bundle`)
+
+console.log(`[verify:ui-sync] source fingerprint ${expectedFingerprint} matches bundle`)

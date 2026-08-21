@@ -297,7 +297,7 @@ function usePageNavigation() {
         if (target.settingsOpen && !state.settingsOpen) {
           clickOfficial('[data-sandrone-settings] button')
         } else if (!target.settingsOpen && state.settingsOpen) {
-          clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]')
+          clickOfficial('[data-sandrone-settings-close]')
         }
         if (target.sessionTitle && state.sessionTitle !== target.sessionTitle) {
           clickSessionRow(target.sessionTitle)
@@ -820,23 +820,27 @@ function SettingsChrome() {
 
   useEffect(() => {
     const needle = query.trim().toLowerCase()
-    const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
+    const panel = document.querySelector('[data-sandrone-settings-panel]')
     if (!panel) return
-    const cells = [...panel.querySelectorAll('[class*="navCell"]')]
+    const cells = [...panel.querySelectorAll('[data-sandrone-settings-nav-cell]')]
     for (const cell of cells) {
       const label = (cell.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase()
-      cell.style.display = needle && !label.includes(needle) ? 'none' : ''
+      if (needle && !label.includes(needle)) cell.setAttribute('data-sandrone-filtered', 'true')
+      else cell.removeAttribute('data-sandrone-filtered')
+    }
+    return () => {
+      for (const cell of cells) cell.removeAttribute('data-sandrone-filtered')
     }
   }, [query])
 
   const closeSettings = () => {
-    clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]')
+    clickOfficial('[data-sandrone-settings-close]')
   }
 
   const submitSearch = event => {
     if (event.key !== 'Enter') return
-    const panel = document.querySelector('[role="dialog"][aria-modal="true"]')
-    const cell = panel && [...panel.querySelectorAll('[class*="navCell"]')].find(node => node.style.display !== 'none')
+    const panel = document.querySelector('[data-sandrone-settings-panel]')
+    const cell = panel?.querySelector('[data-sandrone-settings-nav-cell]:not([data-sandrone-filtered])')
     if (cell instanceof HTMLElement) cell.click()
   }
 
@@ -848,7 +852,7 @@ function SettingsChrome() {
       </button>
       <label className="sandrone-settings-search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-        <input type="text" placeholder="搜索设置..." value={query} onChange={event => setQuery(event.target.value)} onKeyDown={submitSearch} />
+        <input className="sandrone-settings-search-input" type="text" placeholder="搜索设置..." value={query} onChange={event => setQuery(event.target.value)} onKeyDown={submitSearch} />
       </label>
     </div>
   )
@@ -904,16 +908,55 @@ function installNativeDirectoryFlow(ctx) {
 function installSettingsChrome(ctx) {
   return ctx.effect(() => {
     let container = null
+    let markedElements = []
     let root = null
+    const clearMarkers = () => {
+      for (const [element, attribute] of markedElements) element.removeAttribute(attribute)
+      markedElements = []
+    }
+    const mark = (element, attribute) => {
+      if (!(element instanceof Element) || element.hasAttribute(attribute)) return
+      element.setAttribute(attribute, 'true')
+      markedElements.push([element, attribute])
+    }
+    const markSettingsDescendants = (panel, nav) => {
+      const navList = nav.lastElementChild
+      mark(navList, 'data-sandrone-settings-nav-list')
+      navList?.querySelectorAll(':scope > button').forEach(element => mark(element, 'data-sandrone-settings-nav-cell'))
+      panel?.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]), select, textarea').forEach(element => {
+        if (!element.classList.contains('sandrone-settings-search-input')) mark(element, 'data-sandrone-settings-control')
+      })
+      panel?.querySelectorAll('[class*="candidate"] input[type="checkbox"]').forEach(element => {
+        mark(element, 'data-sandrone-settings-candidate-checkbox')
+      })
+    }
     const mount = () => {
-      const nav = document.querySelector('[role="dialog"][aria-modal="true"] > nav')
-      if (!nav || (container && container.parentNode === nav)) return
+      const nav = document.querySelector('[role="presentation"] > [role="dialog"][aria-modal="true"] > nav')
+      if (!nav) return
+      const panel = nav.parentElement
+      if (container && container.parentNode === nav) {
+        markSettingsDescendants(panel, nav)
+        return
+      }
       if (root) {
         root.unmount()
         root = null
         container?.remove()
         container = null
+        clearMarkers()
       }
+      const overlay = panel?.parentElement
+      const content = nav.nextElementSibling
+      const header = content?.firstElementChild
+      mark(panel, 'data-sandrone-settings-panel')
+      mark(overlay, 'data-sandrone-settings-overlay')
+      mark(panel?.previousElementSibling, 'data-sandrone-settings-mask')
+      mark(nav.firstElementChild, 'data-sandrone-settings-nav-title')
+      mark(content, 'data-sandrone-settings-content')
+      mark(header?.firstElementChild, 'data-sandrone-settings-actions')
+      mark(header?.querySelector('button'), 'data-sandrone-settings-close')
+      mark(content?.lastElementChild, 'data-sandrone-settings-options')
+      markSettingsDescendants(panel, nav)
       container = document.createElement('div')
       nav.insertBefore(container, nav.firstChild)
       root = createRoot(container)
@@ -928,6 +971,7 @@ function installSettingsChrome(ctx) {
       root = null
       container?.remove()
       container = null
+      clearMarkers()
     }
   }, 'sandrone-ui: settings chrome')
 }

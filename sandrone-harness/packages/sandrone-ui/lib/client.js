@@ -1,3 +1,4 @@
+/* sandrone-ui-source-sha256:35946912a5e6f68eaa1a5e82bc9f13aa261f27afeb61419ac872bc901eafd7cc */
 window.__ModuleLoader__.load({ id: "@sandrone/harness-ui", factory: (require) => { var module = { exports: {} }; var exports = module.exports;
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -582,21 +583,21 @@ select {\r
 \r
 /* Modal styling applies only to compact dialogs \u2014 never to the full-page\r
    settings panel (which is also [role=dialog] and must keep its own shell). */\r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) {\r
   border: 1px solid var(--sandrone-line) !important;\r
   border-radius: 14px !important;\r
   background: var(--sandrone-paper-raised) !important;\r
   box-shadow: var(--sandrone-shadow-deep) !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) h2 {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) h2 {\r
   color: var(--sandrone-ink-strong) !important;\r
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;\r
   font-weight: 500 !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) button[data-variant="primary"],\r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) button[class*="primary"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) button[data-variant="primary"],\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) button[class*="primary"] {\r
   border-radius: 999px !important;\r
   background: var(--sandrone-ink-strong) !important;\r
 }\r
@@ -1346,7 +1347,7 @@ select {\r
   padding: 0 8px !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) {\r
   width: min(420px, calc(100vw - 40px)) !important;\r
   max-width: calc(100vw - 40px) !important;\r
   padding: 25px !important;\r
@@ -1357,14 +1358,14 @@ select {\r
   color: var(--sandrone-ink) !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="content"],\r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="body"],\r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="editor"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="content"],\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="body"],\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="editor"] {\r
   width: 100% !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) h2,\r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="title"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) h2,\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="title"] {\r
   margin: 0 0 7px !important;\r
   color: var(--sandrone-ink-strong) !important;\r
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;\r
@@ -1373,8 +1374,8 @@ select {\r
   letter-spacing: -.02em !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) p,\r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="description"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) p,\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="description"] {\r
   margin: 0 0 18px !important;\r
   color: var(--sandrone-muted) !important;\r
   font-size: 12px !important;\r
@@ -1389,7 +1390,7 @@ select {\r
   font-weight: 650 !important;\r
 }\r
 \r
-[data-sandrone-dialog] input:not([type="checkbox"]):not([type="radio"]) {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) input:not([type="checkbox"]):not([type="radio"]) {\r
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   height: 34px !important;\r
@@ -1401,21 +1402,21 @@ select {\r
   font-size: 12px !important;\r
 }\r
 \r
-[data-sandrone-dialog] input:not([type="checkbox"]):not([type="radio"]):focus {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) input:not([type="checkbox"]):not([type="radio"]):focus {\r
   border-color: var(--sandrone-accent) !important;\r
   outline: none !important;\r
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="editorActions"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="editorActions"] {\r
   display: flex !important;\r
   justify-content: flex-end !important;\r
   gap: 8px !important;\r
   margin-top: 12px !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"],\r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="secondaryButton"],\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="primaryButton"] {\r
   min-width: 76px !important;\r
   min-height: 36px !important;\r
   padding: 8px 14px !important;\r
@@ -1424,26 +1425,26 @@ select {\r
   font-size: 12px !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="secondaryButton"] {\r
   background: transparent !important;\r
   color: var(--sandrone-ink) !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="secondaryButton"]:hover {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="secondaryButton"]:hover {\r
   background: var(--sandrone-paper-soft) !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"] {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="primaryButton"] {\r
   border-color: var(--sandrone-ink-strong) !important;\r
   background: var(--sandrone-ink-strong) !important;\r
   color: var(--sandrone-paper-raised) !important;\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) [class*="primaryButton"]:disabled {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) [class*="primaryButton"]:disabled {\r
   opacity: .42 !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) {\r
   box-sizing: border-box !important;\r
   width: min(420px, calc(100vw - 40px)) !important;\r
   max-width: calc(100vw - 40px) !important;\r
@@ -1455,14 +1456,14 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) {\
   color: var(--sandrone-ink) !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) > [class*="content"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) > [class*="content"] {\r
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   padding: 0 !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) h2,\r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="title"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) h2,\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="title"] {\r
   margin: 0 0 7px !important;\r
   color: var(--sandrone-ink-strong) !important;\r
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;\r
@@ -1471,15 +1472,15 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   letter-spacing: -.02em !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) p,\r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="description"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) p,\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="description"] {\r
   margin: 0 0 18px !important;\r
   color: var(--sandrone-muted) !important;\r
   font-size: 12px !important;\r
   line-height: 1.55 !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="fieldLabel"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="fieldLabel"] {\r
   display: block !important;\r
   margin-bottom: 6px !important;\r
   color: var(--sandrone-muted) !important;\r
@@ -1487,7 +1488,7 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   font-weight: 650 !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) input {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) input {\r
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   height: 34px !important;\r
@@ -1499,15 +1500,15 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) in
   font-size: 12px !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="editorActions"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="editorActions"] {\r
   display: flex !important;\r
   justify-content: flex-end !important;\r
   gap: 8px !important;\r
   margin-top: 12px !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="secondaryButton"],\r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="primaryButton"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="secondaryButton"],\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="primaryButton"] {\r
   min-width: 76px !important;\r
   min-height: 36px !important;\r
   padding: 8px 14px !important;\r
@@ -1516,12 +1517,12 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
   font-size: 12px !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="secondaryButton"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="secondaryButton"] {\r
   background: transparent !important;\r
   color: var(--sandrone-ink) !important;\r
 }\r
 \r
-body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [class*="primaryButton"] {\r
+body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="password"]) [class*="primaryButton"] {\r
   border-color: var(--sandrone-ink-strong) !important;\r
   background: var(--sandrone-ink-strong) !important;\r
   color: var(--sandrone-paper-raised) !important;\r
@@ -1530,7 +1531,7 @@ body [role="dialog"]:not([class*="VOzbGW_panel"]):has(input[type="password"]) [c
 /* Settings as a standalone page below the 38px titlebar, not a floating card:\r
    the panel fills its overlay (which starts at the titlebar edge), drops the\r
    border/radius/shadow, and keeps the soft-paper left navigation. */\r
-body [role="dialog"][class*="VOzbGW_panel"] {\r
+body [role="dialog"][data-sandrone-settings-panel] {\r
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   max-width: none !important;\r
@@ -1544,7 +1545,7 @@ body [role="dialog"][class*="VOzbGW_panel"] {\r
   color: var(--sandrone-ink) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] > nav {\r
+body [role="dialog"][data-sandrone-settings-panel] > nav {\r
   box-sizing: border-box !important;\r
   width: 220px !important;\r
   flex: 0 0 220px !important;\r
@@ -1553,34 +1554,34 @@ body [role="dialog"][class*="VOzbGW_panel"] > nav {\r
   background: var(--sandrone-paper-soft) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {\r
+body [role="dialog"][data-sandrone-settings-panel] > [class*="content"] {\r
   min-width: 0 !important;\r
 }\r
 \r
 /* Provider editor cards must size to their own content; a fixed-height card\r
    lets the model catalog overflow into the sibling custom-provider card,\r
    which overlaps it. */\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_editor "]),\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowCard"], [class*="_rowCard "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editor"], [class*="_editor "]),\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowCard"], [class*="_rowCard "]) {\r
   height: auto !important;\r
   max-height: none !important;\r
   overflow: hidden !important;\r
   flex: 0 0 auto !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelCatalog"], [class*="_modelCatalog "]),\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelEntry"], [class*="_modelEntry "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelCatalog"], [class*="_modelCatalog "]),\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelEntry"], [class*="_modelEntry "]) {\r
   min-width: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class*="_editorHeader "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"], [class*="_editorHeader "]) {\r
   align-items: center !important;\r
   flex-wrap: wrap !important;\r
   gap: 8px !important;\r
 }\r
 \r
 @media (max-width: 760px) {\r
-  body [role="dialog"][class*="VOzbGW_panel"] {\r
+  body [role="dialog"][data-sandrone-settings-panel] {\r
     width: calc(100vw - 24px) !important;\r
     max-width: calc(100vw - 24px) !important;\r
     height: calc(100vh - 24px) !important;\r
@@ -1588,7 +1589,7 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
     flex-direction: column !important;\r
   }\r
 \r
-  body [role="dialog"][class*="VOzbGW_panel"] > nav {\r
+  body [role="dialog"][data-sandrone-settings-panel] > nav {\r
     width: 100% !important;\r
     flex: 0 0 auto !important;\r
     padding: 12px !important;\r
@@ -1596,7 +1597,7 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
     border-bottom: 1px solid var(--sandrone-line) !important;\r
   }\r
 \r
-  body [role="dialog"][class*="VOzbGW_panel"] [class*="navList"] {\r
+  body [role="dialog"][data-sandrone-settings-panel] [class*="navList"] {\r
     width: 100% !important;\r
     flex-direction: row !important;\r
     gap: 4px !important;\r
@@ -1604,13 +1605,13 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
     padding-bottom: 4px !important;\r
   }\r
 \r
-  body [role="dialog"][class*="VOzbGW_panel"] [class*="navCell"] {\r
+  body [role="dialog"][data-sandrone-settings-panel] [class*="navCell"] {\r
     width: auto !important;\r
     min-width: 108px !important;\r
     flex: 0 0 auto !important;\r
   }\r
 \r
-  body [role="dialog"][class*="VOzbGW_panel"] > [class*="content"] {\r
+  body [role="dialog"][data-sandrone-settings-panel] > [class*="content"] {\r
     width: 100% !important;\r
     min-height: 0 !important;\r
   }\r
@@ -1717,26 +1718,28 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   }\r
 }\r
 \r
-/* Settings as a standalone page instead of a floating dialog, mirroring\r
-   SandroneCode: the official settings overlay fills the window below the\r
-   38px titlebar and drops the dimming mask. Class names track the pinned\r
-   @deepseek-ai/dsh-client-ui-settings-general bundle (VOzbGW_*). */\r
-[class*="VOzbGW_overlay"] {\r
+/* Settings as a standalone page instead of a floating dialog. Stable Sandrone\r
+   markers identify the official settings structure after it mounts. */\r
+[data-sandrone-settings-overlay] {\r
   inset: 38px 0 0 !important;\r
   align-items: stretch !important;\r
 }\r
 \r
-[class*="VOzbGW_mask"] {\r
+[data-sandrone-settings-mask] {\r
   display: none !important;\r
 }\r
 \r
 /* The settings page keeps no close button and no redundant "\u8BBE\u7F6E" nav title:\r
    a back-to-workspace row and a section search replace the title. */\r
-[class*="VOzbGW_close"] {\r
+[data-sandrone-settings-close] {\r
   display: none !important;\r
 }\r
 \r
-[class*="VOzbGW_navTitle"] {\r
+[data-sandrone-settings-nav-title] {\r
+  display: none !important;\r
+}\r
+\r
+[data-sandrone-settings-nav-cell][data-sandrone-filtered] {\r
   display: none !important;\r
 }\r
 \r
@@ -1782,9 +1785,14 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   gap: 8px;\r
   height: 30px;\r
   padding: 0 12px;\r
-  border: none;\r
-  background: transparent;\r
+  border: 1px solid var(--sandrone-line);\r
+  border-radius: 999px;\r
+  background: var(--sandrone-paper-raised);\r
   cursor: text;\r
+}\r
+\r
+.sandrone-settings-search:focus-within {\r
+  border-color: var(--sandrone-accent);\r
 }\r
 \r
 .sandrone-settings-search svg {\r
@@ -1798,43 +1806,20 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   stroke-linejoin: round;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input {\r
-  min-width: 0;\r
-  flex: 1;\r
-  appearance: none !important;\r
-  -webkit-appearance: none !important;\r
-  height: auto !important;\r
-  padding: 0 !important;\r
-  border: none !important;\r
-  border-radius: 0 !important;\r
-  outline: none !important;\r
-  background: transparent !important;\r
-  background-image: none !important;\r
-  box-shadow: none !important;\r
-  color: var(--sandrone-ink-strong);\r
-  font-size: 12px;\r
-}\r
-\r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input:focus {\r
-  border: none !important;\r
-  box-shadow: none !important;\r
-}\r
-\r
 .sandrone-settings-search input::placeholder {\r
   color: var(--sandrone-muted);\r
 }\r
 \r
-/* The official "\u6253\u5F00\u914D\u7F6E\u6587\u4EF6" header action targets a provider document that\r
-   does not exist in this desktop distribution; hide it (class tracks the\r
-   pinned dsh-client-ui-settings-general bundle). */\r
-[class*="me01iq_action"] {\r
+/* The official settings header action targets a provider document that does\r
+   not exist in this desktop distribution. */\r
+[data-sandrone-settings-actions] {\r
   display: none !important;\r
 }\r
 \r
 /* Sandrone "\u5176\u4ED6" settings section: one paper card with a toggle switch.\r
    Scoped and hardened with !important because the official settings panel\r
    stretches generic section children/buttons to fill its flex containers. */\r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-other {\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-other {\r
   display: flex !important;\r
   flex-direction: column !important;\r
   gap: 12px !important;\r
@@ -1844,7 +1829,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-other {\r
   height: auto !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-row {\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-row {\r
   display: flex !important;\r
   flex-direction: row !important;\r
   align-items: center !important;\r
@@ -1877,7 +1862,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-row {\r
   line-height: 18px;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-switch {\r
   position: relative !important;\r
   width: 40px !important;\r
   min-width: 40px !important;\r
@@ -1919,7 +1904,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-switch {\r
   transform: translateX(18px);\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action {\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action {\r
   box-sizing: border-box !important;\r
   width: auto !important;\r
   min-width: 92px !important;\r
@@ -1940,12 +1925,12 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action {\r
   transition: border-color 140ms var(--sandrone-ease), background 140ms var(--sandrone-ease);\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:hover:not(:disabled) {\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action:hover:not(:disabled) {\r
   border-color: var(--sandrone-accent) !important;\r
   background: var(--sandrone-accent-soft) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:disabled {\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action:disabled {\r
   opacity: .58;\r
   cursor: default;\r
 }\r
@@ -1989,7 +1974,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:disabled {\
 }\r
 \r
 @media (max-width: 720px) {\r
-  body [role="dialog"][class*="VOzbGW_panel"] .sandrone-update-row {\r
+  body [role="dialog"][data-sandrone-settings-panel] .sandrone-update-row {\r
     align-items: flex-start !important;\r
     flex-direction: column !important;\r
   }\r
@@ -2004,7 +1989,7 @@ body [role="dialog"][class*="VOzbGW_panel"] .sandrone-setting-action:disabled {\
    ============================================================ */\r
 \r
 /* Section shell: max width, natural column flow, comfortable gaps. */\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_section"], [class*="_section "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_section"], [class*="_section "]) {\r
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   max-width: 760px !important;\r
@@ -2014,15 +1999,15 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_section"], [class*="_s
   padding: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_content"], [class*="_content "]):not([class*="VOzbGW_content"]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_content"], [class*="_content "]):not([data-sandrone-settings-content]) {\r
   box-sizing: border-box !important;\r
   padding: 18px 24px 28px !important;\r
   overflow-y: auto !important;\r
 }\r
 \r
 /* Section titles, intros, notices. */\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_title"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_heading"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_title"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_heading"] {\r
   color: var(--sandrone-ink-strong) !important;\r
   font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;\r
   font-size: 17px !important;\r
@@ -2032,14 +2017,14 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_heading"] {\r
   margin: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_intro"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_intro"] {\r
   color: var(--sandrone-muted) !important;\r
   font-size: 12.5px !important;\r
   line-height: 20px !important;\r
   margin: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_notice"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_notice"] {\r
   color: var(--sandrone-muted) !important;\r
   font-size: 12px !important;\r
   line-height: 18px !important;\r
@@ -2047,8 +2032,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_notice"] {\r
 }\r
 \r
 /* Provider / plugin cards. */\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowCard"], [class*="_rowCard "]),\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_editor "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowCard"], [class*="_rowCard "]),\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editor"], [class*="_editor "]) {\r
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   height: auto !important;\r
@@ -2064,8 +2049,8 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editor"], [class*="_ed
   overflow: hidden !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_rowHead"], [class*="_rowHead "]),\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class*="_editorHeader "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowHead"], [class*="_rowHead "]),\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"], [class*="_editorHeader "]) {\r
   box-sizing: border-box !important;\r
   display: flex !important;\r
   align-items: center !important;\r
@@ -2075,15 +2060,15 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   width: 100% !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_rowName"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorTitle"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_rowName"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_editorTitle"] {\r
   color: var(--sandrone-ink-strong) !important;\r
   font-size: 14px !important;\r
   font-weight: 600 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_rowTag"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_tag"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_rowTag"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_tag"] {\r
   border: 1px solid var(--sandrone-line) !important;\r
   border-radius: 5px !important;\r
   padding: 1px 7px !important;\r
@@ -2092,8 +2077,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_tag"] {\r
 }\r
 \r
 /* Fields: label above control, full width. */\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_field"], [class*="_field "]),\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelField"], [class*="_modelField "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_field"], [class*="_field "]),\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelField"], [class*="_modelField "]) {\r
   box-sizing: border-box !important;\r
   display: flex !important;\r
   flex-direction: column !important;\r
@@ -2103,8 +2088,8 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelField"], [class*=
   min-width: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_fieldLabel"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelFieldLabel"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_fieldLabel"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelFieldLabel"] {\r
   display: block !important;\r
   margin: 0 !important;\r
   color: var(--sandrone-muted) !important;\r
@@ -2113,9 +2098,8 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelFieldLabel"] {\r
   line-height: 16px !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"]),\r
-body [role="dialog"][class*="VOzbGW_panel"] select,\r
-body [role="dialog"][class*="VOzbGW_panel"] textarea {\r
+body [role="dialog"][data-sandrone-settings-panel] input[data-sandrone-settings-control],\r
+body [role="dialog"][data-sandrone-settings-panel] select[data-sandrone-settings-control] {\r
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   height: 34px !important;\r
@@ -2130,20 +2114,57 @@ body [role="dialog"][class*="VOzbGW_panel"] textarea {\r
   font-size: 13px !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"]):focus,\r
-body [role="dialog"][class*="VOzbGW_panel"] select:focus,\r
-body [role="dialog"][class*="VOzbGW_panel"] textarea:focus {\r
+body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control] {\r
+  box-sizing: border-box !important;\r
+  width: 100% !important;\r
+  min-height: 72px !important;\r
+  padding: 8px 11px !important;\r
+  resize: vertical;\r
+  border: 1px solid var(--sandrone-line-strong) !important;\r
+  border-radius: 8px !important;\r
+  outline: none !important;\r
+  background: var(--sandrone-paper) !important;\r
+  color: var(--sandrone-ink-strong) !important;\r
+  font: inherit !important;\r
+  font-size: 13px !important;\r
+}\r
+\r
+body [role="dialog"][data-sandrone-settings-panel] input[data-sandrone-settings-control]:focus,\r
+body [role="dialog"][data-sandrone-settings-panel] select[data-sandrone-settings-control]:focus,\r
+body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control]:focus {\r
   border-color: var(--sandrone-accent) !important;\r
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] input:not([type="checkbox"]):not([type="radio"])::placeholder,\r
-body [role="dialog"][class*="VOzbGW_panel"] textarea::placeholder {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-control]::placeholder,\r
+body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control]::placeholder {\r
   color: var(--sandrone-muted) !important;\r
 }\r
 \r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input,\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input:hover,\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input:focus,\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input:focus-visible {\r
+  min-width: 0 !important;\r
+  min-height: 0 !important;\r
+  flex: 1 !important;\r
+  appearance: none !important;\r
+  -webkit-appearance: none !important;\r
+  width: auto !important;\r
+  height: auto !important;\r
+  padding: 0 !important;\r
+  border: 0 !important;\r
+  border-radius: 0 !important;\r
+  outline: 0 !important;\r
+  background: transparent !important;\r
+  background-image: none !important;\r
+  box-shadow: none !important;\r
+  color: var(--sandrone-ink-strong) !important;\r
+  font-size: 12px !important;\r
+}\r
+\r
 /* Model catalog rows: two text inputs + actions in one line. */\r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_modelRow "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelRow"], [class*="_modelRow "]) {\r
   box-sizing: border-box !important;\r
   display: flex !important;\r
   align-items: center !important;\r
@@ -2151,12 +2172,12 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_
   width: 100% !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_modelRow"], [class*="_modelRow "]) input {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelRow"], [class*="_modelRow "]) input {\r
   flex: 1 1 0 !important;\r
   min-width: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*="_iconButton "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_iconButton"], [class*="_iconButton "]) {\r
   display: inline-flex !important;\r
   width: 28px !important;\r
   height: 28px !important;\r
@@ -2171,12 +2192,12 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*=
   cursor: pointer !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_iconButton"], [class*="_iconButton "]):hover {\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class$="_iconButton"], [class*="_iconButton "]):hover {\r
   background: var(--sandrone-paper-soft) !important;\r
   color: var(--sandrone-ink-strong) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelAdvanced"] {\r
   box-sizing: border-box !important;\r
   display: flex !important;\r
   flex-wrap: wrap !important;\r
@@ -2185,13 +2206,13 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] {\r
   padding-top: 2px !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelAdvanced"] [class*="_modelField"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelAdvanced"] [class*="_modelField"] {\r
   flex: 1 1 200px !important;\r
 }\r
 \r
 /* Model list actions (fetch / add / reset). */\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelListHead"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogHeading"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelListHead"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelCatalogHeading"] {\r
   box-sizing: border-box !important;\r
   display: flex !important;\r
   align-items: center !important;\r
@@ -2201,19 +2222,19 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogHeading"] {\r
   width: 100% !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogTitle"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelCatalogTitle"] {\r
   color: var(--sandrone-ink-strong) !important;\r
   font-size: 13px !important;\r
   font-weight: 600 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelCatalogMeta"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelCatalogMeta"] {\r
   color: var(--sandrone-muted) !important;\r
   font-size: 11px !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_linkButton"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_linkButton"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addModelButton"] {\r
   box-sizing: border-box !important;\r
   min-height: 32px !important;\r
   padding: 0 12px !important;\r
@@ -2226,12 +2247,12 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"] {\r
   cursor: pointer !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_linkButton"]:hover,\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addModelButton"]:hover {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_linkButton"]:hover,\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addModelButton"]:hover {\r
   background: var(--sandrone-accent-soft) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelEmpty"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_modelEmpty"] {\r
   color: var(--sandrone-muted) !important;\r
   font-size: 12px !important;\r
   line-height: 18px !important;\r
@@ -2239,7 +2260,7 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_modelEmpty"] {\r
 }\r
 \r
 /* Editor footers and action buttons. */\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorFooter"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_editorFooter"] {\r
   box-sizing: border-box !important;\r
   display: flex !important;\r
   justify-content: flex-end !important;\r
@@ -2249,9 +2270,9 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_editorFooter"] {\r
   padding-top: 4px !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"] {\r
   box-sizing: border-box !important;\r
   min-height: 36px !important;\r
   padding: 0 16px !important;\r
@@ -2261,60 +2282,59 @@ body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {\r
   cursor: pointer !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"],\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"],\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"] {\r
   border: 1px solid var(--sandrone-ink-strong) !important;\r
   background: var(--sandrone-ink-strong) !important;\r
   color: var(--sandrone-paper-raised) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"]:hover:not(:disabled),\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_addButton"]:hover:not(:disabled) {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"]:hover:not(:disabled),\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"]:hover:not(:disabled) {\r
   background: var(--sandrone-red) !important;\r
   border-color: var(--sandrone-red) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"] {\r
   border: 1px solid var(--sandrone-line-strong) !important;\r
   background: transparent !important;\r
   color: var(--sandrone-ink) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"]:hover:not(:disabled) {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"]:hover:not(:disabled) {\r
   background: var(--sandrone-paper-soft) !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_primaryButton"]:disabled,\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_secondaryButton"]:disabled {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"]:disabled,\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"]:disabled {\r
   opacity: .45 !important;\r
   cursor: default !important;\r
 }\r
 \r
 /* Hints, errors, saved notices. */\r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_hint"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_hint"] {\r
   color: var(--sandrone-muted) !important;\r
   font-size: 11.5px !important;\r
   line-height: 18px !important;\r
   margin: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_error"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_error"] {\r
   color: var(--sandrone-red) !important;\r
   font-size: 12px !important;\r
   line-height: 18px !important;\r
   margin: 0 !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="_savedNotice"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [class*="_savedNotice"] {\r
   color: var(--sandrone-red) !important;\r
   font-size: 12px !important;\r
   line-height: 18px !important;\r
   margin: 0 !important;\r
 }\r
 \r
-/* Candidate checkboxes in the fetch modal and any list rows keep native size. */\r
-body [role="dialog"] [class*="candidate"] input[type="checkbox"],\r
-body [role="dialog"] [class*="row"] input[type="checkbox"] {\r
+/* Candidate checkboxes opt in to Sandrone's compact control treatment. */\r
+body [role="dialog"] [data-sandrone-settings-candidate-checkbox] {\r
   width: 14px !important;\r
   height: 14px !important;\r
   min-width: 14px !important;\r
@@ -2548,26 +2568,26 @@ body [role="dialog"] [class*="row"] input[type="checkbox"] {\r
   max-width: calc(100vw - 24px);\r
 }\r
 \r
-[data-sandrone-dialog]:not([class*="VOzbGW_panel"]) {\r
+[data-sandrone-dialog]:not([data-sandrone-settings-panel]) {\r
   max-height: calc(100vh - 64px) !important;\r
   overflow-x: hidden !important;\r
   overflow-y: auto !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] > [class*="VOzbGW_content"] {\r
+body [role="dialog"][data-sandrone-settings-panel] > [data-sandrone-settings-content] {\r
   min-width: 0 !important;\r
   min-height: 0 !important;\r
   overflow: hidden !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] [class*="VOzbGW_options"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-options] {\r
   min-width: 0 !important;\r
   min-height: 0 !important;\r
   overflow-x: hidden !important;\r
   overflow-y: auto !important;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :where(\r
+body [role="dialog"][data-sandrone-settings-panel] :where(\r
   [class*="_section"],\r
   [class*="_rowCard"],\r
   [class*="_editor"],\r
@@ -2581,7 +2601,7 @@ body [role="dialog"][class*="VOzbGW_panel"] :where(\r
   max-width: 100%;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] :where(\r
+body [role="dialog"][data-sandrone-settings-panel] :where(\r
   [class*="_rowName"],\r
   [class*="_editorTitle"],\r
   [class*="_editorRoute"],\r
@@ -2599,11 +2619,11 @@ body [role="dialog"][class*="VOzbGW_panel"] :where(\r
 }\r
 \r
 @media (max-width: 760px) {\r
-  [class*="VOzbGW_overlay"] {\r
+  [data-sandrone-settings-overlay] {\r
     inset: 50px 0 0 !important;\r
   }\r
 \r
-  body [role="dialog"][class*="VOzbGW_panel"] {\r
+  body [role="dialog"][data-sandrone-settings-panel] {\r
     width: 100% !important;\r
     max-width: none !important;\r
     height: 100% !important;\r
@@ -2898,7 +2918,7 @@ function usePageNavigation() {
         if (target.settingsOpen && !state.settingsOpen) {
           clickOfficial("[data-sandrone-settings] button");
         } else if (!target.settingsOpen && state.settingsOpen) {
-          clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]');
+          clickOfficial("[data-sandrone-settings-close]");
         }
         if (target.sessionTitle && state.sessionTitle !== target.sessionTitle) {
           clickSessionRow(target.sessionTitle);
@@ -3278,24 +3298,28 @@ function SettingsChrome() {
   const [query, setQuery] = (0, import_react.useState)("");
   (0, import_react.useEffect)(() => {
     const needle = query.trim().toLowerCase();
-    const panel = document.querySelector('[role="dialog"][aria-modal="true"]');
+    const panel = document.querySelector("[data-sandrone-settings-panel]");
     if (!panel) return;
-    const cells = [...panel.querySelectorAll('[class*="navCell"]')];
+    const cells = [...panel.querySelectorAll("[data-sandrone-settings-nav-cell]")];
     for (const cell of cells) {
       const label = (cell.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-      cell.style.display = needle && !label.includes(needle) ? "none" : "";
+      if (needle && !label.includes(needle)) cell.setAttribute("data-sandrone-filtered", "true");
+      else cell.removeAttribute("data-sandrone-filtered");
     }
+    return () => {
+      for (const cell of cells) cell.removeAttribute("data-sandrone-filtered");
+    };
   }, [query]);
   const closeSettings = () => {
-    clickOfficial('[role="dialog"][aria-modal="true"] [class*="close"]');
+    clickOfficial("[data-sandrone-settings-close]");
   };
   const submitSearch = (event) => {
     if (event.key !== "Enter") return;
-    const panel = document.querySelector('[role="dialog"][aria-modal="true"]');
-    const cell = panel && [...panel.querySelectorAll('[class*="navCell"]')].find((node) => node.style.display !== "none");
+    const panel = document.querySelector("[data-sandrone-settings-panel]");
+    const cell = panel?.querySelector("[data-sandrone-settings-nav-cell]:not([data-sandrone-filtered])");
     if (cell instanceof HTMLElement) cell.click();
   };
-  return /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-settings-chrome" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-settings-back", onClick: closeSettings }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" })), "\u8FD4\u56DE\u5DE5\u4F5C\u533A"), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-settings-search" }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("circle", { cx: "11", cy: "11", r: "8" }), /* @__PURE__ */ import_react.default.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })), /* @__PURE__ */ import_react.default.createElement("input", { type: "text", placeholder: "\u641C\u7D22\u8BBE\u7F6E...", value: query, onChange: (event) => setQuery(event.target.value), onKeyDown: submitSearch })));
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-settings-chrome" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-settings-back", onClick: closeSettings }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" })), "\u8FD4\u56DE\u5DE5\u4F5C\u533A"), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-settings-search" }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("circle", { cx: "11", cy: "11", r: "8" }), /* @__PURE__ */ import_react.default.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })), /* @__PURE__ */ import_react.default.createElement("input", { className: "sandrone-settings-search-input", type: "text", placeholder: "\u641C\u7D22\u8BBE\u7F6E...", value: query, onChange: (event) => setQuery(event.target.value), onKeyDown: submitSearch })));
 }
 function NativeDirectoryFlow(props) {
   const openedRef = (0, import_react.useRef)(false);
@@ -3336,16 +3360,55 @@ function installNativeDirectoryFlow(ctx) {
 function installSettingsChrome(ctx) {
   return ctx.effect(() => {
     let container = null;
+    let markedElements = [];
     let root = null;
+    const clearMarkers = () => {
+      for (const [element, attribute] of markedElements) element.removeAttribute(attribute);
+      markedElements = [];
+    };
+    const mark = (element, attribute) => {
+      if (!(element instanceof Element) || element.hasAttribute(attribute)) return;
+      element.setAttribute(attribute, "true");
+      markedElements.push([element, attribute]);
+    };
+    const markSettingsDescendants = (panel, nav) => {
+      const navList = nav.lastElementChild;
+      mark(navList, "data-sandrone-settings-nav-list");
+      navList?.querySelectorAll(":scope > button").forEach((element) => mark(element, "data-sandrone-settings-nav-cell"));
+      panel?.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]), select, textarea').forEach((element) => {
+        if (!element.classList.contains("sandrone-settings-search-input")) mark(element, "data-sandrone-settings-control");
+      });
+      panel?.querySelectorAll('[class*="candidate"] input[type="checkbox"]').forEach((element) => {
+        mark(element, "data-sandrone-settings-candidate-checkbox");
+      });
+    };
     const mount = () => {
-      const nav = document.querySelector('[role="dialog"][aria-modal="true"] > nav');
-      if (!nav || container && container.parentNode === nav) return;
+      const nav = document.querySelector('[role="presentation"] > [role="dialog"][aria-modal="true"] > nav');
+      if (!nav) return;
+      const panel = nav.parentElement;
+      if (container && container.parentNode === nav) {
+        markSettingsDescendants(panel, nav);
+        return;
+      }
       if (root) {
         root.unmount();
         root = null;
         container?.remove();
         container = null;
+        clearMarkers();
       }
+      const overlay = panel?.parentElement;
+      const content = nav.nextElementSibling;
+      const header = content?.firstElementChild;
+      mark(panel, "data-sandrone-settings-panel");
+      mark(overlay, "data-sandrone-settings-overlay");
+      mark(panel?.previousElementSibling, "data-sandrone-settings-mask");
+      mark(nav.firstElementChild, "data-sandrone-settings-nav-title");
+      mark(content, "data-sandrone-settings-content");
+      mark(header?.firstElementChild, "data-sandrone-settings-actions");
+      mark(header?.querySelector("button"), "data-sandrone-settings-close");
+      mark(content?.lastElementChild, "data-sandrone-settings-options");
+      markSettingsDescendants(panel, nav);
       container = document.createElement("div");
       nav.insertBefore(container, nav.firstChild);
       root = (0, import_client.createRoot)(container);
@@ -3360,6 +3423,7 @@ function installSettingsChrome(ctx) {
       root = null;
       container?.remove();
       container = null;
+      clearMarkers();
     };
   }, "sandrone-ui: settings chrome");
 }
