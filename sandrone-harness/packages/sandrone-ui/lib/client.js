@@ -1803,16 +1803,19 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   stroke-linejoin: round;\r
 }\r
 \r
-body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input {\r
-  min-width: 0;\r
-  flex: 1;\r
-  height: auto !important;\r
-  padding: 0 !important;\r
-  border: none !important;\r
-  border-radius: 0 !important;\r
-  outline: none !important;\r
-  background: transparent !important;\r
-  box-shadow: none !important;\r
+body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input {
+  min-width: 0;
+  flex: 1;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  height: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
   color: var(--sandrone-ink-strong);\r
   font-size: 12px;\r
 }\r

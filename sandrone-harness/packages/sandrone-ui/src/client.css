@@ -1764,12 +1764,15 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
 body [role="dialog"][class*="VOzbGW_panel"] .sandrone-settings-search input {
   min-width: 0;
   flex: 1;
+  appearance: none !important;
+  -webkit-appearance: none !important;
   height: auto !important;
   padding: 0 !important;
   border: none !important;
   border-radius: 0 !important;
   outline: none !important;
   background: transparent !important;
+  background-image: none !important;
   box-shadow: none !important;
   color: var(--sandrone-ink-strong);
   font-size: 12px;

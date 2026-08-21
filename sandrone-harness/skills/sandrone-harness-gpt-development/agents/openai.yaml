@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sandrone Harness GPT Development"
+  short_description: "Develop and debug the Sandrone Electron/Web Harness"
+  default_prompt: "Use $sandrone-harness-gpt-development to inspect and implement this Sandrone Harness change, preserving the DeepSeek runtime boundary and running the correct UI/Electron verification."
