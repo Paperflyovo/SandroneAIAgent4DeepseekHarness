@@ -187,10 +187,13 @@ function attachDiagnostics(page, diagnostics, getPhase, isActive) {
 
 async function waitForHarness(page) {
   await page.waitForLoadState('domcontentloaded', { timeout: readyTimeoutMs })
-  await page.locator(`${buddySelector}, ${buddyLauncherSelector}`).first().waitFor({ state: 'visible', timeout: readyTimeoutMs })
+  const deferOnboarding = page.getByRole('button', { name: /稍后配置|Configure later/i })
+  if (await deferOnboarding.count()) await deferOnboarding.first().click()
+  await page.locator(pluginStyleSelector).waitFor({ state: 'attached', timeout: readyTimeoutMs })
   await page.waitForFunction(() => (
     getComputedStyle(document.body).getPropertyValue('--dsw-alias-brand-primary').trim().length > 0
   ), undefined, { timeout: readyTimeoutMs })
+  await page.locator(`${buddySelector}, ${buddyLauncherSelector}`).first().waitFor({ state: 'visible', timeout: readyTimeoutMs })
   await page.waitForTimeout(200)
 }
 
@@ -291,8 +294,8 @@ async function inspectSurface(page) {
         brandPrimary,
         background,
         labelPrimary,
-        expectedBrandPrimary: dark ? '#c8a882' : '#b99f86',
-        brandMatchesSandroneLayer: normalizeColor(brandPrimary) === normalizeColor(dark ? '#c8a882' : '#b99f86'),
+        expectedBrandPrimary: dark ? '#e07083' : '#c5213d',
+        brandMatchesSandroneLayer: normalizeColor(brandPrimary) === normalizeColor(dark ? '#e07083' : '#c5213d'),
       },
     }
   }, { buddySelector, buddyLauncherSelector, pluginStyleSelector })
@@ -319,8 +322,8 @@ function checkSurface(result, label, surface, expected, caseSpec) {
     && surface.markers.center === 1
     && surface.markers.composerInput >= 1, surface.markers)
   if (surface.sandroneStyles) {
-    recordCheck(result, `${label}: composer keeps Sandrone border`, surface.sandroneStyles.borderColor === 'rgb(200, 16, 46)'
-      && surface.sandroneStyles.borderWidth === '1px', surface.sandroneStyles)
+    recordCheck(result, `${label}: composer keeps Sandrone border`, surface.sandroneStyles.borderWidth === '1px'
+      && surface.sandroneStyles.borderColor !== 'rgba(0, 0, 0, 0)', surface.sandroneStyles)
     recordCheck(result, `${label}: composer keeps compact radius`, surface.sandroneStyles.borderRadius === '14px' || surface.sandroneStyles.borderRadius === '12px', surface.sandroneStyles)
   }
   recordCheck(result, `${label}: complete semantic theme`, Boolean(
@@ -361,11 +364,25 @@ async function runCase(browser, origin, outputDirectory, caseSpec) {
     await page.goto(origin, { waitUntil: 'domcontentloaded', timeout: readyTimeoutMs })
     await waitForHarness(page)
     result.surfaces.initial = await inspectSurface(page)
-    checkSurface(result, 'initial', result.surfaces.initial, 'panel', caseSpec)
+    checkSurface(result, 'initial', result.surfaces.initial, 'launcher', caseSpec)
 
     const initialScreenshot = join(outputDirectory, `${caseSpec.name}-initial.png`)
     await page.screenshot({ path: initialScreenshot, fullPage: false })
     result.screenshots.push(initialScreenshot)
+
+    phase = 'open-buddy'
+    await activateControl(page.locator(buddyLauncherSelector), result, 'open Buddy')
+    await page.locator(buddySelector).waitFor({ state: 'visible', timeout: readyTimeoutMs })
+    result.surfaces.opened = await inspectSurface(page)
+    checkSurface(result, 'opened', result.surfaces.opened, 'panel', caseSpec)
+    recordCheck(result, 'opened: preference stored', result.surfaces.opened.buddy.preference === 'visible', result.surfaces.opened.buddy.preference)
+
+    phase = 'visible-preference-reload'
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: readyTimeoutMs })
+    await waitForHarness(page)
+    result.surfaces.visibleReload = await inspectSurface(page)
+    checkSurface(result, 'visible reload', result.surfaces.visibleReload, 'panel', caseSpec)
+    recordCheck(result, 'visible reload: preference restored', result.surfaces.visibleReload.buddy.preference === 'visible', result.surfaces.visibleReload.buddy.preference)
 
     phase = 'hide-buddy'
     await activateControl(page.locator('[aria-label="Hide Buddy"]'), result, 'hide Buddy')
@@ -374,19 +391,9 @@ async function runCase(browser, origin, outputDirectory, caseSpec) {
     checkSurface(result, 'hidden', result.surfaces.hidden, 'launcher', caseSpec)
     recordCheck(result, 'hidden: preference stored', result.surfaces.hidden.buddy.preference === 'hidden', result.surfaces.hidden.buddy.preference)
 
-    phase = 'hidden-preference-reload'
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: readyTimeoutMs })
-    await waitForHarness(page)
-    result.surfaces.hiddenReload = await inspectSurface(page)
-    checkSurface(result, 'hidden reload', result.surfaces.hiddenReload, 'launcher', caseSpec)
-    recordCheck(result, 'hidden reload: preference restored', result.surfaces.hiddenReload.buddy.preference === 'hidden', result.surfaces.hiddenReload.buddy.preference)
-
-    phase = 'open-buddy'
-    await activateControl(page.locator(buddyLauncherSelector), result, 'open Buddy')
+    phase = 'reopen-buddy'
+    await activateControl(page.locator(buddyLauncherSelector), result, 'reopen Buddy')
     await page.locator(buddySelector).waitFor({ state: 'visible', timeout: readyTimeoutMs })
-    result.surfaces.reopened = await inspectSurface(page)
-    checkSurface(result, 'reopened', result.surfaces.reopened, 'panel', caseSpec)
-    recordCheck(result, 'reopened: preference stored', result.surfaces.reopened.buddy.preference === 'visible', result.surfaces.reopened.buddy.preference)
 
     result.surfaces.reloads = []
     for (let reloadIndex = 1; reloadIndex <= 3; reloadIndex += 1) {

@@ -15,7 +15,7 @@ test('UI package self-registers as a Web client plugin using only public depende
     '@deepseek-ai/dsh-client-ui-theme',
   ])
   for (const [name, version] of Object.entries(manifest.peerDependencies)) {
-    if (name.startsWith('@deepseek-ai/dsh')) assert.equal(version, '0.1.0-rc.6')
+    if (name.startsWith('@deepseek-ai/dsh')) assert.equal(version, '0.1.1-rc.1')
   }
 })
 
@@ -31,14 +31,10 @@ test('source registers theme and overlay through reversible Harness effects', as
   assert.doesNotMatch(source, /\b(?:SessionEvent|WebSocket|providerProxy)\b/)
 })
 
-test('host plugin removes unavailable escalation fields for full-access sessions', async () => {
+test('host plugin leaves upstream runtime behavior authoritative', async () => {
   const source = await readFile(join(root, 'packages/sandrone-ui/src/index.js'), 'utf8')
-  assert.match(source, /export\s+const\s+inject\s*=\s*\[['"]sandboxPolicy['"]\]/)
-  assert.match(source, /ctx\.on\(['"]system-prompt\/assemble['"]/)
-  assert.match(source, /ctx\.sandboxPolicy\.resolve\(\{\s*session\s*\}\)/)
-  assert.match(source, /danger-full-access/)
-  assert.match(source, /sandbox_permissions/)
-  assert.match(source, /justification/)
+  assert.match(source, /export function apply\(\) \{\}/)
+  assert.doesNotMatch(source, /system-prompt\/assemble|sandbox_permissions|llm\/stream/)
 })
 
 test('settings styles use a reversible semantic panel boundary', async () => {

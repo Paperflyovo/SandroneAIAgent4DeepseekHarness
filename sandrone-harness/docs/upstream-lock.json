@@ -1,11 +1,11 @@
 {
   "npmPackage": "@deepseek-ai/dsh",
-  "npmVersion": "0.1.0-rc.6",
-  "packageFamilyVersion": "0.1.0-rc.6",
+  "npmVersion": "0.1.1-rc.1",
+  "packageFamilyVersion": "0.1.1-rc.1",
   "auditedSource": {
     "repository": "https://github.com/deepseek-ai/deepseek-harness",
-    "commit": "47f943859bef60e4160492346772ded9b24f765a",
-    "version": "0.1.0-rc.5",
+    "commit": "528c682e061696f5a160f363f236ecbf53cbd006",
+    "version": "0.1.1-rc.1",
     "license": "MIT"
   },
   "publicContracts": [

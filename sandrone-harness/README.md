@@ -74,7 +74,7 @@ installed desktop builds.
 
 `pnpm run desktop:pack` now selects a native Builder profile from the current host and CPU. Windows produces NSIS, macOS produces DMG and ZIP, and Linux produces AppImage and DEB. `pnpm run desktop:dir` creates only the unpacked application for the current platform. Cross-compilation is deliberately rejected: platform-native dependencies are installed and packaged on matching runners.
 
-The Windows and macOS profiles use the prebuilt `node-pty` artifacts shipped by its package. Linux has no published `node-pty` prebuild in this dependency version, so its profile enables a sequential Electron rebuild and the CI runner installs the required compiler toolchain. Every package runs an `afterPack` gate that refuses an artifact missing the matching PTY binary.
+The Windows, macOS and Linux profiles use the platform prebuilt `node-pty` artifacts shipped by the current dependency family. Linux keeps the sequential Electron rebuild policy as a fallback for native dependency changes. Every package runs an `afterPack` gate that refuses an artifact missing the matching PTY binary.
 
 The repository-level `Desktop cross-platform sandbox` workflow is manual and uploads unsigned x64/arm64 artifacts for 14 days; it cannot publish a GitHub Release. This keeps early macOS/Linux experiments separate from the signed release path. macOS Gatekeeper and Windows SmartScreen warnings remain expected until signing and notarization are configured.
 
@@ -82,10 +82,10 @@ The implementation boundary, native dependency policy, public reference evidence
 
 ## Upstream rule
 
-The npm distribution is pinned to `@deepseek-ai/dsh@0.1.0-rc.6` and the matching
+The npm distribution is pinned to `@deepseek-ai/dsh@0.1.1-rc.1` and the matching
 DeepSeek package family. The audited source reference is recorded in
-`docs/upstream-lock.json`; it is evidence for review, not a claim that npm rc.6 is
-byte-identical to the earlier source checkout. Upgrade the whole package family in a
+`docs/upstream-lock.json`; it is evidence for review, not a claim that the npm artifacts are
+byte-identical to the source checkout. Upgrade the whole package family in a
 separate change, run the compatibility gates, and back up the Harness data directory
 before opening the candidate.
 
@@ -93,7 +93,7 @@ before opening the candidate.
 
 `packages/sandrone-ui` is a normal out-of-tree Harness client plugin. It uses only
 public `/client` package exports, `ctx.slots`, `ctx.theme` and semantic `--dsw-*`
-tokens. Its Buddy overlay has no session or message state. Removing the plugin removes
+tokens. Its Buddy overlay keeps only a local visible/hidden preference and no session or message state. Removing the plugin removes
 its slot registrations, theme layer and stylesheet without touching official state.
 
 ## Sandrone Web experience

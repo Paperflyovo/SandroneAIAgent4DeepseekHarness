@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const DEFAULT_VERSION = '0.1.0-rc.6'
+const DEFAULT_VERSION = '0.1.1-rc.1'
 
 const REQUIRED_PACKAGES = Object.freeze({
   '@deepseek-ai/dsh': { bin: 'dsh' },
@@ -143,7 +143,7 @@ function patchProblems(source) {
   return problems
 }
 
-/** Verify the exact rc.6 package family, public entries, and profile composition. */
+/** Verify the exact upstream package family, public entries, and profile composition. */
 export async function verifyUpstream(options = {}) {
   const root = resolve(options.root ?? DEFAULT_ROOT)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))

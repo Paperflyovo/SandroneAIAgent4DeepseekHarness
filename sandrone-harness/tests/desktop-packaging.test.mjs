@@ -55,14 +55,19 @@ test('platform builder profiles keep native dependency policy explicit', async (
 })
 
 test('native artifact gate distinguishes prebuilt and rebuilt node-pty layouts', async () => {
-  assert.deepEqual(requiredNodePtyArtifacts('win32', 'arm64'), ['prebuilds/win32-arm64/pty.node'])
+  assert.deepEqual(requiredNodePtyArtifacts('win32', 'arm64'), [
+    'prebuilds/win32-arm64/conpty.node',
+    'prebuilds/win32-arm64/conpty_console_list.node',
+    'prebuilds/win32-arm64/conpty/conpty.dll',
+    'prebuilds/win32-arm64/conpty/OpenConsole.exe',
+  ])
   assert.deepEqual(requiredNodePtyArtifacts('darwin', 'x64'), [
     'prebuilds/darwin-x64/pty.node',
     'prebuilds/darwin-x64/spawn-helper',
   ])
-  assert.deepEqual(requiredNodePtyArtifacts('linux', 'arm64'), ['build/Release/pty.node'])
+  assert.deepEqual(requiredNodePtyArtifacts('linux', 'arm64'), ['prebuilds/linux-arm64/pty.node'])
   assert.throws(() => requiredNodePtyArtifacts('freebsd', 'x64'), /Unsupported packaged platform/)
-  await access(new URL('../node_modules/node-pty/prebuilds/win32-x64/pty.node', import.meta.url))
+  await access(new URL('../node_modules/node-pty/prebuilds/win32-x64/conpty.node', import.meta.url))
   await access(new URL('../node_modules/node-pty/prebuilds/darwin-arm64/pty.node', import.meta.url))
 })
 

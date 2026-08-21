@@ -68,7 +68,7 @@ async function makeFixture(overrides = {}) {
   return { root, packagePaths }
 }
 
-test('upstream gate accepts one exact rc.6 family with required public entries and bundle patches', async t => {
+test('upstream gate accepts one exact package family with required public entries and bundle patches', async t => {
   const fixture = await makeFixture()
   t.after(() => rm(fixture.root, { recursive: true, force: true }))
   const report = await verifyUpstream({

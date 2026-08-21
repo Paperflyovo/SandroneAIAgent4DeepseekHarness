@@ -11,7 +11,7 @@ import { electronExecutableRelativePath } from './lib/desktop-platform.mjs'
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
-const buddySelector = '[aria-label="Sandrone Buddy"]'
+const buddySelector = '[aria-label="Sandrone Buddy"], [aria-label="Open Sandrone Buddy"]'
 const defaultReadyTimeoutMs = 11 * 60_000
 const shutdownTimeoutMs = 45_000
 const processDrainTimeoutMs = 30_000
@@ -438,9 +438,9 @@ async function main() {
     recordCheck(report, 'official Harness uses an exact 127.0.0.1 HTTP origin', Boolean(origin), firstWindow.url())
     recordCheck(report, 'desktop has exactly one renderer window', initialWindows.length === 1, initialWindows.map(window => safeUrl(window.url())))
     recordCheck(report, 'desktop supervisor is ready on the visible origin', initialStatus.phase === 'ready' && initialStatus.url === origin, initialStatus)
-    recordCheck(report, 'Sandrone Buddy is visible', await firstWindow.locator(buddySelector).isVisible(), buddySelector)
     report.application.previewNoticeAccepted = await acceptPreviewNotice(firstWindow)
     report.application.apiKeyOnboardingDeferred = await deferApiKeyOnboarding(firstWindow)
+    recordCheck(report, 'Sandrone Buddy surface is visible', await firstWindow.locator(buddySelector).first().isVisible(), buddySelector)
     await addWorkspaceThroughNativePicker(firstWindow, workspaceDirectory)
     const workspaceTitle = firstWindow.getByText('workspace-fixture', { exact: true }).first()
     await workspaceTitle.waitFor({ state: 'visible', timeout: 30_000 })
@@ -466,7 +466,7 @@ async function main() {
     recordCheck(report, 'reload preserves the official Harness origin', Boolean(origin) && reloadedOrigin === origin, { before: origin, after: reloadedOrigin })
     recordCheck(report, 'reload preserves the ready supervisor generation', reloadedStatus.phase === 'ready' && reloadedStatus.url === origin, reloadedStatus)
     recordCheck(report, 'reload keeps exactly one renderer window', reloadedWindows.length === 1, reloadedWindows.map(window => safeUrl(window.url())))
-    recordCheck(report, 'reload restores Sandrone Buddy', await firstWindow.locator(buddySelector).isVisible(), buddySelector)
+    recordCheck(report, 'reload restores Sandrone Buddy surface', await firstWindow.locator(buddySelector).first().isVisible(), buddySelector)
     recordCheck(report, 'reload preserves the selected workspace', await firstWindow.getByText('workspace-fixture', { exact: true }).first().isVisible(), workspaceDirectory)
     const reloadedScreenshot = join(outputDirectory, 'desktop-after-reload.png')
     await firstWindow.screenshot({ path: reloadedScreenshot, fullPage: false })

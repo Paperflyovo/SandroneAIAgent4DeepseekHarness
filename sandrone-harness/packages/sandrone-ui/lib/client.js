@@ -1,4 +1,4 @@
-/* sandrone-ui-source-sha256:35946912a5e6f68eaa1a5e82bc9f13aa261f27afeb61419ac872bc901eafd7cc */
+/* sandrone-ui-source-sha256:4a1d34135b664c5abf3980e3c4cbd43b5784234ff73470e0a9763370dd5e55f6 */
 window.__ModuleLoader__.load({ id: "@sandrone/harness-ui", factory: (require) => { var module = { exports: {} }; var exports = module.exports;
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -900,11 +900,8 @@ select {\r
   line-height: 14px !important;\r
 }\r
 \r
-/* Buddy lives INSIDE the composer's input row (conversation.input.right), so\r
-   it can never float over the model picker or the send button. Collapsed it\r
-   is a small face button in the row; expanded, the card pops up above the\r
-   row like the model menu and stays clear of composer controls by\r
-   construction. */\r
+/* Buddy is a global shell overlay so it stays available before a session is
+   created and across session switches in the dynamic client lifecycle. */
 .sandrone-buddy,\r
 .sandrone-buddy-trigger {\r
   pointer-events: auto;\r
@@ -912,11 +909,14 @@ select {\r
   letter-spacing: 0;\r
 }\r
 \r
-.sandrone-buddy-anchor {\r
-  position: relative;\r
-  display: inline-flex;\r
-  flex: none;\r
-}\r
+.sandrone-buddy-anchor {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 120;
+  display: inline-flex;
+  flex: none;
+}
 \r
 .sandrone-buddy-trigger {\r
   width: 28px;\r
@@ -3625,14 +3625,26 @@ function SandroneModelPicker({ locked, available, directory, load, select }) {
   );
 }
 function BuddyOverlay() {
-  const [open, setOpen] = (0, import_react.useState)(false);
+  const [open, setOpen] = (0, import_react.useState)(() => {
+    try {
+      return window.localStorage.getItem("sandrone.harness.buddy.v1") === "visible";
+    } catch {
+      return false;
+    }
+  });
   const [awake, setAwake] = (0, import_react.useState)(false);
   (0, import_react.useEffect)(() => {
     const timer = window.setTimeout(() => setAwake(true), 900);
     return () => window.clearTimeout(timer);
   }, []);
+  (0, import_react.useEffect)(() => {
+    try {
+      window.localStorage.setItem("sandrone.harness.buddy.v1", open ? "visible" : "hidden");
+    } catch {
+    }
+  }, [open]);
   if (!open) {
-    return /* @__PURE__ */ import_react.default.createElement(
+    return /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-buddy-anchor" }, /* @__PURE__ */ import_react.default.createElement(
       "button",
       {
         className: "sandrone-buddy-trigger",
@@ -3642,7 +3654,7 @@ function BuddyOverlay() {
         onClick: () => setOpen(true)
       },
       /* @__PURE__ */ import_react.default.createElement("span", { "aria-hidden": "true", className: "sandrone-buddy-face compact" }, /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("i", null))
-    );
+    ));
   }
   return /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-buddy-anchor" }, /* @__PURE__ */ import_react.default.createElement("aside", { className: "sandrone-buddy", "aria-label": "Sandrone Buddy" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-buddy-heading" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-buddy-kicker" }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconSparkle16, { size: 14 }), " Buddy"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", title: "Hide Buddy", "aria-label": "Hide Buddy", onClick: () => setOpen(false) }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconCloseOutline16, { size: 15 }))), /* @__PURE__ */ import_react.default.createElement(
     "button",
@@ -3673,14 +3685,15 @@ function apply(ctx) {
     order: -100,
     inject: () => ({ toggleTheme })
   }, SandroneTopbar));
-  ctx.slots.inject("conversation.input.right", () => ctx.slots.register({
-    name: "conversation.input.right",
+  ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+    name: "shell.overlay",
     id: "sandrone-buddy",
     order: 90
   }, BuddyOverlay));
-  ctx.inject(["connection"], (connection) => {
-    ctx.effect(installProviderImageFields(connection), "sandrone-ui: provider image capability fields");
-    ctx.slots.inject("conversation.input.left", () => ctx.slots.register({
+  ctx.inject(["connection"], (scope) => {
+    const connection = scope.connection;
+    scope.effect(installProviderImageFields(connection), "sandrone-ui: provider image capability fields");
+    scope.slots.inject("conversation.input.left", () => scope.slots.register({
       name: "conversation.input.left",
       id: "sandrone-image-attach",
       order: -100,

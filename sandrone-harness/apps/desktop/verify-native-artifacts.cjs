@@ -62,7 +62,12 @@ function missingRequiredPeerDependencies(nodeModules) {
 
 function requiredNodePtyArtifacts(platform, architecture) {
   if (platform === 'win32') {
-    return [`prebuilds/win32-${architecture}/pty.node`]
+    return [
+      `prebuilds/win32-${architecture}/conpty.node`,
+      `prebuilds/win32-${architecture}/conpty_console_list.node`,
+      `prebuilds/win32-${architecture}/conpty/conpty.dll`,
+      `prebuilds/win32-${architecture}/conpty/OpenConsole.exe`,
+    ]
   }
   if (platform === 'darwin') {
     return [
@@ -70,9 +75,7 @@ function requiredNodePtyArtifacts(platform, architecture) {
       `prebuilds/darwin-${architecture}/spawn-helper`,
     ]
   }
-  if (platform === 'linux') {
-    return ['build/Release/pty.node']
-  }
+  if (platform === 'linux') return [`prebuilds/linux-${architecture}/pty.node`]
   throw new Error(`Unsupported packaged platform: ${platform}`)
 }
 

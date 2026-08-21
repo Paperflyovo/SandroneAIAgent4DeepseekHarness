@@ -857,11 +857,8 @@ select {
   line-height: 14px !important;
 }
 
-/* Buddy lives INSIDE the composer's input row (conversation.input.right), so
-   it can never float over the model picker or the send button. Collapsed it
-   is a small face button in the row; expanded, the card pops up above the
-   row like the model menu and stays clear of composer controls by
-   construction. */
+/* Buddy is a global shell overlay so it stays available before a session is
+   created and across session switches in the dynamic client lifecycle. */
 .sandrone-buddy,
 .sandrone-buddy-trigger {
   pointer-events: auto;
@@ -870,7 +867,10 @@ select {
 }
 
 .sandrone-buddy-anchor {
-  position: relative;
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 120;
   display: inline-flex;
   flex: none;
 }

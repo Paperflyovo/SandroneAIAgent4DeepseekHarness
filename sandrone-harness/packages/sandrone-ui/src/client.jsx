@@ -1252,7 +1252,9 @@ function SandroneModelPicker({ locked, available, directory, load, select }) {
 }
 
 function BuddyOverlay() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(() => {
+    try { return window.localStorage.getItem('sandrone.harness.buddy.v1') === 'visible' } catch { return false }
+  })
   const [awake, setAwake] = useState(false)
 
   useEffect(() => {
@@ -1260,17 +1262,23 @@ function BuddyOverlay() {
     return () => window.clearTimeout(timer)
   }, [])
 
+  useEffect(() => {
+    try { window.localStorage.setItem('sandrone.harness.buddy.v1', open ? 'visible' : 'hidden') } catch {}
+  }, [open])
+
   if (!open) {
     return (
-      <button
-        className="sandrone-buddy-trigger"
-        type="button"
-        aria-label="Open Sandrone Buddy"
-        title="Buddy"
-        onClick={() => setOpen(true)}
-      >
-        <span aria-hidden="true" className="sandrone-buddy-face compact"><i /><i /></span>
-      </button>
+      <span className="sandrone-buddy-anchor">
+        <button
+          className="sandrone-buddy-trigger"
+          type="button"
+          aria-label="Open Sandrone Buddy"
+          title="Buddy"
+          onClick={() => setOpen(true)}
+        >
+          <span aria-hidden="true" className="sandrone-buddy-face compact"><i /><i /></span>
+        </button>
+      </span>
     )
   }
 
@@ -1315,14 +1323,15 @@ export function apply(ctx) {
     order: -100,
     inject: () => ({ toggleTheme }),
   }, SandroneTopbar))
-  ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
-    name: 'conversation.input.right',
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
     id: 'sandrone-buddy',
     order: 90,
   }, BuddyOverlay))
-  ctx.inject(['connection'], (connection) => {
-    ctx.effect(installProviderImageFields(connection), 'sandrone-ui: provider image capability fields')
-    ctx.slots.inject('conversation.input.left', () => ctx.slots.register({
+  ctx.inject(['connection'], (scope) => {
+    const connection = scope.connection
+    scope.effect(installProviderImageFields(connection), 'sandrone-ui: provider image capability fields')
+    scope.slots.inject('conversation.input.left', () => scope.slots.register({
       name: 'conversation.input.left',
       id: 'sandrone-image-attach',
       order: -100,

@@ -21,7 +21,6 @@ const { assertTrustedIpcSender } = require('./lib/ipc-policy.cjs')
 const { createQuitCoordinator } = require('./lib/quit-coordinator.cjs')
 const { packageBin } = require('./lib/resolve-package.cjs')
 const { UpdateService } = require('./lib/update-service.cjs')
-const { relaxImageAdmission } = require('./lib/relax-image-admission.cjs')
 
 const APP_NAME = 'Sandrone AI Agent'
 const ROOT = path.resolve(__dirname, '..', '..')
@@ -169,10 +168,6 @@ function writeWindowState() {
 }
 
 function launchHarness() {
-  // Images are intentionally admitted by the desktop shell. The selected
-  // upstream model remains responsible for deciding whether it can interpret
-  // them; text-only models may reject them at the provider boundary.
-  relaxImageAdmission(ROOT)
   const bin = packageBin('@deepseek-ai/dsh', 'dsh', path.join(ROOT, 'package.json'))
   deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
   return fork(RUNNER, [], {
