@@ -31,6 +31,16 @@ test('source registers theme and overlay through reversible Harness effects', as
   assert.doesNotMatch(source, /\b(?:SessionEvent|WebSocket|providerProxy)\b/)
 })
 
+test('host plugin removes unavailable escalation fields for full-access sessions', async () => {
+  const source = await readFile(join(root, 'packages/sandrone-ui/src/index.js'), 'utf8')
+  assert.match(source, /export\s+const\s+inject\s*=\s*\[['"]sandboxPolicy['"]\]/)
+  assert.match(source, /ctx\.on\(['"]system-prompt\/assemble['"]/)
+  assert.match(source, /ctx\.sandboxPolicy\.resolve\(\{\s*session\s*\}\)/)
+  assert.match(source, /danger-full-access/)
+  assert.match(source, /sandbox_permissions/)
+  assert.match(source, /justification/)
+})
+
 test('built client bundle self-registers and stylesheet ownership is reversible', async () => {
   const bundle = await readFile(join(root, 'packages/sandrone-ui/lib/client.js'), 'utf8')
   assert.match(bundle, /__ModuleLoader__\.load\(\{\s*id:\s*['"]@sandrone\/harness-ui['"]/)

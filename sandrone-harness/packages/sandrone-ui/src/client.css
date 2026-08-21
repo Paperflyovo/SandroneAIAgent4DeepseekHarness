@@ -1740,14 +1740,9 @@ body [role="dialog"][class*="VOzbGW_panel"] :is([class$="_editorHeader"], [class
   gap: 8px;
   height: 30px;
   padding: 0 12px;
-  border: 1px solid var(--sandrone-line);
-  border-radius: 999px;
-  background: var(--sandrone-paper-raised);
+  border: none;
+  background: transparent;
   cursor: text;
-}
-
-.sandrone-settings-search:focus-within {
-  border-color: var(--sandrone-accent);
 }
 
 .sandrone-settings-search svg {
