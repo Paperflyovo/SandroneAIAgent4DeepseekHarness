@@ -271,6 +271,12 @@ test('desktop package includes bundled Skills', async () => {
   assert.match(source, /- skills\/sandrone-harness-gpt-development\/\*\*\/\*/)
 })
 
+test('desktop deploys the bundled image tool package before launching Harness', async () => {
+  const source = await readFile(new URL('../apps/desktop/main.cjs', import.meta.url), 'utf8')
+  assert.match(source, /deployRuntimePackage\(\{[\s\S]*?packageName:\s*['"]@sandrone\/harness-image-tools['"]/)
+  assert.match(source, /deployPlugin\([\s\S]*?deployRuntimePackage\([\s\S]*?prepareExtensions\(\)/)
+})
+
 test('desktop deploys only Sandrone-managed Agent presets under DSH_HOME', async t => {
   const root = await mkdtemp(join(tmpdir(), 'sandrone-agent-presets-'))
   const source = join(root, 'source')

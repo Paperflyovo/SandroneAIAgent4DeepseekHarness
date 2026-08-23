@@ -1,6 +1,6 @@
 // Probe the INSTALLED SandroneAIAgent.exe (the build the user actually runs):
 // workspace -> session -> model picker dropdown geometry/occlusion/behavior.
-import { mkdtemp, realpath, readFile, rm, mkdir } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, mkdir } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -34,11 +34,14 @@ async function loadDriver() {
   throw new Error('playwright electron driver not found')
 }
 
-const INSTALLED_EXE = 'E:\\Sandrone4Deepseek\\SandroneAIAgent\\SandroneAIAgent.exe'
+const INSTALLED_EXE = process.env.SANDRONE_PROBE_EXECUTABLE?.trim()
+  || 'E:\\Sandrone4Deepseek\\SandroneAIAgent\\SandroneAIAgent.exe'
 const driver = await loadDriver()
 const profileRoot = await mkdtemp(join(tmpdir(), 'sandrone-installed-probe-'))
 const workspaceDirectory = join(profileRoot, 'workspace-fixture')
+const artifactDirectory = join(root, 'runtime', 'tmp', `probe-installed-${Date.now()}`)
 await mkdir(workspaceDirectory, { recursive: true })
+await mkdir(artifactDirectory, { recursive: true })
 const launchEnvironment = {
   ...process.env,
   APPDATA: profileRoot,
@@ -59,6 +62,8 @@ const application = await driver.electron.launch({
   timeout: 90_000,
 })
 const window = await application.firstWindow({ timeout: 90_000 })
+window.on('console', message => console.log('RENDERER-CONSOLE:', message.type(), message.text()))
+window.on('pageerror', error => console.log('RENDERER-ERROR:', error.stack ?? error.message))
 console.log('window ok, title:', await window.title())
 
 async function waitForHarness(timeoutMs = 300_000) {
@@ -77,8 +82,8 @@ try {
 
   // Skip onboarding / notice dialogs if present.
   for (const [label, buttons] of [
-    [/添加一个 API Key|Add an API Key/i, [/稍后配置|Configure later/i]],
     [/内测声明|Preview Notice/i, [/继续|Continue/i]],
+    [/添加一个 API Key|Add an API Key/i, [/稍后配置|Configure later/i]],
   ]) {
     const dialog = window.getByRole('dialog').filter({ hasText: label }).first()
     try {
@@ -99,9 +104,38 @@ try {
     return 'clicked'
   })
   console.log('WORKSPACE:', ws)
-  await new Promise(resolve => setTimeout(resolve, 2500))
+  const workspaceTitle = window.getByText('workspace-fixture', { exact: true }).first()
+  await workspaceTitle.waitFor({ state: 'visible', timeout: 30_000 })
+  const composer = window.locator('[data-sandrone-composer-input]').first()
+  await composer.waitFor({ state: 'visible', timeout: 30_000 })
+  try {
+    await window.waitForFunction(() => {
+      const input = document.querySelector('[data-sandrone-composer-input]')
+      return input instanceof HTMLTextAreaElement && !input.disabled && !input.readOnly
+    }, undefined, { timeout: 30_000 })
+  } catch (error) {
+    const diagnostic = await window.evaluate(() => {
+      const input = document.querySelector('[data-sandrone-composer-input]')
+      const selectedWorkspace = document.querySelector('[data-sandrone-workspaces] [aria-selected="true"]')
+      return {
+        bodyText: document.body.innerText.slice(0, 4_000),
+        input: input instanceof HTMLTextAreaElement ? {
+          disabled: input.disabled,
+          readOnly: input.readOnly,
+          placeholder: input.placeholder,
+        } : null,
+        selectedWorkspace: selectedWorkspace?.textContent?.trim() ?? null,
+        url: location.href,
+      }
+    })
+    await window.screenshot({ path: join(artifactDirectory, 'failure.png'), fullPage: false })
+    console.log('WORKSPACE-DIAGNOSTIC:', JSON.stringify(diagnostic, null, 2))
+    console.log('ARTIFACTS:', artifactDirectory)
+    throw error
+  }
+  console.log('NEW-CONVERSATION: editable')
 
-  // Create a session.
+  // Exercise the explicit New Session action after the provisional session is ready.
   const ns = window.getByRole('button', { name: /新建会话|新会话|New session/i }).first()
   try {
     await ns.click()

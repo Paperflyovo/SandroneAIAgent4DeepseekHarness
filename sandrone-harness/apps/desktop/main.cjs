@@ -19,6 +19,7 @@ const {
 } = require('electron')
 const { HarnessSupervisor } = require('./lib/harness-supervisor.cjs')
 const { deployPlugin } = require('./lib/deploy-plugin.cjs')
+const { deployRuntimePackage } = require('./lib/deploy-runtime-package.cjs')
 const { deployAgentPresets } = require('./lib/deploy-agent-presets.cjs')
 const { deploySkills } = require('./lib/deploy-skills.cjs')
 const {
@@ -46,6 +47,7 @@ const RUNNER = path.join(__dirname, 'harness-runner.mjs')
 const UI_BUILD_SCRIPT = path.join(ROOT, 'scripts', 'build-ui.mjs')
 const PATCH = path.join(ROOT, 'profiles', 'sandrone-desktop.patch.yml')
 const UI_PLUGIN = path.join(ROOT, 'packages', 'sandrone-ui')
+const IMAGE_TOOLS_PACKAGE = path.join(ROOT, 'packages', 'sandrone-image-tools')
 const BUNDLED_SKILLS = path.join(ROOT, 'skills')
 const BUNDLED_AGENT_PRESETS = path.join(ROOT, 'presets')
 const BUNDLED_SKILL_NAMES = [
@@ -274,6 +276,11 @@ function writeWindowState() {
 function launchHarness() {
   const bin = packageBin('@deepseek-ai/dsh', 'dsh', path.join(ROOT, 'package.json'))
   deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
+  deployRuntimePackage({
+    source: IMAGE_TOOLS_PACKAGE,
+    dshHome: dshHome(),
+    packageName: '@sandrone/harness-image-tools',
+  })
   prepareExtensions()
   return fork(RUNNER, [], {
     cwd: app.getPath('home'),
