@@ -1,4 +1,4 @@
-/* sandrone-ui-source-sha256:8fd3ebb34375b3ef2ff0cdc4f5d80c1f07a379cf1f7a77a0c6410f4e5f71c04c */
+/* sandrone-ui-source-sha256:79cc77ba0324ee70e4a43b8981ad2e77326e9d9e06f42b8a89c44166da6f8807 */
 window.__ModuleLoader__.load({ id: "@sandrone/harness-ui", factory: (require) => { var module = { exports: {} }; var exports = module.exports;
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -5030,30 +5030,36 @@ function SettingsChrome() {
   return /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-settings-chrome" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-settings-back", onClick: closeSettings }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" })), "\u8FD4\u56DE\u5DE5\u4F5C\u533A"), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-settings-search" }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("circle", { cx: "11", cy: "11", r: "8" }), /* @__PURE__ */ import_react.default.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })), /* @__PURE__ */ import_react.default.createElement("input", { className: "sandrone-settings-search-input", type: "text", placeholder: "\u641C\u7D22\u8BBE\u7F6E...", value: query, onChange: (event) => setQuery(event.target.value), onKeyDown: submitSearch })));
 }
 function NativeDirectoryFlow(props) {
-  const openedRef = (0, import_react.useRef)(false);
+  const armedRef = (0, import_react.useRef)(false);
+  const outcomeRef = (0, import_react.useRef)(props);
+  const aliveRef = (0, import_react.useRef)(true);
+  outcomeRef.current = props;
+  (0, import_react.useEffect)(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
   (0, import_react.useEffect)(() => {
     if (!props.open) {
-      openedRef.current = false;
+      armedRef.current = false;
       return;
     }
-    if (openedRef.current) return;
-    openedRef.current = true;
+    if (armedRef.current) return;
+    armedRef.current = true;
     const desktop = window.sandroneDesktop;
     if (!desktop || typeof desktop.pickDirectory !== "function") {
-      props.onCancel();
+      outcomeRef.current.onError?.("\u7CFB\u7EDF\u76EE\u5F55\u9009\u62E9\u5668\u4E0D\u53EF\u7528");
       return;
     }
-    let alive = true;
     void desktop.pickDirectory().then((path) => {
-      if (!alive) return;
-      if (path) props.onPicked(path);
-      else props.onCancel();
-    }).catch(() => {
-      if (alive) props.onCancel();
+      if (!aliveRef.current) return;
+      if (path === null) outcomeRef.current.onCancel();
+      else outcomeRef.current.onPicked(path);
+    }).catch((reason) => {
+      if (!aliveRef.current) return;
+      outcomeRef.current.onError?.(reason instanceof Error ? reason.message : String(reason));
     });
-    return () => {
-      alive = false;
-    };
   }, [props.open]);
   return null;
 }

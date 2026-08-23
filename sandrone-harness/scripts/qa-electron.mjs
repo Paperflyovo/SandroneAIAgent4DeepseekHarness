@@ -11,7 +11,6 @@ import { electronExecutableRelativePath } from './lib/desktop-platform.mjs'
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
-const buddySelector = '[aria-label="Sandrone Buddy"], [aria-label="Open Sandrone Buddy"]'
 const defaultReadyTimeoutMs = 11 * 60_000
 const shutdownTimeoutMs = 45_000
 const processDrainTimeoutMs = 30_000
@@ -265,11 +264,11 @@ async function waitForOfficialHarness(page, readyTimeoutMs) {
     lastUrl = page.url()
     if (loopbackOrigin(lastUrl)) {
       try {
-        const buddyVisible = await page.locator(buddySelector).isVisible()
+        const shellVisible = await page.locator('[data-sandrone-shell]').isVisible()
         const hasTheme = await page.evaluate(() => (
           getComputedStyle(document.body).getPropertyValue('--dsw-alias-brand-primary').trim().length > 0
         ))
-        if (buddyVisible && hasTheme) return
+        if (shellVisible && hasTheme) return
       } catch (error) {
         lastError = error
       }
@@ -312,6 +311,18 @@ async function deferApiKeyOnboarding(page) {
   return true
 }
 
+async function waitForEditableComposer(page, workspacePath) {
+  const composer = page.locator('[data-sandrone-composer-input]').first()
+  await composer.waitFor({ state: 'visible', timeout: 30_000 })
+  await page.waitForFunction(() => {
+    const input = document.querySelector('[data-sandrone-composer-input]')
+    return input instanceof HTMLTextAreaElement && !input.disabled && !input.readOnly
+  }, undefined, { timeout: 30_000 }).catch(() => {
+    throw new Error(`workspace ${workspacePath} was adopted, but its new session composer did not become editable`)
+  })
+  return composer
+}
+
 async function addWorkspaceThroughNativePicker(page, workspacePath) {
   // The desktop shows the OS-native directory dialog (Electron
   // dialog.showOpenDialog); automated runs resolve SANDRONE_QA_PICK_DIRECTORY
@@ -321,6 +332,9 @@ async function addWorkspaceThroughNativePicker(page, workspacePath) {
   await openWorkspace.click()
   const workspaceTitle = page.getByText('workspace-fixture', { exact: true }).first()
   await workspaceTitle.waitFor({ state: 'visible', timeout: 30_000 })
+  const composer = await waitForEditableComposer(page, workspacePath)
+
+  return { workspaceTitle, composer }
 }
 
 async function main() {
@@ -440,11 +454,9 @@ async function main() {
     recordCheck(report, 'desktop supervisor is ready on the visible origin', initialStatus.phase === 'ready' && initialStatus.url === origin, initialStatus)
     report.application.previewNoticeAccepted = await acceptPreviewNotice(firstWindow)
     report.application.apiKeyOnboardingDeferred = await deferApiKeyOnboarding(firstWindow)
-    recordCheck(report, 'Sandrone Buddy surface is visible', await firstWindow.locator(buddySelector).first().isVisible(), buddySelector)
-    await addWorkspaceThroughNativePicker(firstWindow, workspaceDirectory)
-    const workspaceTitle = firstWindow.getByText('workspace-fixture', { exact: true }).first()
-    await workspaceTitle.waitFor({ state: 'visible', timeout: 30_000 })
+    const { workspaceTitle, composer } = await addWorkspaceThroughNativePicker(firstWindow, workspaceDirectory)
     recordCheck(report, 'workspace directory picker adopts a selected directory', await workspaceTitle.isVisible(), workspaceDirectory)
+    recordCheck(report, 'selected workspace opens an editable new conversation', await composer.isEditable(), '[data-sandrone-composer-input]')
     const initialScreenshot = join(outputDirectory, 'desktop-initial.png')
     await firstWindow.screenshot({ path: initialScreenshot, fullPage: false })
     report.application.initial.screenshot = initialScreenshot
@@ -466,8 +478,9 @@ async function main() {
     recordCheck(report, 'reload preserves the official Harness origin', Boolean(origin) && reloadedOrigin === origin, { before: origin, after: reloadedOrigin })
     recordCheck(report, 'reload preserves the ready supervisor generation', reloadedStatus.phase === 'ready' && reloadedStatus.url === origin, reloadedStatus)
     recordCheck(report, 'reload keeps exactly one renderer window', reloadedWindows.length === 1, reloadedWindows.map(window => safeUrl(window.url())))
-    recordCheck(report, 'reload restores Sandrone Buddy surface', await firstWindow.locator(buddySelector).first().isVisible(), buddySelector)
     recordCheck(report, 'reload preserves the selected workspace', await firstWindow.getByText('workspace-fixture', { exact: true }).first().isVisible(), workspaceDirectory)
+    const reloadedComposer = await waitForEditableComposer(firstWindow, workspaceDirectory)
+    recordCheck(report, 'reload preserves an editable new conversation', await reloadedComposer.isEditable(), '[data-sandrone-composer-input]')
     const reloadedScreenshot = join(outputDirectory, 'desktop-after-reload.png')
     await firstWindow.screenshot({ path: reloadedScreenshot, fullPage: false })
     report.application.afterReload.screenshot = reloadedScreenshot

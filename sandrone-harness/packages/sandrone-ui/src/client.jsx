@@ -1528,31 +1528,38 @@ function SettingsChrome() {
    owner opens the flow, Electron shows the system directory picker and the
    confirmed path is reported through onPicked (dismissal through onCancel). */
 function NativeDirectoryFlow(props) {
-  const openedRef = useRef(false)
+  const armedRef = useRef(false)
+  const outcomeRef = useRef(props)
+  const aliveRef = useRef(true)
+  outcomeRef.current = props
+
+  useEffect(() => {
+    aliveRef.current = true
+    return () => { aliveRef.current = false }
+  }, [])
 
   useEffect(() => {
     if (!props.open) {
-      openedRef.current = false
+      armedRef.current = false
       return
     }
-    if (openedRef.current) return
-    openedRef.current = true
+    if (armedRef.current) return
+    armedRef.current = true
     const desktop = window.sandroneDesktop
     if (!desktop || typeof desktop.pickDirectory !== 'function') {
-      props.onCancel()
+      outcomeRef.current.onError?.('系统目录选择器不可用')
       return
     }
-    let alive = true
     void desktop.pickDirectory()
       .then(path => {
-        if (!alive) return
-        if (path) props.onPicked(path)
-        else props.onCancel()
+        if (!aliveRef.current) return
+        if (path === null) outcomeRef.current.onCancel()
+        else outcomeRef.current.onPicked(path)
       })
-      .catch(() => {
-        if (alive) props.onCancel()
+      .catch(reason => {
+        if (!aliveRef.current) return
+        outcomeRef.current.onError?.(reason instanceof Error ? reason.message : String(reason))
       })
-    return () => { alive = false }
   }, [props.open])
 
   return null

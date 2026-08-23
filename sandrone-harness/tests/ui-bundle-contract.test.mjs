@@ -31,6 +31,22 @@ test('source registers theme and overlay through reversible Harness effects', as
   assert.doesNotMatch(source, /\b(?:SessionEvent|WebSocket|providerProxy)\b/)
 })
 
+test('native directory picker survives React Strict Mode effect replay', async () => {
+  const source = await readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8')
+  const flow = source.match(/function NativeDirectoryFlow\(props\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(flow, /const armedRef = useRef\(false\)/)
+  assert.match(flow, /const outcomeRef = useRef\(props\)/)
+  assert.match(flow, /outcomeRef\.current = props/)
+  assert.match(flow, /const aliveRef = useRef\(true\)/)
+  assert.match(flow, /useEffect\(\(\) => \{\s*aliveRef\.current = true\s*return \(\) => \{ aliveRef\.current = false \}\s*\}, \[\]\)/)
+  assert.match(flow, /if \(!props\.open\) \{\s*armedRef\.current = false/)
+  assert.match(flow, /if \(armedRef\.current\) return/)
+  assert.match(flow, /if \(path === null\) outcomeRef\.current\.onCancel\(\)/)
+  assert.match(flow, /else outcomeRef\.current\.onPicked\(path\)/)
+  assert.match(flow, /outcomeRef\.current\.onError\?\./)
+  assert.doesNotMatch(flow, /let alive = true/)
+})
+
 test('desktop chrome owns a complete sidebar toggle and collapse state', async () => {
   const [component, stylesheet] = await Promise.all([
     readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
