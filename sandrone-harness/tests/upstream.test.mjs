@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
 
-import { DEFAULT_VERSION, REQUIRED_PACKAGES, verifyUpstream } from '../scripts/verify-upstream.mjs'
+import { DEFAULT_VERSION, REQUIRED_PACKAGES, REQUIRED_PATCHES, verifyUpstream } from '../scripts/verify-upstream.mjs'
 
 async function writeJson(path, value) {
   await mkdir(dirname(path), { recursive: true })
@@ -19,6 +19,20 @@ async function makeFixture(overrides = {}) {
     npmVersion: DEFAULT_VERSION,
     packageFamilyVersion: DEFAULT_VERSION,
   })
+  await writeFile(join(root, 'pnpm-workspace.yaml'), [
+    'packages: []',
+    'patchedDependencies:',
+    ...Object.entries(REQUIRED_PATCHES).map(([dependency, rule]) => `  '${dependency}': ${rule.file}`),
+    '',
+  ].join('\n'))
+  for (const rule of Object.values(REQUIRED_PATCHES)) {
+    const patchPath = join(root, ...rule.file.split('/'))
+    await mkdir(dirname(patchPath), { recursive: true })
+    await writeFile(patchPath, [
+      ...(rule.removes ?? []).map(removed => `-${removed}`),
+      ...(rule.adds ?? []).map(added => `+${added}`),
+    ].join('\n'))
+  }
   await mkdir(join(root, 'profiles'), { recursive: true })
   await writeFile(join(root, 'profiles/sandrone-web.patch.yml'), [
     '- insert:',

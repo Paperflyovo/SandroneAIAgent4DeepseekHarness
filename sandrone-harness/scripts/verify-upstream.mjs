@@ -6,6 +6,33 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DEFAULT_VERSION = '0.1.1-rc.1'
 
+const REQUIRED_PATCHES = Object.freeze({
+  '@deepseek-ai/dsh@0.1.1-rc.1': {
+    file: 'patches/@deepseek-ai__dsh@0.1.1-rc.1.patch',
+    adds: ['@sandrone/harness-image-tools'],
+  },
+  '@deepseek-ai/dsh-client-ui-model-selection@0.1.1-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.1-rc.1.patch',
+    adds: ['snapshot.status === "selecting"'],
+  },
+  '@deepseek-ai/dsh-host-apiproxy@0.1.1-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-host-apiproxy@0.1.1-rc.1.patch',
+    removes: ['MODEL_DOES_NOT_SUPPORT_IMAGES', 'does not accept image input, but this session already contains images'],
+  },
+  '@deepseek-ai/dsh-llm-pi-ai@0.1.1-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-llm-pi-ai@0.1.1-rc.1.patch',
+    removes: ['does not support image input'],
+  },
+  '@deepseek-ai/dsh-llm-deepseek@0.1.1-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-llm-deepseek@0.1.1-rc.1.patch',
+    removes: ['does not accept image input'],
+  },
+  '@deepseek-ai/dsh-tool-fs@0.1.1-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-tool-fs@0.1.1-rc.1.patch',
+    removes: ['assertImageCapableRoute(ctx, exec, args.file_path)', 'does not declare image input'],
+  },
+})
+
 const REQUIRED_PACKAGES = Object.freeze({
   '@deepseek-ai/dsh': { bin: 'dsh' },
   '@deepseek-ai/dsh-base': { bundlePatch: true },
@@ -143,6 +170,35 @@ function patchProblems(source) {
   return problems
 }
 
+async function dependencyPatchProblems(root) {
+  const workspace = await readFile(join(root, 'pnpm-workspace.yaml'), 'utf8')
+  const problems = []
+  for (const [dependency, rule] of Object.entries(REQUIRED_PATCHES)) {
+    const declaration = `'${dependency}': ${rule.file}`
+    if (!workspace.includes(declaration)) {
+      problems.push(`pnpm-workspace.yaml does not declare required patch ${dependency}`)
+      continue
+    }
+    const patchPath = join(root, ...rule.file.split('/'))
+    if (!(await exists(patchPath))) {
+      problems.push(`required dependency patch is missing: ${rule.file}`)
+      continue
+    }
+    const source = await readFile(patchPath, 'utf8')
+    for (const removed of rule.removes ?? []) {
+      if (!source.includes(`-${removed}`) && !source.split('\n').some(line => line.startsWith('-') && line.includes(removed))) {
+        problems.push(`${rule.file} does not remove the image admission gate containing: ${removed}`)
+      }
+    }
+    for (const added of rule.adds ?? []) {
+      if (!source.split('\n').some(line => line.startsWith('+') && line.includes(added))) {
+        problems.push(`${rule.file} does not add the required behavior containing: ${added}`)
+      }
+    }
+  }
+  return problems
+}
+
 /** Verify the exact upstream package family, public entries, and profile composition. */
 export async function verifyUpstream(options = {}) {
   const root = resolve(options.root ?? DEFAULT_ROOT)
@@ -164,6 +220,7 @@ export async function verifyUpstream(options = {}) {
     errors.push(`docs/upstream-lock.json must pin npm and package family to ${DEFAULT_VERSION}`)
   }
   errors.push(...patchProblems(patch))
+  errors.push(...await dependencyPatchProblems(root))
 
   const packages = []
   for (const [packageName, rule] of Object.entries(REQUIRED_PACKAGES)) {
@@ -212,4 +269,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   await main()
 }
 
-export { DEFAULT_VERSION, REQUIRED_PACKAGES }
+export { DEFAULT_VERSION, REQUIRED_PACKAGES, REQUIRED_PATCHES }

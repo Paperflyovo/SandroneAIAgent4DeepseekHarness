@@ -1,0 +1,3 @@
+name: Sandrone Buddy
+description: Sandrone 内部陪伴会话；共享 Provider 路由，但不挂载任何编码工具。
+order: 1000

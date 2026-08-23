@@ -1,0 +1,79 @@
+diff --git a/lib/index.js b/lib/index.js
+index 507579892d69436861a73db9f97293f0eeab0bd6..661edec1f1c649abffe97d5b0aa3512c36d604bd 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -2613,17 +2613,6 @@ function createApiProxy(ctx, defaults) {
+ 							model,
+ 							...reasoningEffort === void 0 ? {} : { reasoningEffort: ReasoningEffortId(reasoningEffort) }
+ 						});
+-						if ([...found.agent.inbox.nextTurn, ...found.agent.inbox.nextStep].some((message) => contentHasImage(message.content)) || messagesHaveImage(found.agent.session.deriveMessages())) {
+-							const info = await ctx.llm.resolveModelInfo(resolved.provider, resolved.model);
+-							if (info.inputModalities !== void 0 && !info.inputModalities.includes("image")) return err(request, {
+-								code: "model-unavailable",
+-								message: `Model "${resolved.model}" does not accept image input, but this session already contains images; select an image-capable model.`,
+-								details: {
+-									provider,
+-									model
+-								}
+-							});
+-						}
+ 						const selected = {
+ 							provider: resolved.provider,
+ 							model: resolved.model,
+@@ -2769,15 +2758,6 @@ function createApiProxy(ctx, defaults) {
+ 				const hasImage = content.some((part) => part.type === "image");
+ 				const admit = async () => {
+ 					try {
+-						if (hasImage) {
+-							const current = selectionFor(agent).current;
+-							const modelInfo = await ctx.llm.resolveModelInfo(current.provider, current.model);
+-							if (modelInfo.inputModalities !== void 0 && !modelInfo.inputModalities.includes("image")) return err(request, {
+-								code: "attachment-error",
+-								message: `Model "${current.model}" does not support image input.`,
+-								details: { reason: "MODEL_DOES_NOT_SUPPORT_IMAGES" }
+-							});
+-						}
+ 						const message = createUserMessage({
+ 							content: await durablePromptContent(ctx, content),
+ 							source
+diff --git a/lib/types/api-proxy.js b/lib/types/api-proxy.js
+index e8e890f6151cb7dbbad5daeee32d85af23dab37a..3dac3098487f529ce0a4a1c24b5595b5e8cb318e 100644
+--- a/lib/types/api-proxy.js
++++ b/lib/types/api-proxy.js
+@@ -1929,18 +1929,6 @@ export function createApiProxy(ctx, defaults) {
+                                 ? {}
+                                 : { reasoningEffort: ReasoningEffortId(reasoningEffort) },
+                         });
+-                        const pendingImage = [...found.agent.inbox.nextTurn, ...found.agent.inbox.nextStep]
+-                            .some(message => contentHasImage(message.content));
+-                        if (pendingImage || messagesHaveImage(found.agent.session.deriveMessages())) {
+-                            const info = await ctx.llm.resolveModelInfo(resolved.provider, resolved.model);
+-                            if (info.inputModalities !== undefined && !info.inputModalities.includes('image')) {
+-                                return err(request, {
+-                                    code: 'model-unavailable',
+-                                    message: `Model "${resolved.model}" does not accept image input, but this session already contains images; select an image-capable model.`,
+-                                    details: { provider, model },
+-                                });
+-                            }
+-                        }
+                         const selected = {
+                             provider: resolved.provider,
+                             model: resolved.model,
+@@ -2124,17 +2112,6 @@ export function createApiProxy(ctx, defaults) {
+                 const hasImage = content.some(part => part.type === 'image');
+                 const admit = async () => {
+                     try {
+-                        if (hasImage) {
+-                            const current = selectionFor(agent).current;
+-                            const modelInfo = await ctx.llm.resolveModelInfo(current.provider, current.model);
+-                            if (modelInfo.inputModalities !== undefined && !modelInfo.inputModalities.includes('image')) {
+-                                return err(request, {
+-                                    code: 'attachment-error',
+-                                    message: `Model "${current.model}" does not support image input.`,
+-                                    details: { reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES' },
+-                                });
+-                            }
+-                        }
+                         const durable = await durablePromptContent(ctx, content);
+                         const message = createUserMessage({ content: durable, source });
+                         if (mode === 'steer')

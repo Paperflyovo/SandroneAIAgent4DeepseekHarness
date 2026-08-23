@@ -1,0 +1,32 @@
+diff --git a/lib/index.js b/lib/index.js
+index b6d57a430fee25985ecb5d619ee3ef9a1077e18e..f143e2f2d6949cbcabcc37b20a854501a93784ba 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -867,7 +867,6 @@ var PiAiAdapter = class extends LlmAdapter {
+ 			const watchdog = __addDisposableResource(env_1, idleWatchdog(upstream, streamIdleTimeoutMs, "LLM_STREAM_IDLE_TIMEOUT"), false);
+ 			try {
+ 				const containsImage = options.messages.some((message) => contentHasImage(message.content));
+-				if (containsImage && !model.input.includes("image")) throw new LlmError(`pi-ai model "${model.id}" does not support image input`, "UNSUPPORTED_CONTENT");
+ 				const attachments = containsImage ? this.config.resolveAttachments?.() : void 0;
+ 				if (containsImage && attachments === void 0) throw new LlmError("pi-ai image input requires the durable attachment service", "UNSUPPORTED_CONTENT");
+ 				const onReplayDegrade = (reason) => {
+@@ -1687,14 +1686,11 @@ const DEFAULT_MAX_TOKENS = 32768;
+ /**
+ * Modalities assumed for a model neither configuration nor the catalog
+-* declares. Text is the floor every supported protocol certainly carries, so
+-* this is the absence of a declaration rather than a guess at the endpoint:
+-* nothing can interrogate a gateway for its modalities, and the two wrong
+-* answers do not cost the same. Under-claiming refuses the image before it is
+-* attached, naming the model. Over-claiming admits one the provider then
+-* rejects mid-turn, after the message is durable, leaving the session
+-* repeating a request that cannot succeed.
++* declares. Sandrone custom routes admit images by default because gateways
++* commonly expose vision-capable models absent from pi-ai's catalog. The
++* provider remains the authority that accepts or rejects the request; an
++* explicitly text-only route can set `defaultInput: [text]`.
+ */
+-const DEFAULT_INPUT = ["text"];
++const DEFAULT_INPUT = ["text", "image"];
+ const thinkingBudgets = z.object({
+ 	minimal: z.number(),
+ 	low: z.number(),

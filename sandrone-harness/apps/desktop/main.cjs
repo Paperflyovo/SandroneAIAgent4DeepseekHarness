@@ -2,25 +2,43 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const sharp = require('sharp')
 const { fork } = require('node:child_process')
 const { pathToFileURL } = require('node:url')
 const {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
+  nativeImage,
   net,
   screen,
   shell,
 } = require('electron')
 const { HarnessSupervisor } = require('./lib/harness-supervisor.cjs')
 const { deployPlugin } = require('./lib/deploy-plugin.cjs')
+const { deployAgentPresets } = require('./lib/deploy-agent-presets.cjs')
+const { deploySkills } = require('./lib/deploy-skills.cjs')
+const {
+  readExtensionsConfig,
+  scanSkills,
+  writeExtensionsConfig,
+  writeExtensionsPatch,
+} = require('./lib/extensions-config.cjs')
 const { classifyNavigation, isInternalHarnessUrl } = require('./lib/navigation-policy.cjs')
 const { assertTrustedIpcSender } = require('./lib/ipc-policy.cjs')
+const {
+  readSupplementaryRoots,
+  readWorkspaceRoots,
+  resolveAuthorizedLocalImage,
+  writeSupplementaryRoot,
+} = require('./lib/local-image-policy.cjs')
 const { createQuitCoordinator } = require('./lib/quit-coordinator.cjs')
 const { packageBin } = require('./lib/resolve-package.cjs')
 const { UpdateService } = require('./lib/update-service.cjs')
+const { listWorkspaceDirectory, readWorkspaceFile, resolveWorkspaceTarget } = require('./lib/workspace-browser.cjs')
 
 const APP_NAME = 'Sandrone AI Agent'
 const ROOT = path.resolve(__dirname, '..', '..')
@@ -28,11 +46,21 @@ const RUNNER = path.join(__dirname, 'harness-runner.mjs')
 const UI_BUILD_SCRIPT = path.join(ROOT, 'scripts', 'build-ui.mjs')
 const PATCH = path.join(ROOT, 'profiles', 'sandrone-desktop.patch.yml')
 const UI_PLUGIN = path.join(ROOT, 'packages', 'sandrone-ui')
+const BUNDLED_SKILLS = path.join(ROOT, 'skills')
+const BUNDLED_AGENT_PRESETS = path.join(ROOT, 'presets')
+const BUNDLED_SKILL_NAMES = [
+  'sandrone-harness-frontend-lifecycle',
+  'sandrone-harness-gpt-development',
+  'sandrone-image-preview',
+]
 const WINDOW_ICON = path.join(ROOT, 'build', 'icon.png')
 const LOADING_PAGE = path.join(__dirname, 'loading.html')
 const LOADING_URL = pathToFileURL(LOADING_PAGE).href
 const NAVIGATION_RETRY_DELAYS = [500, 1_500, 4_000]
 const HARNESS_READINESS_TIMEOUT_MS = 10 * 60_000
+const MAX_SESSION_SCREENSHOT_HEIGHT = 36_000
+const MAX_SESSION_SCREENSHOT_WIDTH = 8_000
+const MAX_CAPTURE_SESSION_CHUNK_HEIGHT = 8_000
 
 app.setName(APP_NAME)
 
@@ -48,12 +76,40 @@ function desktopSettingsPath() {
   return path.join(app.getPath('userData'), 'desktop-settings.json')
 }
 
+function defaultScreenshotDirectory() {
+  return path.join(app.getPath('pictures'), 'Sandrone')
+}
+
+function writeScreenshotFile(directory, bytes, now = new Date()) {
+  if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw new Error('截图内容为空')
+  const targetDirectory = path.resolve(directory || defaultScreenshotDirectory())
+  fs.mkdirSync(targetDirectory, { recursive: true })
+  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  const prefix = path.join(targetDirectory, `Sandrone-session-${timestamp}`)
+  for (let index = 0; index < 1000; index += 1) {
+    const suffix = index === 0 ? '' : `-${index + 1}`
+    const targetPath = `${prefix}${suffix}.png`
+    try {
+      fs.writeFileSync(targetPath, bytes, { flag: 'wx' })
+      return targetPath
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error
+    }
+  }
+  throw new Error('截图文件名冲突次数过多，请稍后重试')
+}
+
 function readDesktopSettings() {
   try {
     const value = JSON.parse(fs.readFileSync(desktopSettingsPath(), 'utf8'))
-    return { gpuAcceleration: value.gpuAcceleration !== false }
+    return {
+      gpuAcceleration: value.gpuAcceleration !== false,
+      screenshotDirectory: typeof value.screenshotDirectory === 'string' && value.screenshotDirectory.trim()
+        ? path.resolve(value.screenshotDirectory)
+        : defaultScreenshotDirectory(),
+    }
   } catch {
-    return { gpuAcceleration: true }
+    return { gpuAcceleration: true, screenshotDirectory: defaultScreenshotDirectory() }
   }
 }
 
@@ -90,7 +146,7 @@ let desktopSettings = readDesktopSettings()
 if (!desktopSettings.gpuAcceleration) app.disableHardwareAcceleration()
 
 function toggleGpuAcceleration(enabled) {
-  desktopSettings = { gpuAcceleration: enabled }
+  desktopSettings = { ...desktopSettings, gpuAcceleration: enabled }
   writeDesktopSettings(desktopSettings)
   syncGpuMenuState()
   const choice = dialog.showMessageBoxSync(mainWindow ?? undefined, {
@@ -132,6 +188,54 @@ function dshHome() {
   return path.join(app.getPath('userData'), 'DeepSeekHarness')
 }
 
+function extensionsConfigPath() {
+  return path.join(app.getPath('userData'), 'sandrone-extensions.json')
+}
+
+function extensionsPatchPath() {
+  return path.join(app.getPath('userData'), 'sandrone-extensions.patch.yml')
+}
+
+function currentExtensionsConfig() {
+  return readExtensionsConfig(extensionsConfigPath())
+}
+
+function prepareExtensions() {
+  const config = currentExtensionsConfig()
+  writeExtensionsPatch(extensionsPatchPath(), config)
+  deploySkills({
+    sourceRoot: BUNDLED_SKILLS,
+    dshHome: dshHome(),
+    skillNames: BUNDLED_SKILL_NAMES,
+    disabledNames: config.skills.disabled,
+  })
+  deployAgentPresets({
+    sourceRoot: BUNDLED_AGENT_PRESETS,
+    dshHome: dshHome(),
+    presetNames: ['sandrone-buddy'],
+  })
+  return config
+}
+
+function workspaceStoragePath() {
+  return path.join(dshHome(), 'storages', 'workspace.json')
+}
+
+function localImageRootsPath() {
+  return path.join(app.getPath('userData'), 'local-image-roots.json')
+}
+
+function authorizedLocalImageRoots() {
+  return [...new Set([
+    ...readWorkspaceRoots(workspaceStoragePath()),
+    ...readSupplementaryRoots(localImageRootsPath()),
+  ])]
+}
+
+function authorizedLocalImage(requestedPath) {
+  return resolveAuthorizedLocalImage(requestedPath, authorizedLocalImageRoots())
+}
+
 function windowStatePath() {
   return path.join(app.getPath('userData'), 'window-state.json')
 }
@@ -170,6 +274,7 @@ function writeWindowState() {
 function launchHarness() {
   const bin = packageBin('@deepseek-ai/dsh', 'dsh', path.join(ROOT, 'package.json'))
   deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
+  prepareExtensions()
   return fork(RUNNER, [], {
     cwd: app.getPath('home'),
     execPath: process.execPath,
@@ -179,7 +284,7 @@ function launchHarness() {
       ELECTRON_RUN_AS_NODE: '1',
       DSH_HOME: dshHome(),
       SANDRONE_DSH_BIN: bin,
-      SANDRONE_DSH_ARGS: JSON.stringify(['web', '--patch', PATCH, '--port', '0']),
+      SANDRONE_DSH_ARGS: JSON.stringify(['web', '--patch', PATCH, '--patch', extensionsPatchPath(), '--port', '0', '--no-open']),
     },
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     windowsHide: true,
@@ -219,6 +324,7 @@ function reloadUi() {
     if (!app.isPackaged) {
       await rebuildUi()
       deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
+      prepareExtensions()
     }
     if (mainWindow && !mainWindow.isDestroyed()) {
       await mainWindow.webContents.reloadIgnoringCache()
@@ -358,7 +464,6 @@ function createApplicationMenu() {
         { label: '打开工作区', click: () => sendDesktopCommand('open-workspace') },
         { label: '设置', accelerator: 'CmdOrCtrl+,', click: () => sendDesktopCommand('open-settings') },
         { type: 'separator' },
-        { role: 'close', label: '关闭窗口' },
         ...(!isMac ? [{ role: 'quit', label: '退出' }] : []),
       ],
     },
@@ -377,12 +482,11 @@ function createApplicationMenu() {
         { label: '前进', accelerator: isMac ? 'Command+]' : 'Alt+Right', click: () => mainWindow?.webContents.navigationHistory.goForward() },
         { type: 'separator' },
         { label: '切换侧边栏', accelerator: 'CmdOrCtrl+B', click: () => sendDesktopCommand('toggle-sidebar') },
-        { label: '切换夜间模式', click: () => sendDesktopCommand('toggle-theme') },
+        { id: 'toggle-theme', label: '切换夜间模式', click: () => sendDesktopCommand('toggle-theme') },
         { label: 'GPU 硬件加速', type: 'checkbox', checked: desktopSettings.gpuAcceleration, click: item => toggleGpuAcceleration(item.checked) },
         { type: 'separator' },
         { label: app.isPackaged ? '刷新界面' : '刷新界面（重建 UI）', accelerator: 'CmdOrCtrl+R', click: triggerReloadUi },
         { type: 'separator' },
-        { role: 'resetZoom', label: '实际大小' },
         { role: 'togglefullscreen', label: '全屏' },
       ],
     },
@@ -402,11 +506,13 @@ function createApplicationMenu() {
 
 const APPLICATION_MENU_LABELS = Object.freeze({ file: '文件', edit: '编辑', view: '视图', help: '帮助' })
 
-function popupApplicationMenu(menuId, position) {
+function popupApplicationMenu(menuId, position, state = {}) {
   const label = typeof menuId === 'string' ? APPLICATION_MENU_LABELS[menuId] : undefined
   if (label === undefined) return false
   const item = Menu.getApplicationMenu()?.items.find(entry => entry.label === label)
   if (!item?.submenu || !mainWindow || mainWindow.isDestroyed()) return false
+  const themeItem = item.submenu.items.find(entry => entry.id === 'toggle-theme')
+  if (themeItem) themeItem.label = state?.colorScheme === 'dark' ? '切换白天模式' : '切换夜间模式'
   const options = { window: mainWindow }
   if (Number.isFinite(position?.x)) options.x = Math.max(0, Math.round(position.x))
   if (Number.isFinite(position?.y)) options.y = Math.max(0, Math.round(position.y))
@@ -480,9 +586,9 @@ function registerIpc() {
     await supervisor.restart()
     return supervisor.snapshot()
   })
-  ipcMain.handle('desktop:show-application-menu', (event, menuId, position) => {
+  ipcMain.handle('desktop:show-application-menu', (event, menuId, position, state) => {
     assertTrusted(event)
-    return popupApplicationMenu(menuId, position)
+    return popupApplicationMenu(menuId, position, state)
   })
   ipcMain.handle('desktop:get-gpu-acceleration', event => {
     assertTrusted(event)
@@ -490,10 +596,69 @@ function registerIpc() {
   })
   ipcMain.handle('desktop:set-gpu-acceleration', (event, value) => {
     assertTrusted(event)
-    desktopSettings = { gpuAcceleration: value === true }
+    desktopSettings = { ...desktopSettings, gpuAcceleration: value === true }
     writeDesktopSettings(desktopSettings)
     syncGpuMenuState()
     return desktopSettings.gpuAcceleration
+  })
+  ipcMain.handle('desktop:get-screenshot-directory', event => {
+    assertTrusted(event)
+    return desktopSettings.screenshotDirectory || defaultScreenshotDirectory()
+  })
+  ipcMain.handle('desktop:choose-screenshot-directory', async event => {
+    assertTrusted(event)
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择截图默认保存文件夹',
+      buttonLabel: '选择文件夹',
+      defaultPath: desktopSettings.screenshotDirectory || defaultScreenshotDirectory(),
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    if (result.canceled || result.filePaths.length === 0) return desktopSettings.screenshotDirectory || defaultScreenshotDirectory()
+    const selected = path.resolve(result.filePaths[0])
+    fs.mkdirSync(selected, { recursive: true })
+    desktopSettings = { ...desktopSettings, screenshotDirectory: selected }
+    writeDesktopSettings(desktopSettings)
+    return selected
+  })
+  ipcMain.handle('desktop:get-extensions-config', event => {
+    assertTrusted(event)
+    return currentExtensionsConfig()
+  })
+  ipcMain.handle('desktop:save-extensions-config', (event, value) => {
+    assertTrusted(event)
+    const config = writeExtensionsConfig(extensionsConfigPath(), value)
+    writeExtensionsPatch(extensionsPatchPath(), config)
+    deploySkills({
+      sourceRoot: BUNDLED_SKILLS,
+      dshHome: dshHome(),
+      skillNames: BUNDLED_SKILL_NAMES,
+      disabledNames: config.skills.disabled,
+    })
+    mainWindow?.webContents.send('desktop:extensions-config-changed', config)
+    return config
+  })
+  ipcMain.handle('desktop:scan-skills', event => {
+    assertTrusted(event)
+    return scanSkills({ bundledRoot: BUNDLED_SKILLS, dshHome: dshHome(), config: currentExtensionsConfig() })
+  })
+  ipcMain.handle('desktop:list-workspace-directory', (event, root, relativePath = '') => {
+    assertTrusted(event)
+    return listWorkspaceDirectory(root, relativePath, readWorkspaceRoots(workspaceStoragePath()))
+  })
+  ipcMain.handle('desktop:read-workspace-file', (event, root, relativePath) => {
+    assertTrusted(event)
+    return readWorkspaceFile(root, relativePath, readWorkspaceRoots(workspaceStoragePath()))
+  })
+  ipcMain.handle('desktop:reveal-workspace-path', async (event, root, relativePath = '') => {
+    assertTrusted(event)
+    const resolved = resolveWorkspaceTarget(root, relativePath, readWorkspaceRoots(workspaceStoragePath()))
+    if (fs.statSync(resolved.target).isDirectory()) {
+      const error = await shell.openPath(resolved.target)
+      if (error) throw new Error(error)
+    } else {
+      shell.showItemInFolder(resolved.target)
+    }
+    return { ok: true }
   })
   ipcMain.handle('desktop:get-update-state', event => {
     assertTrusted(event)
@@ -526,14 +691,198 @@ function registerIpc() {
     // QA override: automated runs cannot drive the native OS dialog, so the
     // fixture path resolves directly when the environment asks for it.
     const fixture = process.env.SANDRONE_QA_PICK_DIRECTORY?.trim()
-    if (fixture) return fixture
+    if (fixture) {
+      writeSupplementaryRoot(localImageRootsPath(), fixture)
+      return fixture
+    }
     const result = await dialog.showOpenDialog(mainWindow, {
       title: '选择文件夹',
       buttonLabel: '选择文件夹',
       properties: ['openDirectory', 'createDirectory'],
     })
     if (result.canceled || result.filePaths.length === 0) return null
+    writeSupplementaryRoot(localImageRootsPath(), result.filePaths[0])
     return result.filePaths[0]
+  })
+  ipcMain.handle('desktop:read-local-image', async (event, requestedPath) => {
+    assertTrusted(event)
+    try {
+      const image = authorizedLocalImage(requestedPath)
+      return {
+        ok: true,
+        ...image,
+        bytes: Uint8Array.from(fs.readFileSync(image.path)),
+      }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('desktop:reveal-local-image', async (event, requestedPath) => {
+    assertTrusted(event)
+    try {
+      const image = authorizedLocalImage(requestedPath)
+      shell.showItemInFolder(image.path)
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('desktop:capture-session-screenshot', async (event, options = {}) => {
+    assertTrusted(event)
+    try {
+      if (!mainWindow || mainWindow.isDestroyed()) throw new Error('桌面窗口不可用')
+      const requested = options?.selection
+      if (!requested || !Number.isFinite(requested.top) || !Number.isFinite(requested.bottom)) {
+        throw new Error('请先选择截图起点和终点')
+      }
+      const selection = {
+        top: Math.max(0, Math.floor(requested.top)),
+        bottom: Math.max(0, Math.floor(requested.bottom)),
+      }
+      if (selection.bottom <= selection.top) throw new Error('截图终点必须低于起点')
+      if (selection.bottom - selection.top > MAX_SESSION_SCREENSHOT_HEIGHT) {
+        throw new Error(`选取范围过长，请分段截图（上限 ${MAX_SESSION_SCREENSHOT_HEIGHT} 像素）`)
+      }
+      const webContents = mainWindow.webContents
+      const setup = await webContents.executeJavaScript(`(async (selection) => {
+      const scroll = document.querySelector('[data-conversation-scroll]')
+      const session = document.querySelector('[data-sandrone-session-body]')
+      const target = scroll || session
+      if (!(target instanceof HTMLElement)) return { ok: false, error: '当前没有可截图的会话内容' }
+      const elements = [
+        document.querySelector('[data-sandrone-session-header]'),
+        document.querySelector('[data-sandrone-composer]'),
+        document.querySelector('[data-sandrone-sidebar-column]'),
+        document.querySelector('[data-sandrone-details]'),
+        document.querySelector('[data-sandrone-overlay]'),
+        document.querySelector('[data-sandrone-screenshot-overlay]'),
+      ].filter(Boolean)
+      const records = elements.map(element => ({ element, style: element.getAttribute('style'), hidden: element.getAttribute('aria-hidden') }))
+      const styleRecords = [target, target.parentElement, document.documentElement, document.body].filter(Boolean).map(element => ({ element, style: element.getAttribute('style') }))
+      const scrollTop = target.scrollTop
+      const scrollHeight = Math.max(target.scrollHeight, target.clientHeight)
+      if (selection.bottom > scrollHeight) return { ok: false, error: '截图终点超出当前会话内容' }
+      window.__sandroneScreenshotState = { records, styleRecords, target, scrollTop, windowScrollY: window.scrollY }
+      records.forEach(({ element }) => {
+        element.setAttribute('data-sandrone-screenshot-hidden', 'true')
+        element.style.setProperty('visibility', 'hidden', 'important')
+        element.style.setProperty('pointer-events', 'none', 'important')
+      })
+      target.scrollTop = 0
+      target.style.setProperty('overflow', 'visible', 'important')
+      target.style.setProperty('height', scrollHeight + 'px', 'important')
+      target.style.setProperty('max-height', 'none', 'important')
+      target.style.setProperty('min-height', scrollHeight + 'px', 'important')
+      target.style.setProperty('scroll-behavior', 'auto', 'important')
+      target.style.setProperty('padding-bottom', String(Math.max(1, target.clientHeight)) + 'px', 'important')
+      if (target.parentElement) target.parentElement.style.setProperty('min-height', scrollHeight + 'px', 'important')
+      document.documentElement.style.setProperty('overflow', 'visible', 'important')
+      document.body.style.setProperty('overflow', 'visible', 'important')
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      const rect = target.getBoundingClientRect()
+      return {
+        ok: true,
+        rect: { x: rect.left, y: rect.top + selection.top, width: rect.width, height: selection.bottom - selection.top },
+        targetTop: rect.top,
+      }
+    })(${JSON.stringify(selection)})`, true)
+      if (!setup?.ok) throw new Error(setup?.error || '无法准备会话截图')
+      const restore = async () => {
+      await webContents.executeJavaScript(`(() => {
+        const state = window.__sandroneScreenshotState
+        if (!state) return
+        state.records.forEach(({ element, style, hidden }) => {
+          if (style === null) element.removeAttribute('style'); else element.setAttribute('style', style)
+          if (hidden === null) element.removeAttribute('aria-hidden'); else element.setAttribute('aria-hidden', hidden)
+          element.removeAttribute('data-sandrone-screenshot-hidden')
+        })
+        state.styleRecords.forEach(({ element, style }) => {
+          if (style === null) element.removeAttribute('style'); else element.setAttribute('style', style)
+        })
+        state.target.scrollTop = state.scrollTop
+        window.scrollTo(0, state.windowScrollY || 0)
+        delete window.__sandroneScreenshotState
+      })()`, true)
+    }
+      try {
+        const width = Math.ceil(setup.rect.width)
+        const height = Math.ceil(setup.rect.height)
+        if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) throw new Error('会话内容为空')
+        if (width > MAX_SESSION_SCREENSHOT_WIDTH) throw new Error('会话宽度超出截图范围')
+        if (height > MAX_SESSION_SCREENSHOT_HEIGHT) throw new Error(`会话过长，请先折叠轨迹或分段截图（上限 ${MAX_SESSION_SCREENSHOT_HEIGHT} 像素）`)
+        const chunks = []
+        let offset = 0
+        let outputWidth = 0
+        let pixelScale = 1
+        while (offset < height) {
+          const chunkHeight = Math.min(MAX_CAPTURE_SESSION_CHUNK_HEIGHT, height - offset)
+          const chunk = await webContents.executeJavaScript(`(async (payload) => {
+            const state = window.__sandroneScreenshotState
+            const target = state?.target
+            if (!(target instanceof HTMLElement)) return { ok: false, error: '当前没有可截图的会话内容' }
+            target.style.setProperty('transform', 'translate3d(0, ' + (-payload.targetTop - payload.selectionTop - payload.offset) + 'px, 0)', 'important')
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+            const rect = target.getBoundingClientRect()
+            const y = Math.max(0, Math.floor(rect.top))
+            const available = Math.min(payload.chunkHeight, Math.max(0, Math.floor(window.innerHeight - y)))
+            return { ok: available > 0, x: rect.left, y, height: available }
+          })(${JSON.stringify({ targetTop: setup.targetTop, selectionTop: selection.top, offset, chunkHeight })})`, true)
+          if (!chunk?.ok || chunk.height < 1) throw new Error(chunk?.error || `无法定位截图片段（${offset}px）`)
+          const image = await webContents.capturePage({
+            x: Math.max(0, Math.floor(chunk.x)),
+            y: Math.max(0, Math.floor(chunk.y)),
+            width,
+            height: Math.floor(chunk.height),
+          })
+          const png = image.toPNG()
+          if (!png?.length) throw new Error(`截图片段为空（${offset}px）`)
+          const size = image.getSize()
+          if (!Number.isFinite(size.width) || !Number.isFinite(size.height) || size.width < 1 || size.height < 1) {
+            throw new Error(`截图片段尺寸无效（${offset}px）`)
+          }
+          if (outputWidth === 0) {
+            outputWidth = size.width
+            pixelScale = outputWidth / width
+          }
+          if (size.width !== outputWidth) throw new Error('截图片段宽度不一致')
+          chunks.push({ top: Math.round(offset * pixelScale), data: png })
+          offset += chunk.height
+        }
+        const outputHeight = Math.max(1, Math.round(height * pixelScale))
+        const bytes = await sharp({
+          create: {
+            width: outputWidth,
+            height: outputHeight,
+            channels: 4,
+            background: { r: 255, g: 255, b: 255, alpha: 1 },
+          },
+        }).composite(chunks.map(chunk => ({ input: chunk.data, left: 0, top: chunk.top }))).png().toBuffer()
+        const screenshotDirectory = desktopSettings.screenshotDirectory || defaultScreenshotDirectory()
+        const targetPath = writeScreenshotFile(screenshotDirectory, bytes)
+        let clipboardOk = false
+        try {
+          clipboard.writeImage(nativeImage.createFromBuffer(bytes))
+          clipboardOk = true
+        } catch (error) {
+          console.error(`[sandrone-desktop] screenshot clipboard write failed: ${String(error)}`)
+        }
+        return {
+          ok: true,
+          path: targetPath,
+          bytes: Uint8Array.from(bytes),
+          width,
+          height,
+          clipboard: clipboardOk,
+          warning: clipboardOk ? undefined : '图片已保存，但写入系统剪贴板失败',
+        }
+      } finally {
+        await restore().catch(error => console.error(`[sandrone-desktop] screenshot restore failed: ${String(error)}`))
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[sandrone-desktop] screenshot failed: ${message}`, error)
+      return { ok: false, error: message }
+    }
   })
   ipcMain.handle('desktop:window-minimize', event => {
     assertTrusted(event)

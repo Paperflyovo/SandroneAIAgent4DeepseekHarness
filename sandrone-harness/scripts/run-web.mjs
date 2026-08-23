@@ -7,14 +7,17 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 const { deployPlugin } = require('../apps/desktop/lib/deploy-plugin.cjs')
+const { deployAgentPresets } = require('../apps/desktop/lib/deploy-agent-presets.cjs')
 const { packageBin } = require('../apps/desktop/lib/resolve-package.cjs')
 const dshHome = resolve(process.env.DSH_HOME || join(root, 'runtime', 'dsh-home'))
 const patch = join(root, 'profiles', 'sandrone-web.patch.yml')
 const plugin = join(root, 'packages', 'sandrone-ui')
+const presets = join(root, 'presets')
 const dump = process.argv.slice(2).includes('--dump-config')
 
 await mkdir(dshHome, { recursive: true })
 deployPlugin({ source: plugin, dshHome })
+deployAgentPresets({ sourceRoot: presets, dshHome, presetNames: ['sandrone-buddy'] })
 
 const args = ['web', '--patch', patch]
 if (dump) args.push('--dump-config')

@@ -1,0 +1,23 @@
+diff --git a/lib/index.js b/lib/index.js
+index df6eecc014f10a7c9ac97b77447b749cb29325e4..d5b7aac4def78035d4716756137fa29f88e8494e 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -5388,10 +5388,14 @@ function inlineCodeHttpUrl(value) {
+ }
+ function renderImage(url, alt, key) {
+ 	const imageSrc = remoteImageUrl(sanitizeUrl(normalizeUri(url)));
+-	if (imageSrc === void 0) return jsx("span", {
+-		className: css$19.imageAlt,
+-		children: alt
+-	}, key);
++	if (imageSrc === void 0) {
++		const localPath = /^[A-Za-z]:[\\/]/.test(url) || /^\/(?!\/)/.test(url) ? url : void 0;
++		return jsx("span", {
++			className: css$19.imageAlt,
++			...localPath === void 0 ? {} : { "data-sandrone-local-image": localPath },
++			children: alt
++		}, key);
++	}
+ 	return jsx("img", {
+ 		className: css$19.image,
+ 		src: imageSrc,

@@ -9,9 +9,17 @@ directories:
 files:
   - package.json
   - apps/desktop/**/*
+  - build/icon.png
+  - build/icon.svg
   - packages/sandrone-ui/package.json
   - packages/sandrone-ui/lib/**/*
+  - packages/sandrone-image-tools/package.json
+  - packages/sandrone-image-tools/src/**/*
   - profiles/**/*
+  - presets/sandrone-buddy/**/*
+  - skills/sandrone-image-preview/**/*
+  - skills/sandrone-harness-frontend-lifecycle/**/*
+  - skills/sandrone-harness-gpt-development/**/*
   - node_modules/**/*
 
 afterPack: apps/desktop/verify-native-artifacts.cjs

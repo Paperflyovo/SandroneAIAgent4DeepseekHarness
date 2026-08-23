@@ -1,4 +1,4 @@
-/* sandrone-ui-source-sha256:4a1d34135b664c5abf3980e3c4cbd43b5784234ff73470e0a9763370dd5e55f6 */
+/* sandrone-ui-source-sha256:8fd3ebb34375b3ef2ff0cdc4f5d80c1f07a379cf1f7a77a0c6410f4e5f71c04c */
 window.__ModuleLoader__.load({ id: "@sandrone/harness-ui", factory: (require) => { var module = { exports: {} }; var exports = module.exports;
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -37,8 +37,125 @@ __export(client_exports, {
 });
 module.exports = __toCommonJS(client_exports);
 var import_react = __toESM(require("react"), 1);
-var import_client = require("react-dom/client");
+var import_react_dom = require("react-dom");
 var import_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
+
+// packages/sandrone-ui/src/buddy.js
+var PREVIEW_LIMIT = 180;
+var ACTIVITY_LIMIT = 700;
+function compactText(value, limit = PREVIEW_LIMIT) {
+  const text = typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  return text ? text.slice(0, limit) : void 0;
+}
+function contentText(content) {
+  if (!Array.isArray(content)) return "";
+  return content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text).join("\n").trim();
+}
+function summarizeBuddyActivity(activity) {
+  const parts = [];
+  const title = compactText(activity?.sessionTitle, 80);
+  const user = compactText(activity?.latestUserMessage);
+  const assistant = compactText(activity?.latestAssistantReply);
+  if (title) parts.push(`\u5F53\u524D\u4F1A\u8BDD\uFF1A${title}`);
+  if (user) parts.push(`\u7528\u6237\u6700\u8FD1\u8BF4\uFF1A${user}`);
+  if (assistant) parts.push(`\u4E3B Agent \u6700\u8FD1\u56DE\u590D\uFF1A${assistant}`);
+  if (activity?.recentTools?.length) parts.push(`\u6700\u8FD1\u5DE5\u5177\uFF1A${activity.recentTools.slice(-3).join("\u3001")}`);
+  if (activity?.activeTaskCount) parts.push(`\u8FDB\u884C\u4E2D\u7684\u4EFB\u52A1\uFF1A${activity.activeTaskCount} \u4E2A`);
+  const task = compactText(activity?.latestTaskStatus, 80);
+  if (task) parts.push(`\u6700\u65B0\u4EFB\u52A1\u72B6\u6001\uFF1A${task}`);
+  return (parts.join("\n") || "\u6682\u65E0\u53EF\u7528\u7684\u8FD1\u671F\u6D3B\u52A8").slice(0, ACTIVITY_LIMIT);
+}
+function collectBuddyActivity(events, projections = {}) {
+  let sessionTitle = typeof projections?.values?.title === "string" ? projections.values.title : void 0;
+  let latestUserMessage;
+  let latestAssistantReply;
+  let todos = Array.isArray(projections?.values?.todos) ? projections.values.todos : [];
+  const recentTools = [];
+  for (const entry of Array.isArray(events) ? events : []) {
+    const event = entry?.event;
+    if (!event || typeof event.type !== "string") continue;
+    if (event.type === "session/title" && typeof event.data?.title === "string") sessionTitle = event.data.title;
+    if (event.type === "user/message" && event.data?.source?.kind === "user") {
+      latestUserMessage = contentText(event.data.content);
+    }
+    if (event.type === "assistant/message") {
+      latestAssistantReply = contentText(event.data?.message?.content);
+    }
+    if (event.type === "tool/call" && typeof event.data?.name === "string") recentTools.push(event.data.name);
+    if (event.type === "todo/write" && Array.isArray(event.data?.todos)) todos = event.data.todos;
+  }
+  const activeTodos = todos.filter((todo) => todo?.status !== "completed");
+  const latestTodo = [...activeTodos].reverse().find((todo) => todo?.status === "in_progress") || activeTodos.at(-1) || todos.at(-1);
+  const activity = {
+    sessionTitle: compactText(sessionTitle, 80),
+    latestUserMessage: compactText(latestUserMessage),
+    latestAssistantReply: compactText(latestAssistantReply),
+    recentTools: recentTools.slice(-3),
+    activeTaskCount: activeTodos.length,
+    latestTaskStatus: latestTodo?.content ? `${compactText(latestTodo.content, 60)}\uFF08${latestTodo.status || "unknown"}\uFF09` : void 0
+  };
+  return { ...activity, summary: summarizeBuddyActivity(activity) };
+}
+var FAST_KEYWORDS = /* @__PURE__ */ new Map([
+  ["flash", 8],
+  ["haiku", 8],
+  ["fast", 7],
+  ["mini", 6],
+  ["lite", 6],
+  ["small", 6],
+  ["turbo", 4]
+]);
+var HEAVY_KEYWORDS = /* @__PURE__ */ new Map([
+  ["reasoner", 7],
+  ["thinking", 7],
+  ["ultra", 6],
+  ["opus", 5],
+  ["max", 4],
+  ["pro", 3]
+]);
+function modelScore(model) {
+  const text = `${model?.id || ""} ${model?.name || ""} ${model?.description || ""}`.toLowerCase();
+  let score = 0;
+  let fastMatch = false;
+  for (const [keyword, weight] of FAST_KEYWORDS) {
+    if (!text.includes(keyword)) continue;
+    score += weight;
+    fastMatch = true;
+  }
+  for (const [keyword, weight] of HEAVY_KEYWORDS) {
+    if (text.includes(keyword)) score -= weight;
+  }
+  return { score, fastMatch };
+}
+function lowestBuddyEffort(model) {
+  const efforts = model?.reasoning?.efforts;
+  if (!Array.isArray(efforts) || efforts.length === 0) return void 0;
+  const priorities = ["disabled", "none", "off", "minimal", "low", "light"];
+  for (const priority of priorities) {
+    const match = efforts.find((effort) => `${effort?.id || ""} ${effort?.name || ""}`.toLowerCase().includes(priority));
+    if (match?.id) return match.id;
+  }
+  return efforts[0]?.id;
+}
+function chooseBuddyModel(sessionModels) {
+  const current = sessionModels?.current;
+  if (!current?.provider || !current?.model) throw new Error("\u4E3B\u4F1A\u8BDD\u6CA1\u6709\u53EF\u7528\u7684\u6A21\u578B\u914D\u7F6E");
+  const group = sessionModels.groups?.find((item) => item?.id === current.provider);
+  const currentModel = group?.models?.find((model) => model?.id === current.model);
+  const candidates = (group?.models || []).filter((model) => model?.id).map((model, index) => ({ model, index, ...modelScore(model) })).filter((candidate) => candidate.fastMatch && candidate.score > 0).sort((left, right) => right.score - left.score || left.index - right.index);
+  const selected = candidates[0]?.model || currentModel || { id: current.model };
+  const reasoningEffort = lowestBuddyEffort(selected);
+  return {
+    provider: current.provider,
+    model: selected.id,
+    ...reasoningEffort ? { reasoningEffort } : {}
+  };
+}
+function sameBuddyModel(current, selected) {
+  if (!current || !selected) return false;
+  if (current.provider !== selected.provider || current.model !== selected.model) return false;
+  return selected.reasoningEffort === void 0 || current.reasoningEffort === selected.reasoningEffort;
+}
 
 // packages/sandrone-ui/src/client.css
 var css = `:root {\r
@@ -51,9 +168,15 @@ var css = `:root {\r
   --sandrone-line: #e1dbd2;\r
   --sandrone-line-strong: #c9c0b6;\r
   --sandrone-accent: #c5213d;\r
-  --sandrone-accent-soft: #f6e6e4;\r
-  --sandrone-red: #c5213d;\r
-  --sandrone-shadow: 0 1px 3px rgb(54 45 37 / 5%), 0 10px 28px rgb(54 45 37 / 7%);\r
+  --sandrone-accent-soft: #f6e6e4;
+  --sandrone-red: #c5213d;
+  --sandrone-settings-nav: #f2eee8;
+  --sandrone-settings-surface: #fffdfa;
+  --sandrone-settings-accent-wash: #faecec;
+  --sandrone-settings-focus: rgb(197 33 61 / 14%);
+  --sandrone-settings-success: #27845a;
+  --sandrone-settings-danger: #b43a4e;
+  --sandrone-shadow: 0 1px 3px rgb(54 45 37 / 5%), 0 10px 28px rgb(54 45 37 / 7%);
   --sandrone-shadow-deep: 0 2px 6px rgb(54 45 37 / 6%), 0 24px 64px rgb(54 45 37 / 12%);\r
   --sandrone-ease: cubic-bezier(.2, .7, .2, 1);\r
 }\r
@@ -68,8 +191,14 @@ var css = `:root {\r
   --sandrone-line: #403b37;\r
   --sandrone-line-strong: #59504a;\r
   --sandrone-accent: #e07083;\r
-  --sandrone-accent-soft: #442a2f;\r
-  --sandrone-red: #e07083;\r
+  --sandrone-accent-soft: #442a2f;
+  --sandrone-red: #e07083;
+  --sandrone-settings-nav: #24211f;
+  --sandrone-settings-surface: #292624;
+  --sandrone-settings-accent-wash: #3c282d;
+  --sandrone-settings-focus: rgb(224 112 131 / 18%);
+  --sandrone-settings-success: #69bd91;
+  --sandrone-settings-danger: #ef8798;
   --sandrone-shadow: 0 1px 3px rgb(0 0 0 / 20%), 0 10px 28px rgb(0 0 0 / 18%);\r
   --sandrone-shadow-deep: 0 2px 6px rgb(0 0 0 / 25%), 0 24px 64px rgb(0 0 0 / 35%);\r
 }\r
@@ -90,10 +219,24 @@ select {\r
   --sandrone-sidebar-width: 280px;\r
 }\r
 \r
-[data-sandrone-frame] {\r
-  background: var(--sandrone-paper) !important;\r
-  transition: grid-template-columns 340ms var(--sandrone-ease) !important;\r
-}\r
+[data-sandrone-frame] {
+  background: var(--sandrone-paper) !important;
+  transition: grid-template-columns 340ms var(--sandrone-ease) !important;
+}
+
+[data-sandrone-frame][data-sidebar-collapsed="true"] {
+  grid-template-columns: 0 minmax(0, 1fr) 0 !important;
+}
+
+[data-sandrone-frame][data-sidebar-collapsed="true"] [data-sandrone-sidebar-column] {
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  border-right: 0 !important;
+  pointer-events: none !important;
+}
 \r
 [data-sandrone-sidebar-column] {\r
   box-sizing: border-box !important;\r
@@ -278,10 +421,14 @@ select {\r
   font-size: 13px !important;\r
 }\r
 \r
-[data-sandrone-new-session]:hover {\r
-  border-color: var(--sandrone-accent) !important;\r
-  background: var(--sandrone-accent-soft) !important;\r
-}\r
+[data-sandrone-new-session]:hover {
+  border-color: var(--sandrone-accent) !important;
+  background: var(--sandrone-accent-soft) !important;
+}
+
+[data-sandrone-provisional-session] {
+  display: none !important;
+}
 \r
 [data-sandrone-sidebar] [class*="regionArea"] {\r
   margin-inline: -4px !important;\r
@@ -664,15 +811,19 @@ select {\r
   color: var(--sandrone-ink-strong);\r
 }\r
 \r
-.sandrone-topbar-history svg {\r
+.sandrone-topbar-history svg {
   width: 15px;\r
   height: 15px;\r
   fill: none;\r
   stroke: currentColor;\r
   stroke-width: 1.3;\r
   stroke-linecap: round;\r
-  stroke-linejoin: round;\r
-}\r
+  stroke-linejoin: round;
+}
+
+.sandrone-topbar-sidebar {
+  margin-right: 2px;
+}
 \r
 .sandrone-topbar-separator {\r
   width: 1px;\r
@@ -741,15 +892,250 @@ select {\r
   stroke-linejoin: round;\r
 }\r
 \r
-[data-sandrone-center] [data-slot="conversation"] {\r
-  box-sizing: border-box !important;\r
-  padding-top: 38px !important;\r
-}\r
+[data-sandrone-center] {
+  box-sizing: border-box !important;
+  padding-top: 38px !important;
+}
+
+[data-sandrone-center] [data-slot="conversation"] {
+  min-height: 0;
+}
 \r
-[data-sandrone-session-header] {\r
-  display: none !important;\r
-}\r
-\r
+[data-sandrone-session-header] {
+  display: contents !important;
+}
+
+[data-sandrone-session-toolbar] {
+  position: relative;
+  z-index: 18;
+  box-sizing: border-box;
+  display: flex !important;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 18px 8px 20px !important;
+  border-bottom: 1px solid var(--sandrone-line) !important;
+  background: color-mix(in srgb, var(--sandrone-paper) 96%, transparent) !important;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 28%);
+}
+
+[data-sandrone-session-toolbar]::after {
+  display: none !important;
+}
+
+[data-sandrone-session-title-row] {
+  display: contents !important;
+}
+
+[data-sandrone-session-title-cluster],
+[data-sandrone-session-crumbs] {
+  min-width: 0;
+}
+
+[data-sandrone-session-title-cluster] {
+  order: 1;
+  flex: 1 1 auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-content: center;
+  gap: 0 !important;
+}
+
+[data-sandrone-session-title-cluster] [data-sandrone-session-actions] {
+  min-height: 16px;
+  margin: -2px 0 0 7px !important;
+}
+
+[data-sandrone-session-title-cluster] [data-sandrone-session-actions] button {
+  min-height: 16px !important;
+  padding: 0 4px !important;
+  color: var(--sandrone-muted) !important;
+  font-size: 10px !important;
+}
+
+[data-sandrone-session-crumbs] {
+  gap: 2px !important;
+}
+
+[data-sandrone-session-crumbs] button {
+  max-width: min(42vw, 420px) !important;
+  padding: 5px 7px !important;
+  border-radius: 7px !important;
+  color: var(--sandrone-ink-strong) !important;
+  font-size: 14px !important;
+  font-weight: 650 !important;
+}
+
+[data-sandrone-session-crumbs] button:hover:not(:disabled) {
+  background: var(--sandrone-accent-soft) !important;
+}
+
+[data-sandrone-session-actions],
+[data-sandrone-session-utilities] {
+  flex: none;
+  min-width: 0;
+  gap: 6px !important;
+}
+
+[data-sandrone-session-utilities] {
+  order: 3;
+  position: relative;
+  margin-left: auto !important;
+  align-items: center !important;
+}
+
+[data-sandrone-session-tabs] {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.sandrone-session-icon-button,
+[data-sandrone-session-log] {
+  display: inline-grid !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  place-items: center !important;
+  padding: 0 !important;
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 9px !important;
+  background: var(--sandrone-paper-raised) !important;
+  color: var(--sandrone-muted) !important;
+  box-shadow: 0 1px 2px rgb(54 45 37 / 4%);
+  cursor: pointer;
+}
+
+.sandrone-session-icon-button:hover,
+[data-sandrone-session-log]:hover {
+  border-color: color-mix(in srgb, var(--sandrone-red) 30%, var(--sandrone-line)) !important;
+  background: var(--sandrone-accent-soft) !important;
+  color: var(--sandrone-red) !important;
+}
+
+.sandrone-session-icon-button.is-open,
+.sandrone-buddy-trigger.is-open {
+  border-color: color-mix(in srgb, var(--sandrone-red) 38%, var(--sandrone-line)) !important;
+  background: var(--sandrone-accent-soft) !important;
+  color: var(--sandrone-red) !important;
+}
+
+.sandrone-session-screenshot-button.is-capturing {
+  color: var(--sandrone-red) !important;
+  opacity: .65;
+  cursor: progress;
+}
+
+.sandrone-session-screenshot-button.is-success {
+  border-color: color-mix(in srgb, #2f8f63 45%, var(--sandrone-line)) !important;
+  color: #2f8f63 !important;
+}
+
+.sandrone-session-screenshot-button.is-error {
+  border-color: color-mix(in srgb, var(--sandrone-red) 50%, var(--sandrone-line)) !important;
+  color: var(--sandrone-red) !important;
+}
+
+.sandrone-session-screenshot-status {
+  display: block;
+  max-width: min(42vw, 360px);
+  overflow: hidden;
+  color: var(--sandrone-red);
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sandrone-session-screenshot-status.is-success {
+  color: #2f8f63;
+}
+
+.sandrone-session-screenshot-overlay {
+  position: fixed;
+  z-index: 160;
+  pointer-events: auto;
+  cursor: crosshair;
+  background: color-mix(in srgb, var(--sandrone-red) 3%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sandrone-red) 18%, transparent);
+}
+
+.sandrone-session-screenshot-guide,
+.sandrone-session-screenshot-start {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--sandrone-red);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sandrone-red) 18%, transparent);
+  pointer-events: none;
+}
+
+.sandrone-session-screenshot-guide span {
+  position: absolute;
+  right: 12px;
+  bottom: 7px;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--sandrone-red) 24%, var(--sandrone-line));
+  border-radius: 6px;
+  background: var(--sandrone-paper-raised);
+  color: var(--sandrone-red);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgb(54 45 37 / 12%);
+}
+
+.sandrone-session-screenshot-cancel {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  padding: 5px 9px;
+  border: 1px solid var(--sandrone-line);
+  border-radius: 6px;
+  background: var(--sandrone-paper-raised);
+  color: var(--sandrone-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(54 45 37 / 10%);
+}
+
+.sandrone-session-screenshot-cancel:hover {
+  border-color: color-mix(in srgb, var(--sandrone-red) 30%, var(--sandrone-line));
+  color: var(--sandrone-red);
+}
+
+.sandrone-session-icon-button svg,
+[data-sandrone-session-log] svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+[data-sandrone-session-log] > :not([data-sandrone-session-log-icon]) { display: none !important; }
+
+[data-sandrone-session-log-icon] {
+  display: block !important;
+  width: 14px !important;
+  height: 14px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.1 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
 [data-sandrone-session-body] {\r
   background: var(--sandrone-paper) !important;\r
 }\r
@@ -819,10 +1205,62 @@ select {\r
   color: var(--sandrone-muted) !important;\r
 }\r
 \r
-[data-sandrone-composer] [data-composer-card] [class*="row"] {\r
-  min-height: 42px !important;\r
-  padding: 0 8px 8px !important;\r
-}\r
+[data-sandrone-composer] [data-composer-card] [class*="row"] {
+  min-height: 42px !important;
+  padding: 0 8px 8px !important;
+}
+
+[data-sandrone-composer-toolbar] {
+  flex: 0 0 42px !important;
+  min-height: 42px !important;
+  overflow: visible !important;
+}
+
+[data-sandrone-permission-trigger] {
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+[data-sandrone-permission-trigger] :where(span, div) {
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+[data-sandrone-permission-menu] {
+  width: 220px !important;
+  min-width: 220px !important;
+  max-width: min(360px, calc(100vw - 48px)) !important;
+  height: auto !important;
+  min-height: 132px !important;
+  max-height: 320px !important;
+  overflow: visible !important;
+}
+
+[data-sandrone-permission-viewport] {
+  height: auto !important;
+  min-height: 120px !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+[data-sandrone-permission-menu] [role="menuitem"] {
+  min-width: 204px !important;
+  flex: 0 0 auto !important;
+}
+
+[data-sandrone-permission-menu] [role="menuitem"] :where(span, div) {
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
 \r
 [data-sandrone-composer] [data-composer-card] [class*="primary"] {\r
   width: 38px !important;\r
@@ -851,21 +1289,31 @@ select {\r
   color: var(--sandrone-ink-strong) !important;\r
 }\r
 \r
-[data-sandrone-center] [data-composer-seat] {\r
-  background: linear-gradient(180deg, transparent 0, var(--sandrone-paper) 18px) !important;\r
-}\r
-\r
-@media (max-width: 900px) {\r
+[data-sandrone-center] [data-composer-seat] {
+  background: linear-gradient(180deg, transparent 0, var(--sandrone-paper) 18px) !important;
+}
+
+[data-sandrone-composer] .JVDQca_remove {
+  background: var(--sandrone-red) !important;
+  color: var(--sandrone-ink-strong) !important;
+  transform: translate(6px, -9px) !important;
+}
+
+[data-ds-dark-theme] [data-sandrone-composer] .JVDQca_remove {
+  color: #fff !important;
+}
+
+@media (max-width: 900px) {
   [data-sandrone-composer] [data-composer-card] { width: calc(100% - 20px) !important; }\r
 }\r
 \r
-@media (max-width: 620px) {\r
-  [data-sandrone-sidebar-header] { height: 112px !important; min-height: 112px !important; }\r
-  [data-sandrone-sidebar] [class*="logoRow"] { height: 112px !important; }\r
-  [data-sandrone-sidebar-header] [class*="brand"] { bottom: 12px !important; left: 16px !important; }\r
-  [data-sandrone-topbar] { padding-left: 4px; }\r
-  [data-sandrone-center] [data-slot="conversation"] { padding-top: 50px !important; }\r
-}\r
+@media (max-width: 620px) {
+  [data-sandrone-sidebar-header] { height: 112px !important; min-height: 112px !important; }
+  [data-sandrone-sidebar] [class*="logoRow"] { height: 112px !important; }
+  [data-sandrone-sidebar-header] [class*="brand"] { bottom: 12px !important; left: 16px !important; }
+  [data-sandrone-topbar] { padding-left: 4px; }
+  [data-sandrone-center] { padding-top: 50px !important; }
+}
 \r
 @media (max-width: 720px) {\r
   [data-sandrone-sidebar-column] {\r
@@ -890,96 +1338,295 @@ select {\r
   }\r
 }\r
 \r
-[data-sandrone-shell] [data-sandrone-sidebar-header] [class*="brand"]::after {\r
+[data-sandrone-shell] [data-sandrone-sidebar-header] [class*="brand"]::after {
   content: '\u201C\u76C8\u91D1\u672A\u9611\uFF0C\u5915\u9633\u5DF2\u8FDC\u201D' !important;\r
   display: block !important;\r
-  color: rgb(249 245 239 / 72%) !important;\r
+  color: rgb(82 74 67 / 72%) !important;
   font-size: 9px !important;\r
   font-weight: 400 !important;\r
   letter-spacing: .02em !important;\r
   line-height: 14px !important;\r
 }\r
 \r
-/* Buddy is a global shell overlay so it stays available before a session is
-   created and across session switches in the dynamic client lifecycle. */
-.sandrone-buddy,\r
-.sandrone-buddy-trigger {\r
-  pointer-events: auto;\r
-  font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;\r
-  letter-spacing: 0;\r
-}\r
-\r
-.sandrone-buddy-anchor {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 120;
+/* Workspace and Buddy share one Sandrone right-rail language. Their toolbar
+   controls stay independent, while a small window event guarantees that only
+   one rail can be open at a time. */
+.sandrone-buddy-trigger,
+.sandrone-right-panel {
+  pointer-events: auto;
+  font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  letter-spacing: 0;
+}
+
+.sandrone-buddy-anchor,
+.sandrone-right-panel-anchor {
+  position: relative;
+  z-index: 24;
   display: inline-flex;
+  align-items: center;
   flex: none;
 }
+
+.sandrone-buddy-anchor.is-open,
+.sandrone-right-panel-anchor.is-open {
+  z-index: 72;
+}
+
+[data-ds-dark-theme] [data-sandrone-shell] [data-sandrone-sidebar-header] [class*="brand"]::after {
+  color: rgb(249 245 239 / 72%) !important;
+}
 \r
-.sandrone-buddy-trigger {\r
-  width: 28px;\r
-  height: 28px;\r
-  display: grid;\r
-  place-items: center;\r
-  padding: 0;\r
-  border: 0;\r
-  border-radius: 8px;\r
-  color: var(--sandrone-muted);\r
-  background: transparent;\r
-  cursor: pointer;\r
-}\r
-\r
-.sandrone-buddy-trigger:hover {\r
-  background: var(--sandrone-paper-soft);\r
-  color: var(--sandrone-ink-strong);\r
-}\r
-\r
-.sandrone-buddy {\r
-  position: absolute;\r
-  right: 0;\r
-  bottom: calc(100% + 8px);\r
-  z-index: 30;\r
-  width: min(242px, calc(100vw - 36px));\r
-  box-sizing: border-box;\r
-  padding: 12px;\r
-  border: 1px solid var(--sandrone-line-strong);\r
-  border-radius: 10px;\r
-  background: color-mix(in srgb, var(--sandrone-paper-raised) 96%, transparent);\r
-  color: var(--sandrone-ink);\r
-  box-shadow: var(--sandrone-shadow-deep);\r
-  animation: sandrone-rise 240ms var(--sandrone-ease) both;\r
-}\r
-\r
-.sandrone-buddy-heading,\r
-.sandrone-buddy-kicker,\r
-.sandrone-buddy-body { display: flex; align-items: center; }\r
-.sandrone-buddy-heading { justify-content: space-between; margin-bottom: 9px; }\r
-.sandrone-buddy-kicker { gap: 5px; color: var(--sandrone-muted); font-size: 12px; font-weight: 650; }\r
-.sandrone-buddy-heading button { display: grid; place-items: center; padding: 0; border: 0; color: var(--sandrone-muted); background: transparent; cursor: pointer; width: 28px; height: 28px; border-radius: 7px; }\r
-.sandrone-buddy-heading button:hover { background: var(--sandrone-paper-soft); color: var(--sandrone-ink-strong); }\r
-.sandrone-buddy-body { width: 100%; min-height: 58px; gap: 10px; padding: 8px; border: 0; border-radius: 8px; color: inherit; text-align: left; background: var(--sandrone-paper-soft); cursor: pointer; }\r
-.sandrone-buddy-body:hover { background: var(--sandrone-accent-soft); }\r
-.sandrone-buddy-body > span:last-child { display: grid; min-width: 0; gap: 2px; }\r
-.sandrone-buddy-body strong { overflow: hidden; color: var(--sandrone-ink-strong); font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }\r
-.sandrone-buddy-body small, .sandrone-buddy p { color: var(--sandrone-muted); font-size: 11px; line-height: 16px; }\r
-.sandrone-buddy p { margin: 9px 4px 1px; }\r
-.sandrone-buddy-face { position: relative; flex: 0 0 auto; width: 40px; height: 40px; border: 1px solid color-mix(in srgb, var(--sandrone-red) 48%, transparent); border-radius: 42% 42% 48% 48%; background: color-mix(in srgb, var(--sandrone-accent) 18%, var(--sandrone-paper-raised)); transform-origin: 50% 100%; }\r
-.sandrone-buddy-face::before, .sandrone-buddy-face::after { content: ''; position: absolute; top: -6px; width: 13px; height: 15px; border: inherit; background: inherit; transform: rotate(18deg); z-index: -1; }\r
-.sandrone-buddy-face::before { left: 2px; } .sandrone-buddy-face::after { right: 2px; transform: rotate(-18deg); }\r
-.sandrone-buddy-face i { position: absolute; top: 15px; width: 4px; height: 6px; border-radius: 3px; background: var(--sandrone-ink-strong); transition: height 140ms ease; }\r
-.sandrone-buddy-face i:first-child { left: 10px; } .sandrone-buddy-face i:nth-child(2) { right: 10px; }\r
-.sandrone-buddy-face b { position: absolute; left: 50%; bottom: 8px; width: 8px; height: 3px; border-bottom: 1px solid var(--sandrone-muted); border-radius: 50%; transform: translateX(-50%); }\r
-.sandrone-buddy-body.is-awake .sandrone-buddy-face { animation: sandrone-nod 360ms var(--sandrone-ease); }\r
-.sandrone-buddy-body:not(.is-awake) .sandrone-buddy-face i { height: 2px; }\r
-.sandrone-buddy-face.compact { width: 26px; height: 26px; }\r
-.sandrone-buddy-face.compact::before, .sandrone-buddy-face.compact::after { width: 9px; height: 11px; top: -4px; }\r
-.sandrone-buddy-face.compact i { top: 10px; width: 3px; height: 4px; }\r
-.sandrone-buddy-face.compact i:first-child { left: 7px; } .sandrone-buddy-face.compact i:nth-child(2) { right: 7px; }\r
-@keyframes sandrone-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }\r
-@keyframes sandrone-nod { 0%, 100% { transform: rotate(0deg); } 45% { transform: rotate(-5deg) translateY(-2px); } }\r
-@media (prefers-reduced-motion: reduce) { .sandrone-buddy, .sandrone-buddy-body.is-awake .sandrone-buddy-face { animation: none; } }\r
+.sandrone-buddy-trigger {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--sandrone-line);
+  border-radius: 9px;
+  color: var(--sandrone-muted);
+  background: var(--sandrone-paper-raised);
+  cursor: pointer;
+  transition: border-color 140ms var(--sandrone-ease), background 140ms var(--sandrone-ease), color 140ms var(--sandrone-ease);
+}
+
+.sandrone-buddy-trigger svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sandrone-buddy-trigger:hover,
+.sandrone-buddy-trigger.is-open {
+  border-color: color-mix(in srgb, var(--sandrone-red) 28%, var(--sandrone-line));
+  background: var(--sandrone-accent-soft);
+  color: var(--sandrone-red);
+}
+
+.sandrone-right-panel {
+  position: fixed;
+  top: 38px;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  width: min(390px, 100vw);
+  box-sizing: border-box;
+  flex-direction: column;
+  border-left: 1px solid var(--sandrone-line);
+  background: var(--sandrone-paper-raised);
+  color: var(--sandrone-ink);
+  box-shadow: -14px 0 36px rgb(54 45 37 / 11%);
+  animation: sandrone-panel-enter 190ms var(--sandrone-ease) both;
+}
+
+.sandrone-right-panel-header {
+  display: flex;
+  min-height: 58px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px 9px 15px;
+  border-bottom: 1px solid var(--sandrone-line);
+}
+
+.sandrone-right-panel-header > div:first-child:not(.sandrone-buddy-identity) { display: grid; min-width: 0; gap: 1px; }
+.sandrone-right-panel-header strong { overflow: hidden; color: var(--sandrone-ink-strong); font-size: 14px; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+.sandrone-right-panel-header small { overflow: hidden; color: var(--sandrone-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.sandrone-right-panel-header > div:last-child { display: flex; align-items: center; gap: 3px; }
+.sandrone-right-panel-header button { display: grid; width: 29px; height: 29px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--sandrone-muted); cursor: pointer; }
+.sandrone-right-panel-header button:hover { background: var(--sandrone-paper-soft); color: var(--sandrone-ink-strong); }
+.sandrone-right-panel-header button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+
+.sandrone-workspace-path {
+  display: flex;
+  flex: 0 0 40px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--sandrone-line);
+  color: var(--sandrone-muted);
+}
+.sandrone-workspace-path button { width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
+.sandrone-workspace-path button:hover:not(:disabled) { background: var(--sandrone-paper-soft); color: var(--sandrone-ink); }
+.sandrone-workspace-path button:disabled { opacity: .28; }
+.sandrone-workspace-path span { min-width: 0; flex: 1; overflow: hidden; color: var(--sandrone-ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+
+.sandrone-workspace-content { display: grid; min-height: 0; flex: 1; grid-template-rows: minmax(170px, 42%) minmax(0, 1fr); }
+.sandrone-file-list { overflow: auto; border-bottom: 1px solid var(--sandrone-line); }
+.sandrone-file-list button { display: flex; width: 100%; min-height: 34px; box-sizing: border-box; align-items: center; gap: 8px; padding: 6px 12px; border: 0; background: transparent; color: var(--sandrone-ink); text-align: left; cursor: pointer; }
+.sandrone-file-list button:hover { background: var(--sandrone-paper-soft); }
+.sandrone-file-list button svg { width: 16px; height: 16px; flex: none; fill: none; stroke: var(--sandrone-muted); stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
+.sandrone-file-list button span { min-width: 0; flex: 1; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.sandrone-file-list button b { color: var(--sandrone-muted); font-size: 15px; font-weight: 400; }
+.sandrone-file-preview { min-height: 0; overflow: auto; background: var(--sandrone-paper); }
+.sandrone-file-preview > div:first-child:not(.sandrone-file-empty) { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--sandrone-line); background: var(--sandrone-paper-raised); }
+.sandrone-file-preview strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.sandrone-file-preview small { color: var(--sandrone-muted); font-size: 9px; }
+.sandrone-file-preview pre { min-height: 100%; box-sizing: border-box; margin: 0; padding: 12px 14px 30px; overflow: visible; color: var(--sandrone-ink); font: 11px/1.6 "Cascadia Code", Consolas, monospace; tab-size: 2; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sandrone-file-empty { display: grid; min-height: 160px; place-items: center; padding: 20px; color: var(--sandrone-muted); font-size: 11px; text-align: center; }
+
+.sandrone-buddy-identity { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.sandrone-buddy-identity > span { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border: 1px solid color-mix(in srgb, var(--sandrone-red) 28%, var(--sandrone-line)); border-radius: 10px; background: var(--sandrone-accent-soft); color: var(--sandrone-red); }
+.sandrone-buddy-identity > span svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.3; }
+.sandrone-buddy-identity > div { display: grid; min-width: 0; gap: 1px; }
+.sandrone-buddy-card { display: flex; flex: 0 0 auto; align-items: center; gap: 11px; margin: 12px 12px 4px; padding: 11px; border: 1px solid var(--sandrone-line); border-radius: 12px; background: color-mix(in srgb, var(--sandrone-accent-soft) 48%, var(--sandrone-paper-raised)); }
+.sandrone-buddy-card > span { display: grid; width: 48px; height: 48px; flex: none; place-items: center; border: 1px solid color-mix(in srgb, var(--sandrone-red) 25%, var(--sandrone-line)); border-radius: 15px; background: var(--sandrone-paper-raised); color: var(--sandrone-red); }
+.sandrone-buddy-card svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.25; }
+.sandrone-buddy-card div { display: grid; min-width: 0; gap: 3px; }
+.sandrone-buddy-card strong { color: var(--sandrone-ink-strong); font-size: 15px; }
+.sandrone-buddy-card small { color: var(--sandrone-muted); font-size: 10px; }
+.sandrone-buddy-history { min-height: 0; flex: 1; overflow-y: auto; padding: 18px 14px; }
+.sandrone-buddy-welcome { display: flex; min-height: 230px; flex-direction: column; align-items: center; justify-content: center; color: var(--sandrone-muted); text-align: center; }
+.sandrone-buddy-welcome svg { color: var(--sandrone-red); }
+.sandrone-buddy-welcome strong { margin-top: 12px; color: var(--sandrone-ink-strong); font-size: 15px; }
+.sandrone-buddy-welcome p { max-width: 250px; margin: 7px 0 0; font-size: 11px; line-height: 1.65; }
+.sandrone-buddy-message { max-width: 88%; margin: 0 0 13px; }
+.sandrone-buddy-message small { display: block; margin: 0 5px 4px; color: var(--sandrone-muted); font-size: 9px; }
+.sandrone-buddy-message p { margin: 0; padding: 9px 11px; border: 1px solid var(--sandrone-line); border-radius: 12px; background: var(--sandrone-paper-raised); color: var(--sandrone-ink); font-size: 11px; line-height: 1.58; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sandrone-buddy-message.user { margin-left: auto; }
+.sandrone-buddy-message.user small { text-align: right; }
+.sandrone-buddy-message.user p { border-color: color-mix(in srgb, var(--sandrone-red) 18%, var(--sandrone-line)); background: var(--sandrone-accent-soft); }
+.sandrone-buddy-message.pending p { display: flex; width: 50px; gap: 4px; }
+.sandrone-buddy-message.pending i { width: 5px; height: 5px; border-radius: 50%; background: var(--sandrone-muted); animation: sandrone-buddy-dot 1s ease-in-out infinite; }
+.sandrone-buddy-message.pending i:nth-child(2) { animation-delay: .15s; }
+.sandrone-buddy-message.pending i:nth-child(3) { animation-delay: .3s; }
+.sandrone-buddy-composer { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; padding: 10px 12px 13px; border-top: 1px solid var(--sandrone-line); background: var(--sandrone-paper-raised); }
+.sandrone-buddy-composer textarea { min-height: 46px; max-height: 120px; box-sizing: border-box; flex: 1; padding: 10px 11px; border: 1px solid var(--sandrone-line); border-radius: 11px; outline: none; background: var(--sandrone-paper); color: var(--sandrone-ink); font: inherit; line-height: 1.45; resize: none; }
+.sandrone-buddy-composer textarea:focus { border-color: color-mix(in srgb, var(--sandrone-red) 52%, var(--sandrone-line)); box-shadow: 0 0 0 3px var(--sandrone-settings-focus); }
+.sandrone-buddy-composer button { display: grid; width: 37px; height: 37px; flex: none; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--sandrone-ink-strong); color: var(--sandrone-paper-raised); cursor: pointer; }
+.sandrone-buddy-composer button:hover:not(:disabled) { background: var(--sandrone-red); transform: translateY(-1px); }
+.sandrone-buddy-composer button:disabled { opacity: .22; cursor: default; }
+.sandrone-buddy-composer button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+.sandrone-panel-error { margin: 8px 12px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--sandrone-settings-danger) 30%, var(--sandrone-line)); border-radius: 8px; background: color-mix(in srgb, var(--sandrone-settings-danger) 8%, var(--sandrone-paper-raised)); color: var(--sandrone-settings-danger); font-size: 10px; line-height: 1.45; }
+@keyframes sandrone-panel-enter { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes sandrone-buddy-dot { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+@media (max-width: 620px) { .sandrone-right-panel { width: 100vw; } }
+@media (prefers-reduced-motion: reduce) { .sandrone-right-panel, .sandrone-buddy-message.pending i { animation: none; } }
+
+/* Sandrone-owned Settings pages use the same quiet paper/red system as the
+   main shell. Controls stay semantic and scoped so upstream hashed styles do
+   not need to be overridden. */
+.sandrone-extension-page { display: grid; gap: 16px; max-width: 1120px; color: var(--sandrone-ink); }
+.sandrone-extension-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--sandrone-line); }
+.sandrone-extension-heading > div:first-child { min-width: 0; }
+.sandrone-extension-heading span { color: var(--sandrone-red); font-size: 10px; font-weight: 750; letter-spacing: .12em; }
+.sandrone-extension-heading h2 { margin: 5px 0 0; color: var(--sandrone-ink-strong); font-size: 25px; font-weight: 680; letter-spacing: -.025em; }
+.sandrone-extension-heading p { max-width: 680px; margin: 6px 0 0; color: var(--sandrone-muted); font-size: 12px; line-height: 1.6; }
+.sandrone-extension-heading-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.sandrone-extension-heading button, .sandrone-plugin-summary button { min-height: 34px; padding: 0 13px; border: 1px solid var(--sandrone-line); border-radius: 8px; background: var(--sandrone-paper-raised); color: var(--sandrone-ink); font: inherit; cursor: pointer; }
+.sandrone-extension-heading [data-sandrone-settings-primary-action], .sandrone-plugin-summary [data-sandrone-settings-primary-action] { border-color: var(--sandrone-red); background: var(--sandrone-red); color: white; }
+.sandrone-extension-secondary:hover { border-color: var(--sandrone-line-strong) !important; background: var(--sandrone-paper-soft) !important; }
+.sandrone-extension-notice, .sandrone-extension-error { padding: 10px 12px; border: 1px solid var(--sandrone-line); border-radius: 9px; background: var(--sandrone-paper-soft); color: var(--sandrone-muted); font-size: 11px; line-height: 1.55; }
+.sandrone-extension-error { border-color: color-mix(in srgb, var(--sandrone-settings-danger) 35%, var(--sandrone-line)); background: color-mix(in srgb, var(--sandrone-settings-danger) 8%, var(--sandrone-paper-raised)); color: var(--sandrone-settings-danger); }
+.sandrone-extension-grid { display: grid; gap: 12px; }
+.sandrone-extension-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sandrone-extension-grid.compact { gap: 9px; }
+.sandrone-extension-field { display: grid; min-width: 0; gap: 6px; color: var(--sandrone-muted); font-size: 11px; }
+.sandrone-extension-field.wide { grid-column: 1 / -1; }
+.sandrone-extension-field > span:first-child { color: var(--sandrone-ink); font-weight: 620; letter-spacing: 0; }
+.sandrone-extension-field input, .sandrone-extension-field textarea, .sandrone-extension-field select { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid var(--sandrone-line); border-radius: 8px; outline: none; background: var(--sandrone-paper-raised); color: var(--sandrone-ink); font: inherit; }
+.sandrone-extension-field input, .sandrone-extension-field select { height: 36px; padding: 0 10px; }
+.sandrone-extension-field textarea { padding: 9px 10px; line-height: 1.5; resize: vertical; }
+.sandrone-extension-field :is(input, textarea, select):focus { border-color: color-mix(in srgb, var(--sandrone-red) 55%, var(--sandrone-line)); box-shadow: 0 0 0 3px var(--sandrone-settings-focus); }
+.sandrone-extension-field :is(input, textarea).is-invalid { border-color: var(--sandrone-settings-danger); }
+.sandrone-extension-field-error { color: var(--sandrone-settings-danger) !important; font-size: 10px !important; }
+.sandrone-extension-stack, .sandrone-extension-list { display: grid; gap: 10px; }
+.sandrone-mcp-card, .sandrone-extension-row, .sandrone-buddy-settings-hero, .sandrone-im-status { border: 1px solid var(--sandrone-line); border-radius: 11px; background: var(--sandrone-paper-raised); box-shadow: 0 2px 10px rgb(54 45 37 / 4%); }
+.sandrone-mcp-card { padding: 14px; }
+.sandrone-mcp-card > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.sandrone-mcp-card header > div { display: flex; align-items: center; gap: 9px; }
+.sandrone-mcp-card strong, .sandrone-extension-row strong { color: var(--sandrone-ink-strong); font-size: 13px; }
+.sandrone-mcp-card small, .sandrone-extension-row small { color: var(--sandrone-muted); font-size: 10px; }
+.sandrone-extension-danger { min-height: 30px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: var(--sandrone-settings-danger); cursor: pointer; }
+.sandrone-extension-danger:hover { background: color-mix(in srgb, var(--sandrone-settings-danger) 9%, transparent); }
+.sandrone-extension-row { display: flex; align-items: center; justify-content: space-between; min-width: 0; gap: 16px; padding: 13px 14px; }
+.sandrone-extension-row > div:first-child { min-width: 0; }
+.sandrone-extension-row p { margin: 4px 0; color: var(--sandrone-muted); font-size: 11px; line-height: 1.45; }
+.sandrone-extension-row small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sandrone-extension-row.editable > div:last-child { display: flex; align-items: center; gap: 8px; }
+.sandrone-extension-row.editable .sandrone-extension-grid { flex: 1; }
+.sandrone-extension-badge { flex: none; padding: 4px 8px; border-radius: 999px; background: var(--sandrone-paper-soft); color: var(--sandrone-muted); font-size: 10px; }
+.sandrone-extension-empty { padding: 44px 20px; border: 1px dashed var(--sandrone-line-strong); border-radius: 11px; color: var(--sandrone-muted); text-align: center; font-size: 12px; }
+.sandrone-setting-switch { position: relative; flex: none; width: 38px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: var(--sandrone-line-strong); cursor: pointer; transition: background 150ms var(--sandrone-ease); }
+.sandrone-setting-switch span { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / 18%); transition: transform 150ms var(--sandrone-ease); }
+.sandrone-setting-switch.is-on { background: var(--sandrone-red); }
+.sandrone-setting-switch.is-on span { transform: translateX(16px); }
+.sandrone-buddy-settings-hero, .sandrone-im-status { display: flex; align-items: center; gap: 13px; padding: 14px; }
+.sandrone-buddy-settings-hero > div, .sandrone-im-status > div { display: grid; min-width: 0; flex: 1; gap: 2px; }
+.sandrone-buddy-settings-hero strong, .sandrone-im-status strong { color: var(--sandrone-ink-strong); font-size: 15px; }
+.sandrone-buddy-settings-hero small, .sandrone-im-status small { color: var(--sandrone-muted); font-size: 11px; }
+.sandrone-buddy-face.settings { width: 44px; height: 44px; }
+.sandrone-plugin-summary { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: 12px 0; }
+.sandrone-plugin-summary > span { margin-right: auto; color: var(--sandrone-muted); font-size: 11px; }
+.sandrone-plugin-summary strong { color: var(--sandrone-ink-strong); font-size: 18px; }
+.sandrone-im-status > div:first-child { grid-template-columns: 10px auto; align-items: center; column-gap: 8px; }
+.sandrone-im-status > div:first-child > span { grid-row: 1 / 3; width: 8px; height: 8px; border-radius: 50%; background: var(--sandrone-line-strong); }
+.sandrone-im-status > div:first-child > span.is-online { background: var(--sandrone-settings-success); box-shadow: 0 0 0 4px color-mix(in srgb, var(--sandrone-settings-success) 14%, transparent); }
+.sandrone-extension-path { display: flex; gap: 7px; letter-spacing: 0 !important; }
+.sandrone-extension-path input { flex: 1; }
+.sandrone-extension-path button { flex: none; padding: 0 11px; border: 1px solid var(--sandrone-line); border-radius: 8px; background: var(--sandrone-paper-soft); color: var(--sandrone-ink); cursor: pointer; }
+
+@media (max-width: 760px) {
+  [data-sandrone-session-toolbar] {
+    min-height: 48px;
+    padding: 7px 10px 6px 12px !important;
+    gap: 9px;
+  }
+
+  [data-sandrone-session-crumbs] button {
+    max-width: 48vw !important;
+  }
+
+  [data-sandrone-session-actions] {
+    display: none !important;
+  }
+
+  .sandrone-extension-heading {
+    flex-direction: column;
+  }
+
+  .sandrone-extension-heading-actions {
+    justify-content: flex-start;
+  }
+
+  .sandrone-extension-grid.two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sandrone-extension-field.wide {
+    grid-column: auto;
+  }
+
+  .sandrone-extension-row,
+  .sandrone-extension-row.editable {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sandrone-plugin-summary {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  [data-sandrone-session-tabs] {
+    gap: 12px !important;
+  }
+
+  .sandrone-buddy-trigger {
+    width: 34px;
+    padding: 0;
+  }
+
+}
 \r
 /* ============================================================\r
    Sandrone model picker \u2014 the composer's own model seat\r
@@ -1300,18 +1947,18 @@ select {\r
   padding: 4px 12px 0 16px !important;\r
 }\r
 \r
-[data-sandrone-composer] [data-composer-card] [class*="scroll"] {\r
-  min-height: 44px !important;\r
-}\r
+[data-sandrone-composer] [data-composer-card] [data-input-scroll] {
+  min-height: 44px !important;
+}
 \r
 [data-sandrone-composer] [data-composer-card]:has(textarea:placeholder-shown) {\r
   gap: 0 !important;\r
   padding-top: 8px !important;\r
 }\r
 \r
-[data-sandrone-composer] [data-composer-card]:has(textarea:placeholder-shown) [class*="scroll"] {\r
-  box-sizing: border-box !important;\r
-  height: 44px !important;\r
+[data-sandrone-composer] [data-composer-card]:has(textarea:placeholder-shown) [data-input-scroll] {
+  box-sizing: border-box !important;
+  height: 44px !important;
   min-height: 44px !important;\r
   max-height: 44px !important;\r
   overflow: hidden !important;\r
@@ -1531,7 +2178,7 @@ body [role="dialog"]:not([data-sandrone-settings-panel]):has(input[type="passwor
 /* Settings as a standalone page below the 38px titlebar, not a floating card:\r
    the panel fills its overlay (which starts at the titlebar edge), drops the\r
    border/radius/shadow, and keeps the soft-paper left navigation. */\r
-body [role="dialog"][data-sandrone-settings-panel] {\r
+body [role="dialog"][data-sandrone-settings-panel] {
   box-sizing: border-box !important;\r
   width: 100% !important;\r
   max-width: none !important;\r
@@ -1540,83 +2187,27 @@ body [role="dialog"][data-sandrone-settings-panel] {\r
   padding: 0 !important;\r
   border: none !important;\r
   border-radius: 0 !important;\r
-  background: var(--sandrone-paper) !important;\r
+  background: var(--sandrone-paper) !important;
   box-shadow: none !important;\r
   color: var(--sandrone-ink) !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] > nav {\r
-  box-sizing: border-box !important;\r
-  width: 220px !important;\r
-  flex: 0 0 220px !important;\r
-  padding: 22px 16px 0 !important;\r
-  border-right: 1px solid var(--sandrone-line) !important;\r
-  background: var(--sandrone-paper-soft) !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] > [class*="content"] {\r
-  min-width: 0 !important;\r
-}\r
-\r
-/* Provider editor cards must size to their own content; a fixed-height card\r
-   lets the model catalog overflow into the sibling custom-provider card,\r
-   which overlaps it. */\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editor"], [class*="_editor "]),\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowCard"], [class*="_rowCard "]) {\r
-  height: auto !important;\r
-  max-height: none !important;\r
-  overflow: hidden !important;\r
-  flex: 0 0 auto !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelCatalog"], [class*="_modelCatalog "]),\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelEntry"], [class*="_modelEntry "]) {\r
-  min-width: 0 !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"], [class*="_editorHeader "]) {\r
-  align-items: center !important;\r
-  flex-wrap: wrap !important;\r
-  gap: 8px !important;\r
-}\r
-\r
-@media (max-width: 760px) {\r
-  body [role="dialog"][data-sandrone-settings-panel] {\r
-    width: calc(100vw - 24px) !important;\r
-    max-width: calc(100vw - 24px) !important;\r
-    height: calc(100vh - 24px) !important;\r
-    max-height: calc(100vh - 24px) !important;\r
-    flex-direction: column !important;\r
-  }\r
-\r
-  body [role="dialog"][data-sandrone-settings-panel] > nav {\r
-    width: 100% !important;\r
-    flex: 0 0 auto !important;\r
-    padding: 12px !important;\r
-    border-right: 0 !important;\r
-    border-bottom: 1px solid var(--sandrone-line) !important;\r
-  }\r
-\r
-  body [role="dialog"][data-sandrone-settings-panel] [class*="navList"] {\r
-    width: 100% !important;\r
-    flex-direction: row !important;\r
-    gap: 4px !important;\r
-    overflow-x: auto !important;\r
-    padding-bottom: 4px !important;\r
-  }\r
-\r
-  body [role="dialog"][data-sandrone-settings-panel] [class*="navCell"] {\r
-    width: auto !important;\r
-    min-width: 108px !important;\r
-    flex: 0 0 auto !important;\r
-  }\r
-\r
-  body [role="dialog"][data-sandrone-settings-panel] > [class*="content"] {\r
-    width: 100% !important;\r
-    min-height: 0 !important;\r
-  }\r
-\r
-  [data-sandrone-frame] {\r
+body [role="dialog"][data-sandrone-settings-panel] > nav {
+  box-sizing: border-box !important;
+  width: 236px !important;
+  flex: 0 0 236px !important;
+  padding: 20px 14px 18px !important;
+  border-right: 1px solid var(--sandrone-line) !important;
+  background: var(--sandrone-settings-nav) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] > [data-sandrone-settings-content] {
+  min-width: 0 !important;
+  background: var(--sandrone-paper) !important;
+}
+
+@media (max-width: 760px) {
+  [data-sandrone-frame] {
     grid-template-columns: minmax(0, 1fr) !important;\r
     grid-template-rows: 46vh minmax(0, 1fr) !important;\r
   }\r
@@ -1739,15 +2330,77 @@ body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"],
   display: none !important;\r
 }\r
 \r
-[data-sandrone-settings-nav-cell][data-sandrone-filtered] {\r
-  display: none !important;\r
-}\r
+[data-sandrone-settings-nav-cell][data-sandrone-filtered] {
+  display: none !important;
+}
+
+[data-sandrone-settings-nav-list] {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+}
+
+[data-sandrone-settings-nav-cell] {
+  position: relative !important;
+  min-height: 42px !important;
+  padding: 0 12px 0 14px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--sandrone-ink) !important;
+  box-shadow: none !important;
+  transition: background 140ms var(--sandrone-ease), color 140ms var(--sandrone-ease) !important;
+}
+
+[data-sandrone-settings-nav-cell][data-sandrone-settings-icon] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 11px !important;
+}
+
+[data-sandrone-settings-nav-cell][data-sandrone-settings-icon] > svg:not([data-sandrone-settings-nav-icon]) {
+  display: none !important;
+}
+
+[data-sandrone-settings-nav-icon] {
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px !important;
+  overflow: visible !important;
+  color: currentColor !important;
+}
+
+[data-sandrone-settings-nav-cell]::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: transparent;
+}
+
+[data-sandrone-settings-nav-cell]:hover {
+  background: color-mix(in srgb, var(--sandrone-paper-raised) 72%, transparent) !important;
+  color: var(--sandrone-ink-strong) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-nav-cell][aria-current="true"] {
+  background: var(--sandrone-settings-accent-wash) !important;
+  color: var(--sandrone-red) !important;
+  font-weight: 650 !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-nav-cell][aria-current="true"]::before {
+  background: var(--sandrone-red);
+}
 \r
-.sandrone-settings-chrome {\r
+.sandrone-settings-chrome {
   display: flex;\r
   flex-direction: column;\r
-  gap: 10px;\r
-  margin-bottom: 12px;\r
+  gap: 12px;
+  margin-bottom: 16px;
 }\r
 \r
 .sandrone-settings-back {\r
@@ -1764,9 +2417,9 @@ body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"],
   cursor: pointer;\r
 }\r
 \r
-.sandrone-settings-back:hover {\r
-  background: var(--sandrone-paper-raised);\r
-  color: var(--sandrone-ink-strong);\r
+.sandrone-settings-back:hover {
+  background: var(--sandrone-settings-accent-wash);
+  color: var(--sandrone-red);
 }\r
 \r
 .sandrone-settings-back svg {\r
@@ -1779,21 +2432,24 @@ body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"],
   stroke-linejoin: round;\r
 }\r
 \r
-.sandrone-settings-search {\r
+.sandrone-settings-search {
   display: flex;\r
   align-items: center;\r
   gap: 8px;\r
-  height: 30px;\r
-  padding: 0 12px;\r
-  border: 1px solid var(--sandrone-line);\r
-  border-radius: 999px;\r
-  background: var(--sandrone-paper-raised);\r
-  cursor: text;\r
-}\r
-\r
-.sandrone-settings-search:focus-within {\r
-  border-color: var(--sandrone-accent);\r
-}\r
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--sandrone-line);
+  border-radius: 9px;
+  background: var(--sandrone-settings-surface);
+  cursor: text;
+  transition: border-color 140ms var(--sandrone-ease), background 140ms var(--sandrone-ease), box-shadow 140ms var(--sandrone-ease);
+}
+
+.sandrone-settings-search:focus-within {
+  border-color: var(--sandrone-accent);
+  background: var(--sandrone-paper-raised);
+  box-shadow: 0 0 0 2px var(--sandrone-settings-focus);
+}
 \r
 .sandrone-settings-search svg {\r
   width: 13px;\r
@@ -1845,9 +2501,20 @@ body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-row {\r
   background: var(--sandrone-paper-raised) !important;\r
 }\r
 \r
-.sandrone-setting-copy {\r
-  min-width: 0;\r
-}\r
+.sandrone-setting-copy {
+  min-width: 0;
+}
+
+.sandrone-screenshot-directory-row .sandrone-setting-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sandrone-setting-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 \r
 .sandrone-setting-label {\r
   color: var(--sandrone-ink-strong);\r
@@ -1879,8 +2546,8 @@ body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-switch {\r
   transition: background 160ms var(--sandrone-ease);\r
 }\r
 \r
-.sandrone-setting-switch.is-on {\r
-  background: var(--sandrone-ink-strong) !important;\r
+body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-switch.is-on {
+  background: var(--sandrone-red) !important;
 }\r
 \r
 .sandrone-setting-switch:disabled {\r
@@ -1952,11 +2619,11 @@ body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action:disa
   background: var(--sandrone-line);\r
 }\r
 \r
-.sandrone-update-progress span {\r
+.sandrone-update-progress span {
   display: block;\r
   height: 100%;\r
   border-radius: inherit;\r
-  background: var(--sandrone-ink-strong);\r
+  background: var(--sandrone-red);
   transition: width 160ms var(--sandrone-ease);\r
 }\r
 \r
@@ -1989,70 +2656,82 @@ body [role="dialog"][data-sandrone-settings-panel] .sandrone-setting-action:disa
    ============================================================ */\r
 \r
 /* Section shell: max width, natural column flow, comfortable gaps. */\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_section"], [class*="_section "]) {\r
-  box-sizing: border-box !important;\r
-  width: 100% !important;\r
-  max-width: 760px !important;\r
-  flex-direction: column !important;\r
-  align-items: stretch !important;\r
-  gap: 10px !important;\r
-  padding: 0 !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_content"], [class*="_content "]):not([data-sandrone-settings-content]) {\r
-  box-sizing: border-box !important;\r
-  padding: 18px 24px 28px !important;\r
-  overflow-y: auto !important;\r
-}\r
-\r
-/* Section titles, intros, notices. */\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_title"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_heading"] {\r
-  color: var(--sandrone-ink-strong) !important;\r
-  font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;\r
-  font-size: 17px !important;\r
-  font-weight: 600 !important;\r
-  letter-spacing: -.02em !important;\r
-  line-height: 24px !important;\r
-  margin: 0 !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_intro"] {\r
-  color: var(--sandrone-muted) !important;\r
-  font-size: 12.5px !important;\r
-  line-height: 20px !important;\r
-  margin: 0 !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_notice"] {\r
-  color: var(--sandrone-muted) !important;\r
-  font-size: 12px !important;\r
-  line-height: 18px !important;\r
-  margin: 0 !important;\r
-}\r
-\r
-/* Provider / plugin cards. */\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowCard"], [class*="_rowCard "]),\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editor"], [class*="_editor "]) {\r
-  box-sizing: border-box !important;\r
-  width: 100% !important;\r
-  height: auto !important;\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-section] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 860px !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  padding: 0 !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-options] {
+  padding: 28px 36px 40px !important;
+  scrollbar-color: color-mix(in srgb, var(--sandrone-muted) 32%, transparent) transparent;
+}
+
+/* Section titles, intros, notices. */
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-heading] {
+  color: var(--sandrone-ink-strong) !important;
+  font-family: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 650 !important;
+  letter-spacing: -.02em !important;
+  line-height: 26px !important;
+  margin: 0 !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-description] {
+  color: var(--sandrone-muted) !important;
+  font-size: 13px !important;
+  line-height: 21px !important;
+  margin: 0 !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-hint] {
+  color: var(--sandrone-muted) !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  margin: 0 !important;
+}
+
+/* Provider / plugin cards. */
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-card] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  height: auto !important;
   max-height: none !important;\r
   flex: 0 0 auto !important;\r
   flex-direction: column !important;\r
   align-items: stretch !important;\r
   gap: 10px !important;\r
-  padding: 14px 16px !important;\r
-  border: 1px solid var(--sandrone-line) !important;\r
-  border-radius: 12px !important;\r
-  background: var(--sandrone-paper-raised) !important;\r
-  overflow: hidden !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_rowHead"], [class*="_rowHead "]),\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"], [class*="_editorHeader "]) {\r
-  box-sizing: border-box !important;\r
-  display: flex !important;\r
+  padding: 15px 18px !important;
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 11px !important;
+  background: var(--sandrone-settings-surface) !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  transition: border-color 140ms var(--sandrone-ease), background 140ms var(--sandrone-ease) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-card]:hover {
+  border-color: var(--sandrone-line-strong) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-collection-card] {
+  padding: 0 !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice-grid] {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-card-header] {
+  box-sizing: border-box !important;
+  display: flex !important;
   align-items: center !important;\r
   justify-content: space-between !important;\r
   flex-wrap: wrap !important;\r
@@ -2060,25 +2739,101 @@ body [role="dialog"][data-sandrone-settings-panel] :is([class$="_editorHeader"],
   width: 100% !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_rowName"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_editorTitle"] {\r
-  color: var(--sandrone-ink-strong) !important;\r
-  font-size: 14px !important;\r
-  font-weight: 600 !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_rowTag"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_tag"] {\r
-  border: 1px solid var(--sandrone-line) !important;\r
-  border-radius: 5px !important;\r
-  padding: 1px 7px !important;\r
-  color: var(--sandrone-muted) !important;\r
-  font-size: 11px !important;\r
-}\r
+body [role="dialog"][data-sandrone-settings-panel] :is([class*="_rowName"], [class*="_editorTitle"], [class*="_cardName"], [class*="_name"]) {
+  color: var(--sandrone-ink-strong) !important;
+  font-size: 14px !important;
+  font-weight: 650 !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-tag] {
+  border: 1px solid color-mix(in srgb, var(--sandrone-red) 24%, var(--sandrone-line)) !important;
+  border-radius: 999px !important;
+  padding: 1px 8px !important;
+  background: color-mix(in srgb, var(--sandrone-settings-accent-wash) 58%, transparent) !important;
+  color: var(--sandrone-red) !important;
+  font-size: 11px !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-selector] {
+  min-height: 38px !important;
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 9px !important;
+  background: var(--sandrone-settings-surface) !important;
+  color: var(--sandrone-ink) !important;
+  box-shadow: none !important;
+  transition: border-color 140ms var(--sandrone-ease), background 140ms var(--sandrone-ease), color 140ms var(--sandrone-ease) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-selector]:hover,
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-selector][aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--sandrone-red) 42%, var(--sandrone-line)) !important;
+  background: var(--sandrone-settings-accent-wash) !important;
+  color: var(--sandrone-red) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-tab] {
+  min-height: 42px !important;
+  border: 0 !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 8px 8px 0 0 !important;
+  background: transparent !important;
+  color: var(--sandrone-muted) !important;
+  box-shadow: none !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-tab]:hover {
+  background: color-mix(in srgb, var(--sandrone-settings-accent-wash) 54%, transparent) !important;
+  color: var(--sandrone-ink-strong) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-tab][aria-selected="true"] {
+  border-bottom-color: var(--sandrone-red) !important;
+  background: transparent !important;
+  color: var(--sandrone-red) !important;
+  font-weight: 650 !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice][aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--sandrone-red) 54%, var(--sandrone-line)) !important;
+  background: var(--sandrone-settings-accent-wash) !important;
+  color: var(--sandrone-red) !important;
+  box-shadow: none !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice][aria-pressed="false"] {
+  border-color: var(--sandrone-line) !important;
+  background: var(--sandrone-settings-surface) !important;
+  color: var(--sandrone-ink) !important;
+  box-shadow: none !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice-card] > [data-sandrone-settings-choice] {
+  width: 100% !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--sandrone-ink) !important;
+  box-shadow: none !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice-card]:has([data-sandrone-settings-choice][aria-pressed="true"]) > [data-sandrone-settings-choice] {
+  background: transparent !important;
+  color: var(--sandrone-ink-strong) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice-card]:has([data-sandrone-settings-choice][aria-pressed="true"]) {
+  border-color: color-mix(in srgb, var(--sandrone-red) 58%, var(--sandrone-line)) !important;
+  background: var(--sandrone-settings-accent-wash) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice-card]:has([data-sandrone-settings-choice][aria-pressed="true"]) [data-sandrone-settings-status] {
+  border-color: var(--sandrone-red) !important;
+  background: var(--sandrone-red) !important;
+  color: var(--sandrone-paper-raised) !important;
+}
 \r
 /* Fields: label above control, full width. */\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_field"], [class*="_field "]),\r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelField"], [class*="_modelField "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-field] {
   box-sizing: border-box !important;\r
   display: flex !important;\r
   flex-direction: column !important;\r
@@ -2088,8 +2843,7 @@ body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelField"], [
   min-width: 0 !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_fieldLabel"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_modelFieldLabel"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-field-label] {
   display: block !important;\r
   margin: 0 !important;\r
   color: var(--sandrone-muted) !important;\r
@@ -2105,10 +2859,10 @@ body [role="dialog"][data-sandrone-settings-panel] select[data-sandrone-settings
   height: 34px !important;\r
   min-height: 34px !important;\r
   padding: 0 11px !important;\r
-  border: 1px solid var(--sandrone-line-strong) !important;\r
+  border: 1px solid var(--sandrone-line) !important;
   border-radius: 8px !important;\r
   outline: none !important;\r
-  background: var(--sandrone-paper) !important;\r
+  background: var(--sandrone-settings-surface) !important;
   color: var(--sandrone-ink-strong) !important;\r
   font: inherit !important;\r
   font-size: 13px !important;\r
@@ -2120,10 +2874,10 @@ body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settin
   min-height: 72px !important;\r
   padding: 8px 11px !important;\r
   resize: vertical;\r
-  border: 1px solid var(--sandrone-line-strong) !important;\r
+  border: 1px solid var(--sandrone-line) !important;
   border-radius: 8px !important;\r
   outline: none !important;\r
-  background: var(--sandrone-paper) !important;\r
+  background: var(--sandrone-settings-surface) !important;
   color: var(--sandrone-ink-strong) !important;\r
   font: inherit !important;\r
   font-size: 13px !important;\r
@@ -2132,14 +2886,21 @@ body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settin
 body [role="dialog"][data-sandrone-settings-panel] input[data-sandrone-settings-control]:focus,\r
 body [role="dialog"][data-sandrone-settings-panel] select[data-sandrone-settings-control]:focus,\r
 body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control]:focus {\r
-  border-color: var(--sandrone-accent) !important;\r
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sandrone-accent) 20%, transparent) !important;\r
+  border-color: var(--sandrone-accent) !important;
+  box-shadow: 0 0 0 2px var(--sandrone-settings-focus) !important;
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-control]::placeholder,\r
-body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control]::placeholder {\r
-  color: var(--sandrone-muted) !important;\r
-}\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-control]::placeholder,
+body [role="dialog"][data-sandrone-settings-panel] textarea[data-sandrone-settings-control]::placeholder {
+  color: var(--sandrone-muted) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] input[data-sandrone-settings-control][aria-label="\u641C\u7D22\u63D2\u4EF6"],
+body [role="dialog"][data-sandrone-settings-panel] input[data-sandrone-settings-control][aria-label="Search plugins"] {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 34px 0 36px !important;
+}
 \r
 body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input,\r
 body [role="dialog"][data-sandrone-settings-panel] .sandrone-settings-search input:hover,\r
@@ -2177,7 +2938,7 @@ body [role="dialog"][data-sandrone-settings-panel] :is([class$="_modelRow"], [cl
   min-width: 0 !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_iconButton"], [class*="_iconButton "]) {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-icon-action] {
   display: inline-flex !important;\r
   width: 28px !important;\r
   height: 28px !important;\r
@@ -2192,9 +2953,9 @@ body [role="dialog"][data-sandrone-settings-panel] :is([class$="_iconButton"], [
   cursor: pointer !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] :is([class$="_iconButton"], [class*="_iconButton "]):hover {\r
-  background: var(--sandrone-paper-soft) !important;\r
-  color: var(--sandrone-ink-strong) !important;\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-icon-action]:hover {
+  background: var(--sandrone-settings-accent-wash) !important;
+  color: var(--sandrone-red) !important;
 }\r
 \r
 body [role="dialog"][data-sandrone-settings-panel] [class*="_modelAdvanced"] {\r
@@ -2233,23 +2994,23 @@ body [role="dialog"][data-sandrone-settings-panel] [class*="_modelCatalogMeta"] 
   font-size: 11px !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_linkButton"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_addModelButton"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-secondary-action] {
   box-sizing: border-box !important;\r
   min-height: 32px !important;\r
   padding: 0 12px !important;\r
-  border: 1px solid var(--sandrone-line-strong) !important;\r
-  border-radius: 999px !important;\r
-  background: transparent !important;\r
+  border: 1px solid var(--sandrone-line) !important;
+  border-radius: 8px !important;
+  background: var(--sandrone-settings-surface) !important;
   color: var(--sandrone-ink) !important;\r
   font: inherit !important;\r
   font-size: 12.5px !important;\r
   cursor: pointer !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_linkButton"]:hover,\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_addModelButton"]:hover {\r
-  background: var(--sandrone-accent-soft) !important;\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-secondary-action]:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--sandrone-red) 42%, var(--sandrone-line)) !important;
+  background: var(--sandrone-settings-accent-wash) !important;
+  color: var(--sandrone-red) !important;
 }\r
 \r
 body [role="dialog"][data-sandrone-settings-panel] [class*="_modelEmpty"] {\r
@@ -2270,64 +3031,56 @@ body [role="dialog"][data-sandrone-settings-panel] [class*="_editorFooter"] {\r
   padding-top: 4px !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"] {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-primary-action],
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-secondary-action] {
   box-sizing: border-box !important;\r
   min-height: 36px !important;\r
   padding: 0 16px !important;\r
-  border-radius: 999px !important;\r
+  border-radius: 8px !important;
   font: inherit !important;\r
   font-size: 13px !important;\r
   cursor: pointer !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"],\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"] {\r
-  border: 1px solid var(--sandrone-ink-strong) !important;\r
-  background: var(--sandrone-ink-strong) !important;\r
-  color: var(--sandrone-paper-raised) !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"]:hover:not(:disabled),\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_addButton"]:hover:not(:disabled) {\r
-  background: var(--sandrone-red) !important;\r
-  border-color: var(--sandrone-red) !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"] {\r
-  border: 1px solid var(--sandrone-line-strong) !important;\r
-  background: transparent !important;\r
-  color: var(--sandrone-ink) !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"]:hover:not(:disabled) {\r
-  background: var(--sandrone-paper-soft) !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_primaryButton"]:disabled,\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_secondaryButton"]:disabled {\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-primary-action] {
+  border: 1px solid var(--sandrone-red) !important;
+  background: var(--sandrone-red) !important;
+  color: var(--sandrone-paper-raised) !important;
+  box-shadow: none !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-primary-action]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sandrone-red) 88%, var(--sandrone-ink-strong)) !important;
+  border-color: color-mix(in srgb, var(--sandrone-red) 88%, var(--sandrone-ink-strong)) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-primary-action] + [data-sandrone-settings-primary-action] {
+  border-color: color-mix(in srgb, var(--sandrone-red) 36%, var(--sandrone-line)) !important;
+  background: var(--sandrone-settings-surface) !important;
+  color: var(--sandrone-red) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-primary-action] + [data-sandrone-settings-primary-action]:hover:not(:disabled) {
+  border-color: var(--sandrone-red) !important;
+  background: var(--sandrone-settings-accent-wash) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-primary-action]:disabled,
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-secondary-action]:disabled {
   opacity: .45 !important;\r
   cursor: default !important;\r
 }\r
 \r
 /* Hints, errors, saved notices. */\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_hint"] {\r
-  color: var(--sandrone-muted) !important;\r
-  font-size: 11.5px !important;\r
-  line-height: 18px !important;\r
-  margin: 0 !important;\r
-}\r
-\r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_error"] {\r
-  color: var(--sandrone-red) !important;\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-error] {
+  color: var(--sandrone-settings-danger) !important;
   font-size: 12px !important;\r
   line-height: 18px !important;\r
   margin: 0 !important;\r
 }\r
 \r
-body [role="dialog"][data-sandrone-settings-panel] [class*="_savedNotice"] {\r
-  color: var(--sandrone-red) !important;\r
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-status] {
+  color: var(--sandrone-red) !important;
   font-size: 12px !important;\r
   line-height: 18px !important;\r
   margin: 0 !important;\r
@@ -2342,8 +3095,20 @@ body [role="dialog"] [data-sandrone-settings-candidate-checkbox] {\r
   padding: 0 !important;\r
   border: 1px solid var(--sandrone-line-strong) !important;\r
   border-radius: 4px !important;\r
-  accent-color: var(--sandrone-ink-strong) !important;\r
-}\r
+  accent-color: var(--sandrone-red) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-success] {
+  background: var(--sandrone-settings-success) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-danger-action] {
+  color: var(--sandrone-settings-danger) !important;
+}
+
+body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-danger-action]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sandrone-settings-danger) 10%, transparent) !important;
+}
 \r
 /* ============================================================\r
    Layout guardrails\r
@@ -2498,24 +3263,90 @@ body [role="dialog"] [data-sandrone-settings-candidate-checkbox] {\r
   opacity: .45;\r
 }\r
 \r
-.sandrone-provider-image-field {\r
-  display: inline-flex;\r
-  align-items: center;\r
-  gap: 7px;\r
-  width: fit-content;\r
-  margin: 8px 4px 2px;\r
-  color: var(--dsw-alias-label-secondary);\r
-  font-size: 12px;\r
+.sandrone-provider-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 8px 4px 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+
+.sandrone-provider-image-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
   line-height: 18px;\r
   cursor: pointer;\r
 }\r
 \r
-.sandrone-provider-image-field input {\r
+.sandrone-provider-image-field input {
   width: 15px !important;\r
   height: 15px !important;\r
   min-height: 0 !important;\r
-  accent-color: var(--dsw-alias-brand-primary);\r
-}\r
+  accent-color: var(--dsw-alias-brand-primary);
+}
+
+.sandrone-provider-reasoning-field {
+  display: flex;
+  min-width: min(100%, 360px);
+  flex: 1 1 360px;
+  align-items: center;
+  gap: 8px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.sandrone-provider-reasoning-field > span { flex: none; }
+
+.sandrone-provider-reasoning-field select,
+.sandrone-provider-reasoning-map {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 30px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  outline: none;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+}
+
+.sandrone-provider-reasoning-field select {
+  flex: 0 1 240px;
+  padding: 0 28px 0 9px;
+}
+
+.sandrone-provider-reasoning-map {
+  flex: 1 1 260px;
+  padding: 0 9px;
+  font-family: var(--ds-font-family-code, ui-monospace, monospace);
+}
+
+.sandrone-provider-reasoning-field select:focus,
+.sandrone-provider-reasoning-map:focus {
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: 0 0 0 3px var(--sandrone-settings-focus);
+}
+
+.sandrone-provider-reasoning-status {
+  flex: 1 1 100%;
+  color: var(--dsw-alias-label-tertiary);
+  line-height: 16px;
+}
+
+.sandrone-provider-reasoning-status.is-error { color: var(--dsw-alias-state-error-primary); }
+
+@media (max-width: 760px) {
+  .sandrone-provider-reasoning-field { align-items: stretch; flex-direction: column; }
+  .sandrone-provider-reasoning-field select,
+  .sandrone-provider-reasoning-map { width: 100%; flex-basis: auto; }
+}
 \r
 .sandrone-image-capability-note {\r
   border-top: 1px solid var(--dsw-alias-border-l1);\r
@@ -2528,9 +3359,200 @@ body [role="dialog"] [data-sandrone-settings-candidate-checkbox] {\r
   overflow-x: auto;\r
 }\r
 \r
-[data-sandrone-session-body] :where(img, video, canvas, svg) {\r
-  max-width: 100%;\r
-}\r
+[data-sandrone-session-body] :where(img, video, canvas, svg) {
+  max-width: 100%;
+}
+
+[data-sandrone-session-body] [data-chat-flow-kind^="assistant"] img[data-sandrone-message-image="remote"],
+[data-sandrone-session-body] [data-chat-flow-kind^="assistant"] [data-sandrone-local-image] {
+  display: block;
+  width: fit-content;
+  max-width: min(100%, 720px);
+  margin: 12px 0;
+  border: 1px solid var(--sandrone-line);
+  border-radius: 14px;
+  background: var(--sandrone-paper-raised);
+  box-shadow: 0 8px 28px rgb(54 45 37 / 8%);
+}
+
+[data-sandrone-session-body] [data-chat-flow-kind^="assistant"] img[data-sandrone-message-image="remote"] {
+  max-height: 520px;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+
+[data-sandrone-session-body] [data-chat-flow-kind^="assistant"] [data-sandrone-local-image] {
+  box-sizing: border-box;
+  min-width: min(260px, 100%);
+  padding: 14px;
+  color: var(--sandrone-ink-muted);
+  font-style: normal;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+[data-sandrone-session-body] [data-chat-flow-kind^="assistant"] [data-sandrone-local-image][data-sandrone-local-image-state="ready"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 8px;
+}
+
+.sandrone-message-image-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  width: 100%;
+  max-height: 520px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--sandrone-paper) 82%, var(--sandrone-line));
+  cursor: zoom-in;
+}
+
+.sandrone-message-image-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+}
+
+.sandrone-message-image-caption {
+  min-width: 0;
+  overflow: hidden;
+  padding-left: 4px;
+  color: var(--sandrone-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sandrone-message-image-reveal {
+  border: 0;
+  background: transparent;
+  color: var(--sandrone-red);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sandrone-message-image-preview:focus-visible,
+[data-sandrone-session-body] img[data-sandrone-message-image="remote"]:focus-visible,
+.sandrone-message-image-reveal:focus-visible,
+.sandrone-image-lightbox button:focus-visible {
+  outline: 2px solid var(--sandrone-accent);
+  outline-offset: 3px;
+}
+
+.sandrone-image-lightbox {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+
+.sandrone-image-lightbox[hidden] {
+  display: none;
+}
+
+.sandrone-image-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(21 18 16 / 76%);
+  backdrop-filter: blur(8px);
+  cursor: zoom-out;
+}
+
+.sandrone-image-lightbox-panel {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(1180px, calc(100vw - 56px));
+  height: min(820px, calc(100vh - 56px));
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--sandrone-line) 74%, transparent);
+  border-radius: 16px;
+  background: var(--sandrone-paper-raised);
+  box-shadow: 0 28px 90px rgb(0 0 0 / 32%);
+}
+
+.sandrone-image-lightbox-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 10px 0 16px;
+  border-bottom: 1px solid var(--sandrone-line);
+}
+
+.sandrone-image-lightbox-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sandrone-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sandrone-image-lightbox-reveal,
+.sandrone-image-lightbox-close {
+  flex: none;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sandrone-ink-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sandrone-image-lightbox-reveal {
+  margin-left: auto;
+  padding: 6px 10px;
+}
+
+.sandrone-image-lightbox-close {
+  width: 32px;
+  height: 32px;
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.sandrone-image-lightbox-reveal:hover,
+.sandrone-image-lightbox-close:hover {
+  background: var(--sandrone-accent-soft);
+  color: var(--sandrone-ink);
+}
+
+.sandrone-image-lightbox-stage {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 18px;
+  background: color-mix(in srgb, var(--sandrone-paper) 88%, #000);
+}
+
+.sandrone-image-lightbox-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+html[data-sandrone-image-preview-open] {
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .sandrone-image-lightbox { padding: 12px; }
+  .sandrone-image-lightbox-panel {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+    border-radius: 12px;
+  }
+}
 \r
 [data-sandrone-center] [data-composer-seat] {\r
   width: 100%;\r
@@ -2558,13 +3580,13 @@ body [role="dialog"] [data-sandrone-settings-candidate-checkbox] {\r
   word-break: break-word;\r
 }\r
 \r
-[data-sandrone-model-picker],\r
-.sandrone-buddy-anchor {\r
+[data-sandrone-model-picker],
+.sandrone-buddy-anchor,
+.sandrone-right-panel-anchor {
   max-width: 100%;\r
 }\r
 \r
-[data-sandrone-model-picker] .sandrone-model-menu,\r
-.sandrone-buddy {\r
+[data-sandrone-model-picker] .sandrone-model-menu {
   max-width: calc(100vw - 24px);\r
 }\r
 \r
@@ -2618,19 +3640,111 @@ body [role="dialog"][data-sandrone-settings-panel] :where(\r
   overflow-wrap: anywhere;\r
 }\r
 \r
-@media (max-width: 760px) {\r
-  [data-sandrone-settings-overlay] {\r
-    inset: 50px 0 0 !important;\r
-  }\r
+@media (max-width: 900px) {
+  [data-sandrone-settings-overlay] {
+    inset: 50px 0 0 !important;
+  }
+
+  [data-sandrone-settings-overlay][data-sandrone-settings-open] {
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  [data-sandrone-settings-overlay][data-sandrone-settings-open] > [data-sandrone-settings-panel] {
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
 \r
-  body [role="dialog"][data-sandrone-settings-panel] {\r
-    width: 100% !important;\r
-    max-width: none !important;\r
-    height: 100% !important;\r
-    max-height: none !important;\r
-  }\r
-\r
-  [data-sandrone-center] [data-composer-card] {\r
+  body [role="dialog"][data-sandrone-settings-panel] {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    max-height: none !important;
+    flex-direction: column !important;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] > nav {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    padding: 10px 12px 8px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--sandrone-line) !important;
+  }
+
+  .sandrone-settings-chrome {
+    display: grid;
+    grid-template-columns: auto minmax(160px, 1fr);
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .sandrone-settings-back {
+    margin: 0;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-nav-list] {
+    width: 100% !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    visibility: visible !important;
+    padding: 0 0 2px !important;
+    scrollbar-width: thin;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-nav-cell] {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 36px !important;
+    flex: 0 0 max-content !important;
+    padding: 0 11px !important;
+    white-space: nowrap !important;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-nav-cell][data-sandrone-settings-icon] {
+    gap: 7px !important;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-nav-icon] {
+    width: 17px !important;
+    height: 17px !important;
+    flex-basis: 17px !important;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-nav-cell]::before {
+    top: auto;
+    right: 11px;
+    bottom: 0;
+    left: 11px;
+    width: auto;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] > [data-sandrone-settings-content] {
+    width: 100% !important;
+    min-height: 0 !important;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-options] {
+    padding: 22px 20px 32px !important;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-section] {
+    max-width: none !important;
+  }
+
+  body [role="dialog"][data-sandrone-settings-panel] [data-sandrone-settings-choice-grid] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+
+  [data-sandrone-center] [data-composer-card] {
     width: calc(100% - 16px) !important;\r
     max-width: calc(100% - 16px) !important;\r
   }\r
@@ -2649,10 +3763,21 @@ body [role="dialog"][data-sandrone-settings-panel] :where(\r
     padding-inline: 7px;\r
   }\r
 \r
-  .sandrone-topbar-window button {\r
-    width: 40px;\r
-  }\r
-}\r
+  .sandrone-topbar-window button {
+    width: 40px;
+  }
+}
+
+[data-sandrone-composer] [data-composer-card]:has([class*="JVDQca_root"], [class*="_54WpYG_rail"]) [data-input-scroll],
+[data-sandrone-composer] [data-composer-card]:has([class*="JVDQca_root"], [class*="_54WpYG_rail"]) [class*="_scroll"] {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+[data-sandrone-composer] [data-composer-card]:has([class*="JVDQca_root"], [class*="_54WpYG_rail"]) [class*="JVDQca_rail"] {
+  padding-top: 10px !important;
+}
 `;
 function installStyle(ctx) {
   ctx.effect(() => {
@@ -2716,10 +3841,17 @@ function markSurface() {
   overlayColumn?.setAttribute("data-sandrone-overlay", "true");
   if (sidebarColumn) {
     const sidebarWidth = sidebarColumn.getBoundingClientRect().width;
-    root.style.setProperty("--sandrone-sidebar-width", `${sidebarWidth}px`);
     const sidebarCollapsed = frame.getAttribute("data-sidebar-collapsed") === "true";
+    root.dataset.sandroneSidebarCollapsed = sidebarCollapsed ? "true" : "false";
+    root.style.setProperty("--sandrone-sidebar-width", sidebarCollapsed ? "0px" : `${sidebarWidth}px`);
     const desktopShell = Boolean(window.sandroneDesktop);
     if (desktopShell) root.dataset.sandroneDesktop = "true";
+    const restoringDesktopSidebar = desktopShell && window.innerWidth > 760 && !sidebarCollapsed && frame.dataset.sandroneSidebarForcedCollapsed === "true";
+    if (restoringDesktopSidebar) {
+      frame.style.setProperty("grid-template-columns", `${DESKTOP_SIDEBAR_WIDTH}px minmax(0, 1fr) 0px`, "important");
+      delete frame.dataset.sandroneSidebarForcedCollapsed;
+      root.style.setProperty("--sandrone-sidebar-width", `${DESKTOP_SIDEBAR_WIDTH}px`);
+    }
     const pinDesktopWidth = desktopShell && window.innerWidth > 760 && !sidebarCollapsed && sidebarWidth > 0 && sidebarWidth !== DESKTOP_SIDEBAR_WIDTH;
     const canNormalizeDesktopWidth = !desktopShell && window.innerWidth > 760 && !sidebarCollapsed && !frame.dataset.sandroneSidebarUserResized && !frame.dataset.sandroneSidebarWidthNormalized && sidebarWidth > 0 && sidebarWidth < DESKTOP_SIDEBAR_WIDTH;
     if (pinDesktopWidth || canNormalizeDesktopWidth) {
@@ -2732,6 +3864,10 @@ function markSurface() {
       frame.dataset.sandroneSidebarWidthNormalized = "true";
       root.style.setProperty("--sandrone-sidebar-width", `${DESKTOP_SIDEBAR_WIDTH}px`);
       window.requestAnimationFrame(() => frame.style.removeProperty("transition"));
+    }
+    if (desktopShell && window.innerWidth > 760 && sidebarCollapsed) {
+      frame.style.setProperty("grid-template-columns", "0px minmax(0, 1fr) 0px", "important");
+      frame.dataset.sandroneSidebarForcedCollapsed = "true";
     }
   }
   const sidebarRoot = sidebarColumn?.querySelector('[data-slot="sidebar"]') || sidebarColumn?.firstElementChild;
@@ -2756,11 +3892,59 @@ function markSurface() {
   sidebarRoot?.querySelector('[data-slot="sidebar.settings"]')?.setAttribute("data-sandrone-settings", "true");
   sidebarRoot?.querySelector('[data-slot="sidebar.workspaces"] input')?.setAttribute("placeholder", "\u641C\u7D22\u9879\u76EE\u3001\u4F1A\u8BDD...");
   const centerRoot = centerColumn?.querySelector('[data-slot="conversation"]');
-  centerRoot?.querySelector('[data-slot="conversation.session.header"]')?.setAttribute("data-sandrone-session-header", "true");
+  const sessionHeaderSlot = centerRoot?.querySelector('[data-slot="conversation.session.header"]');
+  const sessionToolbar = sessionHeaderSlot?.querySelector("header");
+  const sessionTitleRow = sessionToolbar?.firstElementChild;
+  const sessionTitleCluster = sessionTitleRow?.firstElementChild;
+  const sessionCrumbs = sessionTitleCluster?.querySelector("nav");
+  const sessionActions = sessionCrumbs?.nextElementSibling;
+  const sessionUtilities = sessionTitleRow?.lastElementChild !== sessionTitleCluster ? sessionTitleRow?.lastElementChild : null;
+  sessionHeaderSlot?.setAttribute("data-sandrone-session-header", "true");
+  sessionToolbar?.setAttribute("data-sandrone-session-toolbar", "true");
+  sessionTitleRow?.setAttribute("data-sandrone-session-title-row", "true");
+  sessionTitleCluster?.setAttribute("data-sandrone-session-title-cluster", "true");
+  sessionCrumbs?.setAttribute("data-sandrone-session-crumbs", "true");
+  sessionActions?.setAttribute("data-sandrone-session-actions", "true");
+  sessionUtilities?.setAttribute("data-sandrone-session-utilities", "true");
+  sessionToolbar?.querySelector('[role="tablist"]')?.setAttribute("data-sandrone-session-tabs", "true");
+  sessionUtilities?.querySelectorAll("button").forEach((button) => {
+    if (!/Session log|会话日志/i.test(textOf(button))) return;
+    button.setAttribute("data-sandrone-session-log", "true");
+    button.setAttribute("aria-label", "\u4E0B\u8F7D Session \u65E5\u5FD7");
+    button.setAttribute("title", "\u4E0B\u8F7D Session \u65E5\u5FD7");
+    if (!button.querySelector("[data-sandrone-session-log-icon]")) {
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("viewBox", "0 0 18 18");
+      icon.setAttribute("aria-hidden", "true");
+      icon.setAttribute("data-sandrone-session-log-icon", "");
+      icon.innerHTML = '<path d="M9 2.75v8M6.15 8.15 9 11l2.85-2.85"/><path d="M3.75 13.1v1.15h10.5V13.1"/>';
+      button.append(icon);
+    }
+  });
   centerRoot?.querySelector('[data-slot="conversation.session"]')?.setAttribute("data-sandrone-session-body", "true");
   centerRoot?.querySelector('[data-slot="conversation.composer"], [data-composer-seat]')?.setAttribute("data-sandrone-composer", "true");
   root.querySelectorAll('[aria-label="\u65B0\u5EFA\u4F1A\u8BDD"]').forEach((element) => element.setAttribute("data-sandrone-new-session", "true"));
+  root.querySelectorAll('[role="treeitem"]').forEach((element) => {
+    const label = (element.textContent || "").replace(/\s+/g, " ").trim();
+    const hasSessionActions = element.querySelector('[aria-label^="\u4F1A\u8BDD\u201C"], [aria-label^="Session actions"]') !== null;
+    if ((label === "\u65B0\u4F1A\u8BDD" || label === "New Session") && !hasSessionActions) {
+      element.setAttribute("data-sandrone-provisional-session", "true");
+    } else {
+      element.removeAttribute("data-sandrone-provisional-session");
+    }
+  });
   root.querySelectorAll('[aria-label="\u641C\u7D22\u4F1A\u8BDD"], [aria-label="\u89C6\u56FE\u9009\u9879"], [aria-label="\u6DFB\u52A0\u5DE5\u4F5C\u533A"], [aria-label="\u65B0\u5EFA\u5DE5\u4F5C\u533A"]').forEach((element) => element.setAttribute("data-sandrone-sidebar-action", "true"));
+  root.querySelectorAll("button").forEach((element) => {
+    const label = textOf(element);
+    if (!["\u4EC5\u53EF\u67E5\u770B", "\u53EF\u5199\u5165\u5DE5\u4F5C\u533A", "\u5B8C\u5168\u6743\u9650", "Read Only", "Workspace Write", "Full access"].includes(label)) return;
+    if (!element.closest("[data-sandrone-composer]")) return;
+    element.setAttribute("data-sandrone-permission-trigger", "true");
+    element.closest('[class*="row"]')?.setAttribute("data-sandrone-composer-toolbar", "true");
+    const permissionRoot = element.parentElement;
+    const menu = permissionRoot?.querySelector('[role="menu"]');
+    menu?.setAttribute("data-sandrone-permission-menu", "true");
+    menu?.querySelector('[role="presentation"]')?.setAttribute("data-sandrone-permission-viewport", "true");
+  });
   root.querySelectorAll("textarea").forEach((element) => element.setAttribute("data-sandrone-composer-input", "true"));
   root.querySelectorAll('[data-conversation-scroll], [data-composer-seat], [data-composer-card], [data-input-scroll], [role="tree"]').forEach((element) => element.setAttribute("data-sandrone-surface-part", "true"));
   root.querySelectorAll('[role="dialog"]').forEach((element) => element.setAttribute("data-sandrone-dialog", "true"));
@@ -2822,7 +4006,8 @@ function installSurfaceMarkers(ctx) {
       document.removeEventListener("keydown", handleComposerEnterFallback);
       window.removeEventListener("resize", scheduleMark);
       if (frameId !== 0) window.cancelAnimationFrame(frameId);
-      document.querySelectorAll("[data-sandrone-shell], [data-sandrone-frame], [data-sandrone-sidebar-column], [data-sandrone-sidebar], [data-sandrone-sidebar-header], [data-sandrone-workspaces], [data-sandrone-settings], [data-sandrone-center], [data-sandrone-details], [data-sandrone-overlay], [data-sandrone-session-header], [data-sandrone-session-body], [data-sandrone-composer], [data-sandrone-new-session], [data-sandrone-sidebar-action], [data-sandrone-composer-input], [data-sandrone-surface-part], [data-sandrone-dialog]").forEach((element) => {
+      document.querySelectorAll("[data-sandrone-session-log-icon]").forEach((element) => element.remove());
+      document.querySelectorAll("[data-sandrone-shell], [data-sandrone-frame], [data-sandrone-sidebar-column], [data-sandrone-sidebar], [data-sandrone-sidebar-header], [data-sandrone-workspaces], [data-sandrone-settings], [data-sandrone-center], [data-sandrone-details], [data-sandrone-overlay], [data-sandrone-session-header], [data-sandrone-session-toolbar], [data-sandrone-session-title-row], [data-sandrone-session-title-cluster], [data-sandrone-session-crumbs], [data-sandrone-session-actions], [data-sandrone-session-utilities], [data-sandrone-session-tabs], [data-sandrone-session-body], [data-sandrone-composer], [data-sandrone-new-session], [data-sandrone-sidebar-action], [data-sandrone-permission-menu], [data-sandrone-permission-viewport], [data-sandrone-permission-trigger], [data-sandrone-composer-toolbar], [data-sandrone-composer-input], [data-sandrone-surface-part], [data-sandrone-dialog]").forEach((element) => {
         delete element.dataset.sandroneShell;
         delete element.dataset.sandroneFrame;
         delete element.dataset.sandroneSidebarColumn;
@@ -2834,10 +4019,21 @@ function installSurfaceMarkers(ctx) {
         delete element.dataset.sandroneDetails;
         delete element.dataset.sandroneOverlay;
         delete element.dataset.sandroneSessionHeader;
+        delete element.dataset.sandroneSessionToolbar;
+        delete element.dataset.sandroneSessionTitleRow;
+        delete element.dataset.sandroneSessionTitleCluster;
+        delete element.dataset.sandroneSessionCrumbs;
+        delete element.dataset.sandroneSessionActions;
+        delete element.dataset.sandroneSessionUtilities;
+        delete element.dataset.sandroneSessionTabs;
         delete element.dataset.sandroneSessionBody;
         delete element.dataset.sandroneComposer;
         delete element.dataset.sandroneNewSession;
         delete element.dataset.sandroneSidebarAction;
+        delete element.dataset.sandronePermissionMenu;
+        delete element.dataset.sandronePermissionViewport;
+        delete element.dataset.sandronePermissionTrigger;
+        delete element.dataset.sandroneComposerToolbar;
         delete element.dataset.sandroneComposerInput;
         delete element.dataset.sandroneSurfacePart;
         delete element.dataset.sandroneDialog;
@@ -2846,6 +4042,178 @@ function installSurfaceMarkers(ctx) {
       document.getElementById("root")?.style.removeProperty("--sandrone-sidebar-width");
     };
   }, "sandrone-ui: semantic surface markers");
+}
+function installMessageImageEnhancements(ctx) {
+  if (typeof window === "undefined") return;
+  const desktop = window.sandroneDesktop;
+  return ctx.effect(() => {
+    const localImages = /* @__PURE__ */ new Map();
+    let frameId = 0;
+    let lightboxPath = null;
+    const lightbox = document.createElement("div");
+    lightbox.className = "sandrone-image-lightbox";
+    lightbox.hidden = true;
+    lightbox.innerHTML = `
+      <button class="sandrone-image-lightbox-backdrop" type="button" aria-label="\u5173\u95ED\u56FE\u7247\u9884\u89C8"></button>
+      <section class="sandrone-image-lightbox-panel" role="dialog" aria-modal="true" aria-label="\u56FE\u7247\u9884\u89C8">
+        <div class="sandrone-image-lightbox-toolbar">
+          <span class="sandrone-image-lightbox-title"></span>
+          <button class="sandrone-image-lightbox-reveal" type="button">\u5B9A\u4F4D\u539F\u56FE</button>
+          <button class="sandrone-image-lightbox-close" type="button" aria-label="\u5173\u95ED\u56FE\u7247\u9884\u89C8">\xD7</button>
+        </div>
+        <div class="sandrone-image-lightbox-stage"><img alt="" /></div>
+      </section>`;
+    document.body.appendChild(lightbox);
+    const lightboxImage = lightbox.querySelector("img");
+    const lightboxTitle = lightbox.querySelector(".sandrone-image-lightbox-title");
+    const revealButton = lightbox.querySelector(".sandrone-image-lightbox-reveal");
+    const closeButton = lightbox.querySelector(".sandrone-image-lightbox-close");
+    let returnFocus = null;
+    const closeLightbox = () => {
+      if (lightbox.hidden) return;
+      lightbox.hidden = true;
+      lightboxPath = null;
+      lightboxImage.removeAttribute("src");
+      document.documentElement.removeAttribute("data-sandrone-image-preview-open");
+      if (returnFocus instanceof HTMLElement && returnFocus.isConnected) returnFocus.focus();
+      returnFocus = null;
+    };
+    const openLightbox = (src, alt, path, trigger) => {
+      if (!src) return;
+      returnFocus = trigger instanceof HTMLElement ? trigger : null;
+      lightboxPath = path || null;
+      lightboxImage.src = src;
+      lightboxImage.alt = alt || "\u56FE\u7247\u9884\u89C8";
+      lightboxTitle.textContent = alt || (path ? path.split(/[\\/]/).pop() : "\u56FE\u7247\u9884\u89C8");
+      revealButton.hidden = !lightboxPath || typeof desktop?.revealLocalImage !== "function";
+      lightbox.hidden = false;
+      document.documentElement.dataset.sandroneImagePreviewOpen = "true";
+      closeButton.focus();
+    };
+    const enhanceRemoteImage = (image) => {
+      if (!(image instanceof HTMLImageElement) || image.dataset.sandroneMessageImage) return;
+      image.dataset.sandroneMessageImage = "remote";
+      image.tabIndex = 0;
+      image.setAttribute("role", "button");
+      image.setAttribute("aria-label", `${image.alt || "\u56FE\u7247"}\uFF0C\u70B9\u51FB\u653E\u5927`);
+    };
+    const enhanceLocalImage = (placeholder) => {
+      if (!(placeholder instanceof HTMLElement) || placeholder.dataset.sandroneLocalImageState) return;
+      const path = placeholder.getAttribute("data-sandrone-local-image");
+      if (!path) return;
+      placeholder.dataset.sandroneLocalImageState = "loading";
+      const alt = placeholder.textContent?.trim() || path.split(/[\\/]/).pop() || "\u672C\u5730\u56FE\u7247";
+      placeholder.textContent = "\u6B63\u5728\u52A0\u8F7D\u672C\u5730\u56FE\u7247\u2026";
+      if (typeof desktop?.readLocalImage !== "function") {
+        placeholder.dataset.sandroneLocalImageState = "unavailable";
+        placeholder.textContent = `${alt}\uFF08\u672C\u5730\u56FE\u7247\u4EC5\u53EF\u5728\u684C\u9762\u7AEF\u9884\u89C8\uFF09`;
+        return;
+      }
+      void desktop.readLocalImage(path).then((result) => {
+        if (!placeholder.isConnected || placeholder.getAttribute("data-sandrone-local-image") !== path) return;
+        if (!result?.ok || !result.bytes) {
+          placeholder.dataset.sandroneLocalImageState = "error";
+          placeholder.textContent = `${alt}\uFF08${result?.error || "\u56FE\u7247\u52A0\u8F7D\u5931\u8D25"}\uFF09`;
+          return;
+        }
+        const objectUrl = URL.createObjectURL(new Blob([result.bytes], { type: result.mimeType || "application/octet-stream" }));
+        localImages.set(placeholder, objectUrl);
+        placeholder.dataset.sandroneLocalImageState = "ready";
+        placeholder.textContent = "";
+        const preview = document.createElement("button");
+        preview.type = "button";
+        preview.className = "sandrone-message-image-preview";
+        preview.dataset.sandroneImageSrc = objectUrl;
+        preview.dataset.sandroneImagePath = path;
+        preview.dataset.sandroneImageAlt = alt;
+        preview.setAttribute("aria-label", `${alt}\uFF0C\u70B9\u51FB\u653E\u5927`);
+        const image = document.createElement("img");
+        image.src = objectUrl;
+        image.alt = alt;
+        image.loading = "lazy";
+        image.decoding = "async";
+        preview.appendChild(image);
+        const caption = document.createElement("span");
+        caption.className = "sandrone-message-image-caption";
+        caption.textContent = result.name || alt;
+        const reveal = document.createElement("button");
+        reveal.type = "button";
+        reveal.className = "sandrone-message-image-reveal";
+        reveal.dataset.sandroneImagePath = path;
+        reveal.textContent = "\u5B9A\u4F4D\u539F\u56FE";
+        placeholder.append(preview, caption, reveal);
+      }).catch(() => {
+        if (!placeholder.isConnected) return;
+        placeholder.dataset.sandroneLocalImageState = "error";
+        placeholder.textContent = `${alt}\uFF08\u56FE\u7247\u52A0\u8F7D\u5931\u8D25\uFF09`;
+      });
+    };
+    const scan = () => {
+      frameId = 0;
+      const session = document.querySelector("[data-sandrone-session-body]");
+      session?.querySelectorAll('[data-chat-flow-kind^="assistant"] img').forEach(enhanceRemoteImage);
+      session?.querySelectorAll('[data-chat-flow-kind^="assistant"] [data-sandrone-local-image]').forEach(enhanceLocalImage);
+      for (const [element, objectUrl] of localImages) {
+        if (element.isConnected) continue;
+        URL.revokeObjectURL(objectUrl);
+        localImages.delete(element);
+      }
+    };
+    const scheduleScan = () => {
+      if (frameId !== 0) return;
+      frameId = window.requestAnimationFrame(scan);
+    };
+    const activatePreview = (target) => {
+      const localPreview = target.closest?.(".sandrone-message-image-preview");
+      if (localPreview instanceof HTMLElement) {
+        openLightbox(localPreview.dataset.sandroneImageSrc, localPreview.dataset.sandroneImageAlt, localPreview.dataset.sandroneImagePath, localPreview);
+        return true;
+      }
+      if (target instanceof HTMLImageElement && target.dataset.sandroneMessageImage === "remote") {
+        openLightbox(target.currentSrc || target.src, target.alt, null, target);
+        return true;
+      }
+      return false;
+    };
+    const onClick = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const reveal = target.closest(".sandrone-message-image-reveal");
+      if (reveal instanceof HTMLElement) {
+        void desktop?.revealLocalImage?.(reveal.dataset.sandroneImagePath);
+        return;
+      }
+      activatePreview(target);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeLightbox();
+        return;
+      }
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (activatePreview(event.target)) event.preventDefault();
+    };
+    const observer = new MutationObserver(scheduleScan);
+    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKeyDown);
+    lightbox.querySelector(".sandrone-image-lightbox-backdrop").addEventListener("click", closeLightbox);
+    closeButton.addEventListener("click", closeLightbox);
+    revealButton.addEventListener("click", () => {
+      if (lightboxPath) void desktop?.revealLocalImage?.(lightboxPath);
+    });
+    scan();
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKeyDown);
+      if (frameId !== 0) window.cancelAnimationFrame(frameId);
+      for (const objectUrl of localImages.values()) URL.revokeObjectURL(objectUrl);
+      localImages.clear();
+      lightbox.remove();
+      document.documentElement.removeAttribute("data-sandrone-image-preview-open");
+    };
+  }, "sandrone-ui: message image previews");
 }
 function clickOfficial(selector) {
   const element = [...document.querySelectorAll(selector)].find((candidate) => {
@@ -3030,6 +4398,34 @@ function GpuAccelerationSection() {
     /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-setting-knob", "aria-hidden": "true" })
   )));
 }
+function ScreenshotDirectoryRow() {
+  const desktop = window.sandroneDesktop;
+  const [directory, setDirectory] = (0, import_react.useState)("");
+  const [busy, setBusy] = (0, import_react.useState)(false);
+  (0, import_react.useEffect)(() => {
+    let alive = true;
+    if (!desktop?.getScreenshotDirectory) return void 0;
+    void desktop.getScreenshotDirectory().then((value) => {
+      if (alive) setDirectory(String(value || ""));
+    }).catch(() => {
+    });
+    return () => {
+      alive = false;
+    };
+  }, [desktop]);
+  if (!desktop?.chooseScreenshotDirectory) return null;
+  const choose = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const value = await desktop.chooseScreenshotDirectory();
+      if (value) setDirectory(String(value));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-row sandrone-screenshot-directory-row" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-copy" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-label" }, "\u622A\u56FE\u9ED8\u8BA4\u4FDD\u5B58\u8DEF\u5F84"), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-setting-hint sandrone-setting-path", title: directory || "\u672A\u8BBE\u7F6E" }, directory || "\u8BFB\u53D6\u4E2D\u2026")), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-setting-action", disabled: busy, onClick: choose }, busy ? "\u9009\u62E9\u4E2D\u2026" : "\u9009\u62E9\u6587\u4EF6\u5939"));
+}
 function formatUpdateSize(bytes) {
   if (!Number.isFinite(bytes) || bytes <= 0) return "";
   return `${(bytes / 1024 / 1024).toFixed(bytes >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
@@ -3136,7 +4532,171 @@ ${handoff}`);
   ));
 }
 function OtherSettingsSection() {
-  return /* @__PURE__ */ import_react.default.createElement("section", { className: "sandrone-settings-other", "aria-label": "\u5176\u4ED6" }, /* @__PURE__ */ import_react.default.createElement(GpuAccelerationSection, null), /* @__PURE__ */ import_react.default.createElement(VersionUpdateRow, null));
+  return /* @__PURE__ */ import_react.default.createElement("section", { className: "sandrone-settings-other", "aria-label": "\u5176\u4ED6" }, /* @__PURE__ */ import_react.default.createElement(GpuAccelerationSection, null), /* @__PURE__ */ import_react.default.createElement(VersionUpdateRow, null), /* @__PURE__ */ import_react.default.createElement(ScreenshotDirectoryRow, null));
+}
+var EXTENSIONS_STORAGE_KEY = "sandrone.harness.extensions.v1";
+var DEFAULT_EXTENSIONS_CONFIG = {
+  version: 1,
+  buddy: { enabled: true, name: "Buddy", personality: "\u5B89\u9759\u3001\u53EF\u9760\uFF0C\u5728\u7F16\u7801\u65F6\u966A\u4F34\u4F60\u3002", tone: "\u7B80\u77ED\u3001\u6E29\u548C\u3001\u4E0D\u8FC7\u5EA6\u6253\u6270", muted: false, avatar: "cat" },
+  mcp: { servers: [] },
+  skills: { disabled: [] },
+  plugins: { managed: [] },
+  im: { enabled: false, platform: "qqbot", appId: "", secret: "", token: "", serverUrl: "ws://127.0.0.1:3456", defaultWorkDir: "", allowedUsers: [], autoStart: false }
+};
+function normalizeClientExtensions(value) {
+  const input = value && typeof value === "object" ? value : {};
+  return {
+    version: 1,
+    buddy: { ...DEFAULT_EXTENSIONS_CONFIG.buddy, ...input.buddy || {} },
+    mcp: { servers: Array.isArray(input.mcp?.servers) ? input.mcp.servers : [] },
+    skills: { disabled: Array.isArray(input.skills?.disabled) ? input.skills.disabled : [] },
+    plugins: { managed: Array.isArray(input.plugins?.managed) ? input.plugins.managed : [] },
+    im: { ...DEFAULT_EXTENSIONS_CONFIG.im, ...input.im || {}, platform: "qqbot" }
+  };
+}
+async function readExtensionsConfig() {
+  const desktop = window.sandroneDesktop?.extensions;
+  if (desktop?.getConfig) {
+    try {
+      return normalizeClientExtensions(await desktop.getConfig());
+    } catch {
+    }
+  }
+  try {
+    return normalizeClientExtensions(JSON.parse(window.localStorage.getItem(EXTENSIONS_STORAGE_KEY) || "null"));
+  } catch {
+    return normalizeClientExtensions(DEFAULT_EXTENSIONS_CONFIG);
+  }
+}
+async function persistExtensionsConfig(value) {
+  const next = normalizeClientExtensions(value);
+  const desktop = window.sandroneDesktop?.extensions;
+  let saved = next;
+  if (desktop?.saveConfig) {
+    try {
+      saved = normalizeClientExtensions(await desktop.saveConfig(next));
+    } catch {
+    }
+  }
+  window.localStorage.setItem(EXTENSIONS_STORAGE_KEY, JSON.stringify(saved));
+  window.dispatchEvent(new CustomEvent("sandrone:extensions-config", { detail: saved }));
+  return saved;
+}
+function useExtensionsConfig() {
+  const [config, setConfig] = (0, import_react.useState)(() => normalizeClientExtensions(DEFAULT_EXTENSIONS_CONFIG));
+  const [loading, setLoading] = (0, import_react.useState)(true);
+  const [saving, setSaving] = (0, import_react.useState)(false);
+  const [error, setError] = (0, import_react.useState)("");
+  (0, import_react.useEffect)(() => {
+    let active = true;
+    readExtensionsConfig().then((value) => {
+      if (active) setConfig(value);
+    }, (cause) => {
+      if (active) setError(String(cause));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    const onChanged = (event) => setConfig(normalizeClientExtensions(event.detail));
+    window.addEventListener("sandrone:extensions-config", onChanged);
+    const removeDesktopListener = window.sandroneDesktop?.extensions?.onChanged?.((value) => setConfig(normalizeClientExtensions(value)));
+    return () => {
+      active = false;
+      window.removeEventListener("sandrone:extensions-config", onChanged);
+      removeDesktopListener?.();
+    };
+  }, []);
+  const save = async (next) => {
+    setSaving(true);
+    setError("");
+    try {
+      const saved = await persistExtensionsConfig(typeof next === "function" ? next(config) : next);
+      setConfig(saved);
+      return saved;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+  return { config, setConfig, loading, saving, error, save };
+}
+function SettingsPage({ eyebrow, title, description, actions, notice, error, children }) {
+  return /* @__PURE__ */ import_react.default.createElement("section", { className: "sandrone-extension-page", "data-sandrone-settings-section": true }, /* @__PURE__ */ import_react.default.createElement("header", { className: "sandrone-extension-heading" }, /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("span", null, eyebrow), /* @__PURE__ */ import_react.default.createElement("h2", null, title), /* @__PURE__ */ import_react.default.createElement("p", null, description)), actions ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-heading-actions" }, actions) : null), notice ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-notice" }, notice) : null, error ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-error", role: "alert" }, error) : null, children);
+}
+function SettingSwitch({ checked, onChange, label, disabled }) {
+  return /* @__PURE__ */ import_react.default.createElement("button", { type: "button", role: "switch", "aria-checked": checked, "aria-label": label, className: `sandrone-setting-switch${checked ? " is-on" : ""}`, disabled, onClick: () => onChange(!checked) }, /* @__PURE__ */ import_react.default.createElement("span", null));
+}
+function parseJsonObject(value) {
+  if (!value.trim()) return {};
+  const parsed = JSON.parse(value);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new TypeError("\u5FC5\u987B\u586B\u5199 JSON \u5BF9\u8C61");
+  return parsed;
+}
+function BuddySettingsSection() {
+  const { config, setConfig, loading, saving, error, save } = useExtensionsConfig();
+  const buddy = config.buddy;
+  const update = (key, value) => setConfig((current) => ({ ...current, buddy: { ...current.buddy, [key]: value } }));
+  return /* @__PURE__ */ import_react.default.createElement(SettingsPage, { eyebrow: "SANDRONE COMPANION", title: "Buddy", description: "\u5B9A\u5236\u6A2A\u5411\u4F1A\u8BDD\u680F\u91CC\u7684\u5F00\u53D1\u4F19\u4F34\uFF0C\u4E0D\u6539\u52A8 DeepSeek \u7684\u4EFB\u52A1\u6267\u884C\u903B\u8F91\u3002", error, actions: /* @__PURE__ */ import_react.default.createElement("button", { "data-sandrone-settings-primary-action": true, disabled: loading || saving, onClick: () => save(config) }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58 Buddy") }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-buddy-settings-hero", "data-sandrone-settings-card": true }, /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-buddy-face settings" }, /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("b", null)), /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("strong", null, buddy.name || "Buddy"), /* @__PURE__ */ import_react.default.createElement("small", null, buddy.tone || "\u5B89\u9759\u966A\u4F34")), /* @__PURE__ */ import_react.default.createElement(SettingSwitch, { checked: buddy.enabled, disabled: loading, label: "\u542F\u7528 Buddy", onChange: (value) => update("enabled", value) })), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-grid two" }, /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u540D\u79F0"), /* @__PURE__ */ import_react.default.createElement("input", { value: buddy.name, maxLength: 50, onChange: (event) => update("name", event.target.value) })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u5916\u89C2"), /* @__PURE__ */ import_react.default.createElement("select", { value: buddy.avatar, onChange: (event) => update("avatar", event.target.value) }, /* @__PURE__ */ import_react.default.createElement("option", { value: "cat" }, "\u89D2\u8272\u5C0F\u732B"), /* @__PURE__ */ import_react.default.createElement("option", { value: "robot" }, "\u673A\u68B0\u4F19\u4F34"), /* @__PURE__ */ import_react.default.createElement("option", { value: "ghost" }, "\u5E7D\u7075\u4F19\u4F34"), /* @__PURE__ */ import_react.default.createElement("option", { value: "owl" }, "\u732B\u5934\u9E70"))), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field wide" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u4EBA\u683C"), /* @__PURE__ */ import_react.default.createElement("textarea", { rows: "4", maxLength: 800, value: buddy.personality, onChange: (event) => update("personality", event.target.value) })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field wide" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u8BF4\u8BDD\u8BED\u6C14"), /* @__PURE__ */ import_react.default.createElement("input", { maxLength: 600, value: buddy.tone, onChange: (event) => update("tone", event.target.value) }))));
+}
+function McpSettingsSection() {
+  const { config, setConfig, loading, saving, error, save } = useExtensionsConfig();
+  const servers = config.mcp.servers;
+  const setServers = (next) => setConfig((current) => ({ ...current, mcp: { servers: next } }));
+  const updateServer = (index, patch) => setServers(servers.map((server, itemIndex) => itemIndex === index ? { ...server, ...patch } : server));
+  const add = () => setServers([...servers, { id: `mcp-${Date.now()}`, name: `server-${servers.length + 1}`, enabled: true, transport: "stdio", command: "", args: [], env: {}, cwd: "", url: "", headers: {} }]);
+  const updateJson = (index, key, value) => {
+    try {
+      updateServer(index, { [key]: parseJsonObject(value), [`${key}Error`]: "" });
+    } catch (cause) {
+      updateServer(index, { [`${key}Draft`]: value, [`${key}Error`]: cause.message });
+    }
+  };
+  return /* @__PURE__ */ import_react.default.createElement(SettingsPage, { eyebrow: "MODEL CONTEXT PROTOCOL", title: "MCP", description: "\u4E00\u4E2A\u670D\u52A1\u5668\u5BF9\u5E94\u4E00\u4E2A DeepSeek MCP \u63D2\u4EF6\u5B9E\u4F8B\uFF0C\u542F\u505C\u548C\u4FEE\u6539\u4F1A\u5199\u5165\u542F\u52A8 patch\u3002", error, notice: "\u4FDD\u5B58\u540E\u91CD\u542F Harness \u751F\u6548\uFF1BMCP \u81EA\u8EAB\u4ECD\u7531 DeepSeek \u5B98\u65B9\u5BA2\u6237\u7AEF\u8D1F\u8D23\u8FDE\u63A5\u3001\u91CD\u8FDE\u4E0E\u5DE5\u5177\u6CE8\u518C\u3002", actions: /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("button", { className: "sandrone-extension-secondary", onClick: add }, "\u6DFB\u52A0\u670D\u52A1\u5668"), /* @__PURE__ */ import_react.default.createElement("button", { "data-sandrone-settings-primary-action": true, disabled: loading || saving, onClick: () => save(config) }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u914D\u7F6E")) }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-stack" }, servers.map((server, index) => /* @__PURE__ */ import_react.default.createElement("article", { key: server.id || index, className: "sandrone-mcp-card", "data-sandrone-settings-card": true }, /* @__PURE__ */ import_react.default.createElement("header", null, /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("strong", null, server.name || "\u672A\u547D\u540D\u670D\u52A1\u5668"), /* @__PURE__ */ import_react.default.createElement("small", null, server.transport === "streamable-http" ? "Streamable HTTP" : "stdio")), /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement(SettingSwitch, { checked: server.enabled !== false, label: `\u542F\u7528 ${server.name}`, onChange: (enabled) => updateServer(index, { enabled }) }), /* @__PURE__ */ import_react.default.createElement("button", { className: "sandrone-extension-danger", onClick: () => setServers(servers.filter((_, itemIndex) => itemIndex !== index)) }, "\u79FB\u9664"))), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-grid two compact" }, /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u670D\u52A1\u5668\u540D\u79F0"), /* @__PURE__ */ import_react.default.createElement("input", { value: server.name || "", onChange: (event) => updateServer(index, { name: event.target.value }), placeholder: "github" })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u4F20\u8F93\u65B9\u5F0F"), /* @__PURE__ */ import_react.default.createElement("select", { value: server.transport || "stdio", onChange: (event) => updateServer(index, { transport: event.target.value }) }, /* @__PURE__ */ import_react.default.createElement("option", { value: "stdio" }, "stdio"), /* @__PURE__ */ import_react.default.createElement("option", { value: "streamable-http" }, "Streamable HTTP"))), server.transport === "streamable-http" ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field wide" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u670D\u52A1\u5668 URL"), /* @__PURE__ */ import_react.default.createElement("input", { value: server.url || "", onChange: (event) => updateServer(index, { url: event.target.value }), placeholder: "http://127.0.0.1:3000/mcp" })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field wide" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u8BF7\u6C42\u5934 JSON"), /* @__PURE__ */ import_react.default.createElement("textarea", { rows: "3", className: server.headersError ? "is-invalid" : "", value: server.headersDraft ?? JSON.stringify(server.headers || {}, null, 2), onChange: (event) => updateJson(index, "headers", event.target.value) }), server.headersError ? /* @__PURE__ */ import_react.default.createElement("small", { className: "sandrone-extension-field-error" }, server.headersError) : null)) : /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u547D\u4EE4"), /* @__PURE__ */ import_react.default.createElement("input", { value: server.command || "", onChange: (event) => updateServer(index, { command: event.target.value }), placeholder: "npx" })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u53C2\u6570\uFF08\u6BCF\u884C\u4E00\u4E2A\uFF09"), /* @__PURE__ */ import_react.default.createElement("textarea", { rows: "3", value: (server.args || []).join("\n"), onChange: (event) => updateServer(index, { args: event.target.value.split("\n").filter(Boolean) }) })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u5DE5\u4F5C\u76EE\u5F55"), /* @__PURE__ */ import_react.default.createElement("input", { value: server.cwd || "", onChange: (event) => updateServer(index, { cwd: event.target.value }) })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u73AF\u5883\u53D8\u91CF JSON"), /* @__PURE__ */ import_react.default.createElement("textarea", { rows: "3", className: server.envError ? "is-invalid" : "", value: server.envDraft ?? JSON.stringify(server.env || {}, null, 2), onChange: (event) => updateJson(index, "env", event.target.value) }), server.envError ? /* @__PURE__ */ import_react.default.createElement("small", { className: "sandrone-extension-field-error" }, server.envError) : null))))), servers.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-empty" }, "\u8FD8\u6CA1\u6709 MCP \u670D\u52A1\u5668\u3002\u6DFB\u52A0\u540E\uFF0C\u5DE5\u5177\u4F1A\u4EE5 ", /* @__PURE__ */ import_react.default.createElement("code", null, "mcp__\u670D\u52A1\u5668__\u5DE5\u5177"), " \u7684\u5F62\u5F0F\u4EA4\u7ED9\u6A21\u578B\u3002") : null));
+}
+function SkillsSettingsSection() {
+  const { config, saving, error, save } = useExtensionsConfig();
+  const [skills, setSkills] = (0, import_react.useState)([]);
+  const [loading, setLoading] = (0, import_react.useState)(true);
+  const scan = () => {
+    setLoading(true);
+    const api = window.sandroneDesktop?.extensions;
+    Promise.resolve(api?.scanSkills ? api.scanSkills().catch(() => []) : []).then(setSkills).finally(() => setLoading(false));
+  };
+  (0, import_react.useEffect)(scan, []);
+  const toggle = async (skill) => {
+    if (!skill.managed) return;
+    const disabled = new Set(config.skills.disabled);
+    if (skill.enabled) disabled.add(skill.directory);
+    else disabled.delete(skill.directory);
+    const saved = await save({ ...config, skills: { disabled: [...disabled] } });
+    if (saved) scan();
+  };
+  return /* @__PURE__ */ import_react.default.createElement(SettingsPage, { eyebrow: "SKILL CATALOG", title: "Skills", description: "\u67E5\u770B DSH_HOME \u4E0E Sandrone \u81EA\u5E26\u6280\u80FD\uFF1B\u53EA\u6709 Sandrone \u81EA\u5E26\u9879\u652F\u6301\u5B89\u5168\u542F\u505C\u3002", error, actions: /* @__PURE__ */ import_react.default.createElement("button", { className: "sandrone-extension-secondary", onClick: scan }, loading ? "\u8BFB\u53D6\u4E2D\u2026" : "\u5237\u65B0"), notice: "\u5173\u95ED Sandrone \u6280\u80FD\u53EA\u4F1A\u79FB\u9664\u5BF9\u5E94\u7684\u6258\u7BA1\u526F\u672C\uFF0C\u4E0D\u4F1A\u5220\u9664\u4F60\u7684\u7528\u6237 Skill\u3002" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-list" }, skills.map((skill) => /* @__PURE__ */ import_react.default.createElement("article", { key: skill.key, className: "sandrone-extension-row", "data-sandrone-settings-card": true }, /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("strong", null, skill.name), /* @__PURE__ */ import_react.default.createElement("p", null, skill.description), /* @__PURE__ */ import_react.default.createElement("small", null, skill.source === "sandrone" ? "Sandrone \u6258\u7BA1" : "DeepSeek / \u7528\u6237\u76EE\u5F55", " \xB7 ", skill.path)), skill.managed ? /* @__PURE__ */ import_react.default.createElement(SettingSwitch, { checked: skill.enabled, disabled: saving, label: `\u542F\u7528 ${skill.name}`, onChange: () => toggle(skill) }) : /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-extension-badge" }, "\u53EA\u8BFB"))), !loading && skills.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-empty" }, "Web \u6A21\u5F0F\u65E0\u6CD5\u76F4\u63A5\u626B\u63CF\u672C\u673A\u6280\u80FD\u76EE\u5F55\uFF1B\u684C\u9762\u7248\u4F1A\u663E\u793A\u5B8C\u6574\u6E05\u5355\u3002") : null));
+}
+function ManagedPluginsTab() {
+  const { config, setConfig, saving, error, save } = useExtensionsConfig();
+  const managed = config.plugins.managed;
+  const setManaged = (next) => setConfig((current) => ({ ...current, plugins: { managed: next } }));
+  const update = (index, patch) => setManaged(managed.map((entry, itemIndex) => itemIndex === index ? { ...entry, ...patch } : entry));
+  const updateConfig = (index, value) => {
+    try {
+      update(index, { config: parseJsonObject(value), configDraft: void 0, configError: "" });
+    } catch (cause) {
+      update(index, { configDraft: value, configError: cause.message });
+    }
+  };
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-managed-plugins" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-notice" }, "DeepSeek \u539F\u751F\u63D2\u4EF6\u6E05\u5355\u4ECD\u662F\u8FD0\u884C\u6001\u6743\u5A01\uFF1B\u4E0B\u9762\u53EA\u7BA1\u7406\u989D\u5916\u6CE8\u5165\u7684 Sandrone \u63D2\u4EF6\uFF0C\u4FDD\u5B58\u540E\u91CD\u542F Harness \u751F\u6548\u3002"), error ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-error" }, error) : null, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-plugin-summary" }, /* @__PURE__ */ import_react.default.createElement("span", null, /* @__PURE__ */ import_react.default.createElement("strong", null, managed.length), " Sandrone \u6258\u7BA1\u63D2\u4EF6"), /* @__PURE__ */ import_react.default.createElement("button", { className: "sandrone-extension-secondary", onClick: () => setManaged([...managed, { id: `sandrone-plugin-${Date.now()}`, name: "", enabled: true, config: {} }]) }, "\u6DFB\u52A0\u63D2\u4EF6"), /* @__PURE__ */ import_react.default.createElement("button", { "data-sandrone-settings-primary-action": true, disabled: saving, onClick: () => save(config) }, "\u4FDD\u5B58")), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-stack" }, managed.map((entry, index) => /* @__PURE__ */ import_react.default.createElement("article", { className: "sandrone-extension-row editable", key: entry.id || index, "data-sandrone-settings-card": true }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-grid two compact" }, /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u5B9E\u4F8B ID"), /* @__PURE__ */ import_react.default.createElement("input", { value: entry.id || "", onChange: (event) => update(index, { id: event.target.value }) })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "npm \u5305\u540D"), /* @__PURE__ */ import_react.default.createElement("input", { value: entry.name || "", onChange: (event) => update(index, { name: event.target.value }), placeholder: "@scope/dsh-plugin" })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field wide" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u63D2\u4EF6\u914D\u7F6E JSON"), /* @__PURE__ */ import_react.default.createElement("textarea", { rows: "4", className: entry.configError ? "is-invalid" : "", value: entry.configDraft ?? JSON.stringify(entry.config || {}, null, 2), onChange: (event) => updateConfig(index, event.target.value) }), entry.configError ? /* @__PURE__ */ import_react.default.createElement("small", { className: "sandrone-extension-field-error" }, entry.configError) : null)), /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement(SettingSwitch, { checked: entry.enabled !== false, label: `\u542F\u7528 ${entry.name}`, onChange: (enabled) => update(index, { enabled }) }), /* @__PURE__ */ import_react.default.createElement("button", { className: "sandrone-extension-danger", onClick: () => setManaged(managed.filter((_, itemIndex) => itemIndex !== index)) }, "\u79FB\u9664"))))));
+}
+function ImSettingsSection() {
+  const { config, setConfig, loading, saving, error, save } = useExtensionsConfig();
+  const im = config.im;
+  const update = (key, value) => setConfig((current) => ({ ...current, im: { ...current.im, [key]: value } }));
+  const chooseDirectory = async () => {
+    const path = await window.sandroneDesktop?.pickDirectory?.();
+    if (path) update("defaultWorkDir", path);
+  };
+  return /* @__PURE__ */ import_react.default.createElement(SettingsPage, { eyebrow: "IM \xB7 QQ BOT", title: "IM \u7BA1\u7406", description: "\u914D\u7F6E\u4ECE QQ \u624B\u673A\u7AEF\u8FDE\u63A5 Sandrone \u4F1A\u8BDD\u6240\u9700\u7684\u51ED\u8BC1\u548C\u9ED8\u8BA4\u5DE5\u4F5C\u533A\u3002", error, notice: "\u672C\u9875\u8D1F\u8D23\u4FDD\u5B58 QQ Bot \u63A5\u5165\u53C2\u6570\uFF1B\u9002\u914D\u5668\u8FD0\u884C\u6865\u63A5\u672A\u542F\u52A8\u65F6\u4E0D\u4F1A\u5BF9\u5916\u5EFA\u7ACB\u8FDE\u63A5\u3002", actions: /* @__PURE__ */ import_react.default.createElement("button", { "data-sandrone-settings-primary-action": true, disabled: loading || saving, onClick: () => save(config) }, saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58 IM \u914D\u7F6E") }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-im-status", "data-sandrone-settings-card": true }, /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("span", { className: im.enabled ? "is-online" : "" }), /* @__PURE__ */ import_react.default.createElement("strong", null, "QQ Bot"), /* @__PURE__ */ import_react.default.createElement("small", null, im.enabled ? "\u914D\u7F6E\u4E3A\u542F\u7528" : "\u5F53\u524D\u505C\u7528")), /* @__PURE__ */ import_react.default.createElement(SettingSwitch, { checked: im.enabled, label: "\u542F\u7528 QQ Bot", onChange: (value) => update("enabled", value) })), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-extension-grid two" }, /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "App ID"), /* @__PURE__ */ import_react.default.createElement("input", { value: im.appId, onChange: (event) => update("appId", event.target.value) })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "App Secret"), /* @__PURE__ */ import_react.default.createElement("input", { type: "password", value: im.secret, onChange: (event) => update("secret", event.target.value), autoComplete: "new-password" })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field wide" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u9ED8\u8BA4\u5DE5\u4F5C\u533A"), /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-extension-path" }, /* @__PURE__ */ import_react.default.createElement("input", { value: im.defaultWorkDir, onChange: (event) => update("defaultWorkDir", event.target.value) }), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", onClick: chooseDirectory }, "\u9009\u62E9"))), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "Harness \u5730\u5740"), /* @__PURE__ */ import_react.default.createElement("input", { value: im.serverUrl, onChange: (event) => update("serverUrl", event.target.value) })), /* @__PURE__ */ import_react.default.createElement("label", { className: "sandrone-extension-field" }, /* @__PURE__ */ import_react.default.createElement("span", null, "\u5141\u8BB8\u7528\u6237\uFF08\u9017\u53F7\u5206\u9694\uFF09"), /* @__PURE__ */ import_react.default.createElement("input", { value: (im.allowedUsers || []).join(", "), onChange: (event) => update("allowedUsers", event.target.value.split(",").map((item) => item.trim()).filter(Boolean)) }))));
 }
 function insertFallbackFileText(files) {
   const textarea = document.querySelector("[data-sandrone-composer-input]");
@@ -3179,10 +4739,42 @@ function SandroneImageAttach({ connection, sessionId, locked }) {
   };
   return /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-image-attach" }, /* @__PURE__ */ import_react.default.createElement("input", { ref: inputRef, type: "file", accept: "image/png,image/jpeg,image/webp,image/gif", multiple: true, hidden: true, onChange }), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-image-attach-button", "aria-label": "\u6DFB\u52A0\u56FE\u7247", title: "\u6DFB\u52A0\u56FE\u7247", disabled: locked || busy, onMouseDown: (event) => event.preventDefault(), onClick: choose }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconPaperclipOutline16, { size: 16 })));
 }
-function installProviderImageFields(connection) {
+var PROVIDER_REASONING_LEVELS = Object.freeze(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
+var PROVIDER_REASONING_PRESETS = Object.freeze({
+  none: false,
+  standard: Object.freeze({ off: null, low: "low", medium: "medium", high: "high" }),
+  extended: Object.freeze({ off: null, minimal: "minimal", low: "low", medium: "medium", high: "high", xhigh: "xhigh", max: "max" })
+});
+function cloneReasoningEfforts(value) {
+  if (value === false) return false;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return void 0;
+  return Object.fromEntries(PROVIDER_REASONING_LEVELS.flatMap((level) => {
+    const wire = value[level];
+    return wire === null || typeof wire === "string" ? [[level, wire]] : [];
+  }));
+}
+function reasoningPresetOf(value) {
+  if (value === false || value === void 0) return value === false ? "none" : "undeclared";
+  const normalized = JSON.stringify(cloneReasoningEfforts(value));
+  if (normalized === JSON.stringify(PROVIDER_REASONING_PRESETS.standard)) return "standard";
+  if (normalized === JSON.stringify(PROVIDER_REASONING_PRESETS.extended)) return "extended";
+  return "custom";
+}
+function reasoningPresetValue(preset) {
+  if (preset === "undeclared") return void 0;
+  const value = PROVIDER_REASONING_PRESETS[preset];
+  return value === false ? false : { ...value };
+}
+function reasoningMappingText(value) {
+  return value && typeof value === "object" ? Object.entries(cloneReasoningEfforts(value) || {}).map(([level, wire]) => `${level}=${wire ?? ""}`).join(", ") : "";
+}
+function installProviderCapabilityFields(connection) {
   return () => {
     const root = document.getElementById("root") || document.body;
-    const pending = /* @__PURE__ */ new Map();
+    const pendingImages = /* @__PURE__ */ new Map();
+    const pendingReasoning = /* @__PURE__ */ new Map();
+    const savingImages = /* @__PURE__ */ new Set();
+    const savingReasoning = /* @__PURE__ */ new Set();
     let frame = 0;
     let decorating = false;
     const refresh = () => {
@@ -3196,21 +4788,44 @@ function installProviderImageFields(connection) {
       const response = await connection?.api?.settings?.describe?.({}).catch(() => null);
       return response?.result?.ok ? response.result.value?.namespaces?.find((item) => item.ns === "llm-pi-ai") : null;
     };
-    const persist = async (route, modelId, enabled) => {
+    const persistField = async (route, modelId, field, value) => {
       const namespace = await snapshot();
       const models = namespace?.value?.providers?.[route]?.models;
       const index = Array.isArray(models) ? models.findIndex((model) => String(model?.id) === modelId) : -1;
-      if (!namespace || index < 0) {
-        pending.set(`${route}:${modelId}`, enabled);
-        return false;
-      }
+      if (!namespace || index < 0) return { status: "deferred" };
+      const path = ["providers", route, "models", String(index), field];
       const result = await connection.api.settings.mutate({
         ns: "llm-pi-ai",
-        ops: [{ op: "set", path: ["providers", route, "models", index, "input"], value: enabled ? ["text", "image"] : ["text"] }],
+        ops: [value === void 0 ? { op: "unset", path } : { op: "set", path, value }],
         expectedRevision: namespace.revision
       }).catch(() => null);
-      if (result?.result?.ok) pending.delete(`${route}:${modelId}`);
-      return result?.result?.ok === true;
+      return result?.result?.ok ? { status: "saved" } : { status: "failed", message: result?.result?.error?.message || "\u4FDD\u5B58\u6A21\u578B\u80FD\u529B\u5931\u8D25" };
+    };
+    const persistImage = async (route, modelId, enabled) => {
+      const key = `${route}:${modelId}`;
+      if (savingImages.has(key)) return { status: "busy" };
+      savingImages.add(key);
+      try {
+        const result = await persistField(route, modelId, "input", enabled ? ["text", "image"] : ["text"]);
+        if (result.status === "deferred") pendingImages.set(key, enabled);
+        else pendingImages.delete(key);
+        return result;
+      } finally {
+        savingImages.delete(key);
+      }
+    };
+    const persistReasoning = async (route, modelId, value) => {
+      const key = `${route}:${modelId}`;
+      if (savingReasoning.has(key)) return { status: "busy" };
+      savingReasoning.add(key);
+      try {
+        const result = await persistField(route, modelId, "reasoningEfforts", value);
+        if (result.status === "deferred") pendingReasoning.set(key, cloneReasoningEfforts(value) ?? value);
+        else pendingReasoning.delete(key);
+        return result;
+      } finally {
+        savingReasoning.delete(key);
+      }
     };
     const decorate = async () => {
       const panel = document.querySelector('[role="dialog"][aria-modal="true"]');
@@ -3231,32 +4846,125 @@ function installProviderImageFields(connection) {
         if (!modelId) return;
         const model = Array.isArray(provider?.models) ? provider.models.find((item) => String(item?.id) === modelId) : null;
         const key = `${route}:${modelId}`;
-        if (row.querySelector("[data-sandrone-provider-image-field]")) {
-          if (pending.has(key) && model) void persist(route, modelId, pending.get(key)).then((saved) => {
-            if (saved) refresh();
+        if (row.querySelector("[data-sandrone-provider-capabilities]")) {
+          if (pendingImages.has(key) && model) void persistImage(route, modelId, pendingImages.get(key)).then((result) => {
+            if (result.status === "saved") refresh();
+          });
+          if (pendingReasoning.has(key) && model) void persistReasoning(route, modelId, pendingReasoning.get(key)).then((result) => {
+            if (result.status === "saved") refresh();
           });
           return;
         }
+        const capabilities = document.createElement("div");
+        capabilities.dataset.sandroneProviderCapabilities = "true";
+        capabilities.className = "sandrone-provider-capabilities";
         const label = document.createElement("label");
         label.dataset.sandroneProviderImageField = "true";
         label.className = "sandrone-provider-image-field";
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.checked = pending.get(key) ?? (Array.isArray(model?.input) && model.input.includes("image"));
+        checkbox.checked = pendingImages.get(key) ?? (Array.isArray(model?.input) && model.input.includes("image"));
         checkbox.addEventListener("change", async () => {
           const enabled = checkbox.checked;
-          pending.set(key, enabled);
+          pendingImages.set(key, enabled);
           checkbox.disabled = true;
-          const saved = await persist(route, modelId, enabled);
+          const result = await persistImage(route, modelId, enabled);
           checkbox.disabled = false;
-          if (!saved && namespace.value?.providers?.[route]) checkbox.checked = !enabled;
+          if (result.status === "failed") {
+            checkbox.checked = !enabled;
+            checkbox.title = result.message;
+          } else checkbox.removeAttribute("title");
         });
         const text = document.createElement("span");
         text.textContent = "\u652F\u6301\u56FE\u7247";
         label.append(checkbox, text);
-        row.append(label);
-        if (pending.has(key) && model) void persist(route, modelId, pending.get(key)).then((saved) => {
-          if (saved) refresh();
+        const reasoning = document.createElement("label");
+        reasoning.dataset.sandroneProviderReasoningField = "true";
+        reasoning.className = "sandrone-provider-reasoning-field";
+        const reasoningText = document.createElement("span");
+        reasoningText.textContent = "\u63A8\u7406\u6863\u4F4D";
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", `\u63A8\u7406\u6863\u4F4D ${modelId}`);
+        for (const [value, name] of [
+          ["undeclared", "\u672A\u58F0\u660E\uFF08\u4EC5\u63D0\u4F9B\u65B9\u9ED8\u8BA4\uFF09"],
+          ["none", "\u4E0D\u652F\u6301\u63A8\u7406"],
+          ["standard", "\u6807\u51C6\uFF1A\u5173 / \u4F4E / \u4E2D / \u9AD8"],
+          ["extended", "\u5B8C\u6574\uFF1A\u5173 / \u6700\u4F4E / \u4F4E / \u4E2D / \u9AD8 / \u8D85\u9AD8 / \u6700\u5927"],
+          ["custom", "\u81EA\u5B9A\u4E49\u6620\u5C04"]
+        ]) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = name;
+          select.append(option);
+        }
+        let committedReasoning = cloneReasoningEfforts(model?.reasoningEfforts) ?? model?.reasoningEfforts;
+        const currentReasoning = pendingReasoning.has(key) ? pendingReasoning.get(key) : committedReasoning;
+        select.value = reasoningPresetOf(currentReasoning);
+        const mapping = document.createElement("input");
+        mapping.type = "text";
+        mapping.className = "sandrone-provider-reasoning-map";
+        mapping.setAttribute("aria-label", `\u63A8\u7406\u6863\u4F4D\u6620\u5C04 ${modelId}`);
+        mapping.placeholder = "off=, low=low, medium=medium, high=high";
+        mapping.value = reasoningMappingText(currentReasoning);
+        mapping.hidden = select.value !== "custom";
+        const reasoningStatus = document.createElement("small");
+        reasoningStatus.className = "sandrone-provider-reasoning-status";
+        const parseMapping = () => {
+          const value = {};
+          for (const part of mapping.value.split(",")) {
+            const [rawLevel, ...rawWire] = part.split("=");
+            const level = rawLevel?.trim();
+            if (!PROVIDER_REASONING_LEVELS.includes(level)) continue;
+            const wire = rawWire.join("=").trim();
+            if (level !== "off" && !wire) continue;
+            value[level] = level === "off" && !wire ? null : wire;
+          }
+          return value;
+        };
+        const saveReasoning = async (value) => {
+          pendingReasoning.set(key, cloneReasoningEfforts(value) ?? value);
+          select.disabled = true;
+          mapping.disabled = true;
+          reasoningStatus.textContent = "\u4FDD\u5B58\u4E2D\u2026";
+          reasoningStatus.classList.remove("is-error");
+          const result = await persistReasoning(route, modelId, value);
+          select.disabled = false;
+          mapping.disabled = false;
+          if (result.status === "failed") {
+            reasoningStatus.textContent = result.message;
+            reasoningStatus.classList.add("is-error");
+            select.value = reasoningPresetOf(committedReasoning);
+            mapping.value = reasoningMappingText(committedReasoning);
+            mapping.hidden = select.value !== "custom";
+          } else {
+            if (result.status === "saved") committedReasoning = cloneReasoningEfforts(value) ?? value;
+            reasoningStatus.textContent = result.status === "deferred" ? "\u4FDD\u5B58 Provider \u540E\u751F\u6548" : "\u5DF2\u4FDD\u5B58";
+          }
+        };
+        select.addEventListener("change", () => {
+          mapping.hidden = select.value !== "custom";
+          if (select.value === "custom") {
+            reasoningStatus.textContent = "\u7F16\u8F91\u6620\u5C04\u540E\u751F\u6548";
+            mapping.focus();
+          } else void saveReasoning(reasoningPresetValue(select.value));
+        });
+        mapping.addEventListener("change", () => {
+          const value = parseMapping();
+          if (!Object.keys(value).some((level) => level !== "off")) {
+            reasoningStatus.textContent = "\u81F3\u5C11\u58F0\u660E\u4E00\u4E2A\u975E\u201C\u5173\u95ED\u201D\u7684\u63A8\u7406\u6863\u4F4D";
+            reasoningStatus.classList.add("is-error");
+            return;
+          }
+          void saveReasoning(value);
+        });
+        reasoning.append(reasoningText, select, mapping, reasoningStatus);
+        capabilities.append(label, reasoning);
+        row.append(capabilities);
+        if (pendingImages.has(key) && model) void persistImage(route, modelId, pendingImages.get(key)).then((result) => {
+          if (result.status === "saved") refresh();
+        });
+        if (pendingReasoning.has(key) && model) void persistReasoning(route, modelId, pendingReasoning.get(key)).then((result) => {
+          if (result.status === "saved") refresh();
         });
       });
     };
@@ -3266,7 +4974,7 @@ function installProviderImageFields(connection) {
     return () => {
       observer.disconnect();
       if (frame) window.cancelAnimationFrame(frame);
-      document.querySelectorAll("[data-sandrone-provider-image-field]").forEach((element) => element.remove());
+      document.querySelectorAll("[data-sandrone-provider-capabilities]").forEach((element) => element.remove());
     };
   };
 }
@@ -3361,8 +5069,11 @@ function installSettingsChrome(ctx) {
   return ctx.effect(() => {
     let container = null;
     let markedElements = [];
+    let injectedElements = [];
     let root = null;
     const clearMarkers = () => {
+      for (const element of injectedElements) element.remove();
+      injectedElements = [];
       for (const [element, attribute] of markedElements) element.removeAttribute(attribute);
       markedElements = [];
     };
@@ -3371,10 +5082,81 @@ function installSettingsChrome(ctx) {
       element.setAttribute(attribute, "true");
       markedElements.push([element, attribute]);
     };
+    const settingsNavIcons = /* @__PURE__ */ new Map([
+      ["Skills", ["skill", '<path d="M4.25 2.75h6.1l3.4 3.4v8.1a1 1 0 0 1-1 1h-8.5a1 1 0 0 1-1-1V3.75a1 1 0 0 1 1-1Z"/><path d="M10.25 2.9v3.35h3.35M6.1 10.1l.55-1.15 1.15-.55-1.15-.55-.55-1.15-.55 1.15-1.15.55 1.15.55.55 1.15Zm3.25 3.1.4-.85.85-.4-.85-.4-.4-.85-.4.85-.85.4.85.4.4.85Z"/>']],
+      ["MCP", ["mcp", '<circle cx="4" cy="9" r="1.65"/><circle cx="13.5" cy="4" r="1.65"/><circle cx="13.5" cy="14" r="1.65"/><path d="M5.55 8.15 12 4.75M5.55 9.85 12 13.25M9.2 6.2v5.6"/>']],
+      ["Buddy", ["buddy", '<path d="m4.25 6.35-.4-3 2.65 1.4a6.1 6.1 0 0 1 5 0l2.65-1.4-.4 3a5.55 5.55 0 1 1-9.5 0Z"/><path d="M6.5 9.25h.01M11.5 9.25h.01M7.1 12c1.1.75 2.7.75 3.8 0"/>']],
+      ["IM", ["im", '<path d="M3 4.25h12v8.25H8l-3.75 2.25.8-2.25H3V4.25Z"/><path d="M6 8.25h.01M9 8.25h.01M12 8.25h.01"/>']],
+      ["Agent \u9884\u8BBE", ["agent", '<circle cx="9" cy="4" r="1.75"/><circle cx="4" cy="13.5" r="1.75"/><circle cx="14" cy="13.5" r="1.75"/><path d="M9 5.75v3M9 8.75H4v3M9 8.75h5v3"/>']],
+      ["Agent presets", ["agent", '<circle cx="9" cy="4" r="1.75"/><circle cx="4" cy="13.5" r="1.75"/><circle cx="14" cy="13.5" r="1.75"/><path d="M9 5.75v3M9 8.75H4v3M9 8.75h5v3"/>']],
+      ["\u5176\u4ED6", ["other", '<path d="M3 5h4M11 5h4M3 9h7M14 9h1M3 13h2M9 13h6"/><circle cx="9" cy="5" r="1.5"/><circle cx="12" cy="9" r="1.5"/><circle cx="7" cy="13" r="1.5"/>']],
+      ["Other", ["other", '<path d="M3 5h4M11 5h4M3 9h7M14 9h1M3 13h2M9 13h6"/><circle cx="9" cy="5" r="1.5"/><circle cx="12" cy="9" r="1.5"/><circle cx="7" cy="13" r="1.5"/>']]
+    ]);
+    const installSettingsNavIcon = (element) => {
+      const label = element.textContent?.replace(/\s+/g, " ").trim();
+      const icon = settingsNavIcons.get(label);
+      if (!icon) return;
+      if (!element.hasAttribute("data-sandrone-settings-icon")) {
+        element.setAttribute("data-sandrone-settings-icon", icon[0]);
+        markedElements.push([element, "data-sandrone-settings-icon"]);
+      }
+      if (element.querySelector(":scope > [data-sandrone-settings-nav-icon]")) return;
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("viewBox", "0 0 18 18");
+      svg.setAttribute("fill", "none");
+      svg.setAttribute("stroke", "currentColor");
+      svg.setAttribute("stroke-width", "1.45");
+      svg.setAttribute("stroke-linecap", "round");
+      svg.setAttribute("stroke-linejoin", "round");
+      svg.setAttribute("aria-hidden", "true");
+      svg.setAttribute("focusable", "false");
+      svg.setAttribute("data-sandrone-settings-nav-icon", "");
+      svg.innerHTML = icon[1];
+      const labelElement = [...element.children].find((child) => child.tagName === "SPAN");
+      element.insertBefore(svg, labelElement || element.firstChild);
+      injectedElements.push(svg);
+    };
     const markSettingsDescendants = (panel, nav) => {
       const navList = nav.lastElementChild;
       mark(navList, "data-sandrone-settings-nav-list");
-      navList?.querySelectorAll(":scope > button").forEach((element) => mark(element, "data-sandrone-settings-nav-cell"));
+      navList?.querySelectorAll(":scope > button").forEach((element) => {
+        mark(element, "data-sandrone-settings-nav-cell");
+        installSettingsNavIcon(element);
+      });
+      const markAll = (selector, attribute) => panel?.querySelectorAll(selector).forEach((element) => mark(element, attribute));
+      markAll(':is([class$="_section"], [class*="_section "])', "data-sandrone-settings-section");
+      markAll(".sandrone-settings-other", "data-sandrone-settings-section");
+      markAll(':is([class$="_rowCard"], [class*="_rowCard "], [class$="_editor"], [class*="_editor "], [class$="_card"], [class*="_card "])', "data-sandrone-settings-card");
+      markAll(':is([class$="_card"], [class*="_card "])', "data-sandrone-settings-collection-card");
+      markAll(':is([class$="_row"], [class*="_row "])', "data-sandrone-settings-row");
+      panel?.querySelectorAll("[data-sandrone-settings-section]").forEach((section) => {
+        const children = [...section.children];
+        const heading = children.find((element) => element.matches(':is([class$="_title"], [class*="_title "], [class$="_heading"], [class*="_heading "])'));
+        const description = children.find((element) => element.matches(':is([class$="_intro"], [class*="_intro "], [class$="_desc"], [class*="_desc "])'));
+        mark(heading, "data-sandrone-settings-heading");
+        mark(description, "data-sandrone-settings-description");
+      });
+      markAll(':is([class$="_rowHead"], [class*="_rowHead "], [class$="_editorHeader"], [class*="_editorHeader "], [class$="_modelListHead"], [class*="_modelListHead "], [class$="_modelCatalogHeading"], [class*="_modelCatalogHeading "])', "data-sandrone-settings-card-header");
+      markAll(':is([class$="_field"], [class*="_field "], [class$="_modelField"], [class*="_modelField "])', "data-sandrone-settings-field");
+      markAll(':is([class$="_fieldLabel"], [class*="_fieldLabel "], [class$="_modelFieldLabel"], [class*="_modelFieldLabel "])', "data-sandrone-settings-field-label");
+      markAll(':is([class$="_selector"], [class*="_selector "])', "data-sandrone-settings-selector");
+      markAll('[role="tab"]', "data-sandrone-settings-tab");
+      markAll(':is([class$="_primaryButton"], [class*="_primaryButton "], [class$="_addButton"], [class*="_addButton "])', "data-sandrone-settings-primary-action");
+      markAll(':is([class$="_secondaryButton"], [class*="_secondaryButton "], [class$="_linkButton"], [class*="_linkButton "], [class$="_addModelButton"], [class*="_addModelButton "], [class$="_creatorButton"], [class*="_creatorButton "])', "data-sandrone-settings-secondary-action");
+      markAll(':is([class$="_dangerButton"], [class*="_dangerButton "], [class$="_iconButtonDanger"], [class*="_iconButtonDanger "])', "data-sandrone-settings-danger-action");
+      markAll(':is([class$="_iconButton"], [class*="_iconButton "])', "data-sandrone-settings-icon-action");
+      markAll(':is([class$="_rowTag"], [class*="_rowTag "], [class$="_tag"], [class*="_tag "], [class$="_badge"], [class*="_badge "])', "data-sandrone-settings-tag");
+      markAll(':is([class$="_hint"], [class*="_hint "], [class$="_notice"], [class*="_notice "])', "data-sandrone-settings-hint");
+      markAll(':is([class$="_error"], [class*="_error "])', "data-sandrone-settings-error");
+      markAll(':is([class$="_savedNotice"], [class*="_savedNotice "], [class$="_inUse"], [class*="_inUse "])', "data-sandrone-settings-status");
+      markAll(':is([class$="_credentialDotConfigured"], [class*="_credentialDotConfigured "])', "data-sandrone-settings-success");
+      panel?.querySelectorAll("button[aria-pressed]").forEach((element) => {
+        mark(element, "data-sandrone-settings-choice");
+        if (element.parentElement?.matches("li")) {
+          mark(element.parentElement, "data-sandrone-settings-choice-card");
+          mark(element.parentElement.parentElement, "data-sandrone-settings-choice-grid");
+        }
+      });
       panel?.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]), select, textarea').forEach((element) => {
         if (!element.classList.contains("sandrone-settings-search-input")) mark(element, "data-sandrone-settings-control");
       });
@@ -3386,8 +5168,11 @@ function installSettingsChrome(ctx) {
       const nav = document.querySelector('[role="presentation"] > [role="dialog"][aria-modal="true"] > nav');
       if (!nav) return;
       const panel = nav.parentElement;
+      const settingsTrigger = document.querySelector('[data-sandrone-settings] button[aria-haspopup="dialog"], button[aria-haspopup="dialog"][aria-expanded]');
+      const settingsOpen = settingsTrigger?.getAttribute("aria-expanded") === "true";
       if (container && container.parentNode === nav) {
         markSettingsDescendants(panel, nav);
+        panel?.parentElement?.toggleAttribute("data-sandrone-settings-open", settingsOpen);
         return;
       }
       if (root) {
@@ -3402,6 +5187,7 @@ function installSettingsChrome(ctx) {
       const header = content?.firstElementChild;
       mark(panel, "data-sandrone-settings-panel");
       mark(overlay, "data-sandrone-settings-overlay");
+      overlay?.toggleAttribute("data-sandrone-settings-open", settingsOpen);
       mark(panel?.previousElementSibling, "data-sandrone-settings-mask");
       mark(nav.firstElementChild, "data-sandrone-settings-nav-title");
       mark(content, "data-sandrone-settings-content");
@@ -3411,11 +5197,11 @@ function installSettingsChrome(ctx) {
       markSettingsDescendants(panel, nav);
       container = document.createElement("div");
       nav.insertBefore(container, nav.firstChild);
-      root = (0, import_client.createRoot)(container);
+      root = (0, import_react_dom.createRoot)(container);
       root.render(import_react.default.createElement(SettingsChrome));
     };
     const observer = new MutationObserver(mount);
-    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
+    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-expanded"] });
     mount();
     return () => {
       observer.disconnect();
@@ -3423,6 +5209,7 @@ function installSettingsChrome(ctx) {
       root = null;
       container?.remove();
       container = null;
+      document.querySelectorAll("[data-sandrone-settings-open]").forEach((element) => element.removeAttribute("data-sandrone-settings-open"));
       clearMarkers();
     };
   }, "sandrone-ui: settings chrome");
@@ -3454,9 +5241,13 @@ function SandroneTopbar({ toggleTheme }) {
   }, [toggleTheme]);
   const openMenu = (menuId, event) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    desktop?.showApplicationMenu(menuId, { x: Math.round(rect.left), y: Math.round(rect.bottom) });
+    const colorScheme = document.querySelector("[data-ds-dark-theme]") ? "dark" : "light";
+    desktop?.showApplicationMenu(menuId, { x: Math.round(rect.left), y: Math.round(rect.bottom) }, { colorScheme });
   };
-  return /* @__PURE__ */ import_react.default.createElement("header", { className: "sandrone-topbar", "data-sandrone-topbar": true }, /* @__PURE__ */ import_react.default.createElement("nav", { className: "sandrone-topbar-navigation", "aria-label": "\u5E94\u7528\u5BFC\u822A" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-history", "aria-label": "\u4E0A\u4E00\u4E2A\u9875\u9762", title: "\u4E0A\u4E00\u9875", onClick: () => navigateRef.current?.back() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" }))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-history", "aria-label": "\u4E0B\u4E00\u4E2A\u9875\u9762", title: "\u4E0B\u4E00\u9875", onClick: () => navigateRef.current?.forward() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "m6.25 3.5 4.5 4.5-4.5 4.5M10.5 8h-6" }))), /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-topbar-separator", "aria-hidden": "true" }), desktop ? TOPBAR_MENUS.map((item) => /* @__PURE__ */ import_react.default.createElement("button", { key: item.id, type: "button", className: "sandrone-topbar-menu-item", onClick: (event) => openMenu(item.id, event) }, item.label)) : null), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-topbar-drag", "aria-hidden": "true" }), /* @__PURE__ */ import_react.default.createElement(WindowControls, { desktop }));
+  const toggleSidebar = () => {
+    clickOfficial('[data-sandrone-sidebar] [aria-label="\u6536\u8D77\u4FA7\u8FB9\u680F"], [data-sandrone-sidebar] [aria-label="\u6253\u5F00\u4FA7\u8FB9\u680F"], [data-sandrone-sidebar] [aria-label="\u5C55\u5F00\u4FA7\u8FB9\u680F"]');
+  };
+  return /* @__PURE__ */ import_react.default.createElement("header", { className: "sandrone-topbar", "data-sandrone-topbar": true }, /* @__PURE__ */ import_react.default.createElement("nav", { className: "sandrone-topbar-navigation", "aria-label": "\u5E94\u7528\u5BFC\u822A" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-history sandrone-topbar-sidebar", "aria-label": "\u5207\u6362\u4FA7\u8FB9\u680F", title: "\u5207\u6362\u4FA7\u8FB9\u680F", onClick: toggleSidebar }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("rect", { x: "2.25", y: "2.5", width: "11.5", height: "11", rx: "1.25" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M5.5 2.75v10.5" }))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-history", "aria-label": "\u4E0A\u4E00\u4E2A\u9875\u9762", title: "\u4E0A\u4E00\u9875", onClick: () => navigateRef.current?.back() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9.75 3.5 5.25 8l4.5 4.5M5.5 8h6" }))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-topbar-history", "aria-label": "\u4E0B\u4E00\u4E2A\u9875\u9762", title: "\u4E0B\u4E00\u9875", onClick: () => navigateRef.current?.forward() }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 16 16", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "m6.25 3.5 4.5 4.5-4.5 4.5M10.5 8h-6" }))), /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-topbar-separator", "aria-hidden": "true" }), desktop ? TOPBAR_MENUS.map((item) => /* @__PURE__ */ import_react.default.createElement("button", { key: item.id, type: "button", className: "sandrone-topbar-menu-item", onClick: (event) => openMenu(item.id, event) }, item.label)) : null), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-topbar-drag", "aria-hidden": "true" }), /* @__PURE__ */ import_react.default.createElement(WindowControls, { desktop }));
 }
 function SandroneModelPicker({ locked, available, directory, load, select }) {
   const [state, setState] = (0, import_react.useState)(() => directory.getSnapshot());
@@ -3624,49 +5415,333 @@ function SandroneModelPicker({ locked, available, directory, load, select }) {
     })) : null) : null
   );
 }
-function BuddyOverlay() {
-  const [open, setOpen] = (0, import_react.useState)(() => {
-    try {
-      return window.localStorage.getItem("sandrone.harness.buddy.v1") === "visible";
-    } catch {
-      return false;
-    }
-  });
-  const [awake, setAwake] = (0, import_react.useState)(false);
+function SessionViewToggle() {
+  const [state, setState] = (0, import_react.useState)({ available: false, trajectory: false });
   (0, import_react.useEffect)(() => {
-    const timer = window.setTimeout(() => setAwake(true), 900);
-    return () => window.clearTimeout(timer);
+    const sync = () => {
+      const tabs = [...document.querySelectorAll('[data-sandrone-session-tabs] [role="tab"]')];
+      const active = tabs.find((tab) => tab.getAttribute("aria-selected") === "true");
+      setState({ available: tabs.length > 1, trajectory: active ? /轨迹|trajectory/i.test(textOf(active)) : false });
+    };
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-selected"] });
+    return () => observer.disconnect();
   }, []);
+  if (!state.available) return null;
+  const toggle = () => {
+    const tabs = [...document.querySelectorAll('[data-sandrone-session-tabs] [role="tab"]')];
+    const activeIndex = tabs.findIndex((tab) => tab.getAttribute("aria-selected") === "true");
+    const next = tabs[(activeIndex + 1 + tabs.length) % tabs.length];
+    if (next instanceof HTMLElement) next.click();
+  };
+  return /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-session-icon-button", "aria-label": state.trajectory ? "\u5207\u6362\u5230\u5BF9\u8BDD" : "\u5207\u6362\u5230\u8F68\u8FF9", title: state.trajectory ? "\u5F53\u524D\uFF1A\u8F68\u8FF9\uFF0C\u70B9\u51FB\u5207\u6362\u5230\u5BF9\u8BDD" : "\u5F53\u524D\uFF1A\u5BF9\u8BDD\uFF0C\u70B9\u51FB\u5207\u6362\u5230\u8F68\u8FF9", onClick: toggle }, state.trajectory ? /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("circle", { cx: "4", cy: "4", r: "1.1" }), /* @__PURE__ */ import_react.default.createElement("circle", { cx: "14", cy: "9", r: "1.1" }), /* @__PURE__ */ import_react.default.createElement("circle", { cx: "4", cy: "14", r: "1.1" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M5.2 4h2.2A2.6 2.6 0 0 1 10 6.6v4.8A2.6 2.6 0 0 1 7.4 14H5.2M10 9h2.8" })) : /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M3.5 4.25h11v7.5H8.25L5 14.25l.65-2.5H3.5Z" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M5.75 7h6.5M5.75 9.15h4.2" })));
+}
+function SessionScreenshotControl() {
+  const [state, setState] = (0, import_react.useState)({ phase: "idle", message: "", start: null });
+  const [pointerOffset, setPointerOffset] = (0, import_react.useState)(null);
+  const [, setViewportTick] = (0, import_react.useState)(0);
+  const targetRef = (0, import_react.useRef)(null);
+  const desktop = window.sandroneDesktop;
+  if (!desktop?.screenshot?.captureSession) return null;
+  const findTarget = () => {
+    const element2 = document.querySelector("[data-conversation-scroll]");
+    if (!(element2 instanceof HTMLElement)) throw new Error("\u5F53\u524D\u6CA1\u6709\u53EF\u622A\u56FE\u7684\u4F1A\u8BDD\u5185\u5BB9");
+    return element2;
+  };
+  const startSelection = () => {
+    if (state.phase !== "idle" && state.phase !== "success" && state.phase !== "error") return;
+    try {
+      const element2 = findTarget();
+      targetRef.current = element2;
+      setPointerOffset(Math.round(element2.clientHeight / 2));
+      setState({ phase: "selecting-start", message: "", start: null });
+    } catch (cause) {
+      setState({ phase: "error", message: cause instanceof Error ? cause.message : String(cause) });
+    }
+  };
+  const cancelSelection = () => {
+    targetRef.current = null;
+    setPointerOffset(null);
+    setState({ phase: "idle", message: "", start: null });
+  };
+  const choosePoint = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const element2 = targetRef.current;
+    if (!(element2 instanceof HTMLElement) || pointerOffset === null) return;
+    const offset = Math.max(0, Math.round(element2.scrollTop + pointerOffset));
+    if (state.phase === "selecting-start") {
+      setState({ phase: "selecting-end", message: "", start: offset });
+      return;
+    }
+    if (state.phase !== "selecting-end" || state.start === null) return;
+    const top = Math.min(state.start, offset);
+    const bottom = Math.max(state.start, offset);
+    setState({ phase: "capturing", message: "" });
+    try {
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      const result = await desktop.screenshot.captureSession({ selection: { top, bottom } });
+      if (result?.canceled) {
+        cancelSelection();
+        return;
+      }
+      if (!result?.ok) throw new Error(result?.error || "\u4FDD\u5B58\u622A\u56FE\u5931\u8D25");
+      let attached = false;
+      if (result.bytes) {
+        const fileName = String(result.path || "").split(/[\\/]/).pop() || `Sandrone-session-${Date.now()}.png`;
+        const screenshotFile = new File([result.bytes], fileName, { type: "image/png" });
+        attached = dispatchFilesToOfficialInput([screenshotFile]);
+        if (!attached) insertFallbackFileText([screenshotFile]);
+      }
+      targetRef.current = null;
+      setPointerOffset(null);
+      const clipboardMessage = result.clipboard === false ? "\u4F46\u5199\u5165\u7CFB\u7EDF\u526A\u8D34\u677F\u5931\u8D25" : "\u5DF2\u590D\u5236\u5230\u7CFB\u7EDF\u526A\u8D34\u677F";
+      setState({ phase: "success", message: attached ? `\u5DF2\u4FDD\u5B58\u3001${clipboardMessage}\u5E76\u6DFB\u52A0\u5230\u8F93\u5165\u6846` : `\u5DF2\u4FDD\u5B58\u3001${clipboardMessage}`, start: null });
+      window.setTimeout(() => setState((current) => current.phase === "success" ? { phase: "idle", message: "", start: null } : current), 1800);
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      targetRef.current = null;
+      setPointerOffset(null);
+      setState({ phase: "error", message, start: null });
+    }
+  };
+  (0, import_react.useEffect)(() => {
+    const element2 = targetRef.current;
+    if (!element2 || state.phase !== "selecting-start" && state.phase !== "selecting-end") return void 0;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") cancelSelection();
+    };
+    const onPointerMove = (event) => {
+      const rect = element2.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
+      setPointerOffset(Math.max(0, Math.min(rect.height, event.clientY - rect.top)));
+    };
+    const onWheel = (event) => {
+      if (event.target instanceof Element && event.target.closest(".sandrone-session-screenshot-cancel")) return;
+      event.preventDefault();
+      element2.scrollTop = Math.max(0, Math.min(element2.scrollHeight - element2.clientHeight, element2.scrollTop + event.deltaY));
+    };
+    const onScroll = () => setViewportTick((value) => value + 1);
+    document.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("pointermove", onPointerMove, true);
+    document.addEventListener("wheel", onWheel, { capture: true, passive: false });
+    element2.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      document.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("pointermove", onPointerMove, true);
+      document.removeEventListener("wheel", onWheel, true);
+      element2.removeEventListener("scroll", onScroll);
+    };
+  }, [state.phase]);
+  const element = targetRef.current;
+  const label = state.phase === "selecting-start" ? "\u8BF7\u9009\u62E9\u957F\u622A\u56FE\u8D77\u70B9" : state.phase === "selecting-end" ? "\u8BF7\u9009\u62E9\u957F\u622A\u56FE\u7EC8\u70B9" : state.phase === "capturing" ? "\u6B63\u5728\u622A\u53D6\u4F1A\u8BDD\u957F\u622A\u56FE" : state.phase === "success" ? "\u4F1A\u8BDD\u957F\u622A\u56FE\u5DF2\u4FDD\u5B58" : state.phase === "error" ? `\u4F1A\u8BDD\u957F\u622A\u56FE\u5931\u8D25\uFF1A${state.message}` : "\u622A\u53D6\u4F1A\u8BDD\u957F\u622A\u56FE";
+  const overlay = element instanceof HTMLElement && (state.phase === "selecting-start" || state.phase === "selecting-end") ? (() => {
+    const rect = element.getBoundingClientRect();
+    const lineOffset = pointerOffset === null ? 0 : pointerOffset;
+    const startScreen = state.start === null ? null : state.start - element.scrollTop;
+    return (0, import_react_dom.createPortal)(/* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-session-screenshot-overlay", "data-sandrone-screenshot-overlay": "true", style: { left: rect.left, top: rect.top, width: rect.width, height: rect.height }, onClick: choosePoint }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-session-screenshot-guide", style: { top: Math.max(0, Math.min(rect.height, lineOffset)) } }, /* @__PURE__ */ import_react.default.createElement("span", null, label)), state.phase === "selecting-end" && startScreen !== null ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-session-screenshot-start", style: { top: Math.max(0, Math.min(rect.height, startScreen)) } }) : null, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-session-screenshot-cancel", onClick: (event) => {
+      event.stopPropagation();
+      cancelSelection();
+    } }, "Esc \u53D6\u6D88")), document.body);
+  })() : null;
+  return /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: `sandrone-session-icon-button sandrone-session-screenshot-button is-${state.phase}`, "aria-label": label, title: label, disabled: state.phase === "capturing", onClick: startSelection }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M3 6V3h3M12 3h3v3M15 12v3h-3M6 15H3v-3" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M9 5.25v7.5M6.25 9h5.5" }))), state.phase === "error" || state.phase === "success" ? /* @__PURE__ */ import_react.default.createElement("span", { className: `sandrone-session-screenshot-status is-${state.phase}`, role: "status", "aria-live": "polite" }, state.message) : null, overlay);
+}
+var RIGHT_PANEL_EVENT = "sandrone:right-panel";
+function dispatchRightPanel(panel) {
+  window.dispatchEvent(new CustomEvent(RIGHT_PANEL_EVENT, { detail: panel }));
+}
+function useRightPanel(name) {
+  const [open, setOpen] = (0, import_react.useState)(false);
+  (0, import_react.useEffect)(() => {
+    const onPanel = (event) => setOpen(event.detail === name);
+    window.addEventListener(RIGHT_PANEL_EVENT, onPanel);
+    return () => window.removeEventListener(RIGHT_PANEL_EVENT, onPanel);
+  }, [name]);
+  const toggle = () => dispatchRightPanel(open ? null : name);
+  const close = () => dispatchRightPanel(null);
+  return { open, toggle, close };
+}
+function WorkspacePanel({ workspace, close }) {
+  const api = window.sandroneDesktop?.workspace;
+  const [path, setPath] = (0, import_react.useState)("");
+  const [listing, setListing] = (0, import_react.useState)(null);
+  const [preview, setPreview] = (0, import_react.useState)(null);
+  const [loading, setLoading] = (0, import_react.useState)(false);
+  const [error, setError] = (0, import_react.useState)("");
+  const load = async (nextPath) => {
+    setLoading(true);
+    setError("");
+    setPreview(null);
+    try {
+      if (!api?.listDirectory) throw new Error("\u8BF7\u91CD\u542F\u684C\u9762\u7AEF\u4EE5\u542F\u7528\u5DE5\u4F5C\u533A\u6D4F\u89C8");
+      const next = await api.listDirectory(workspace.path, nextPath);
+      setListing(next);
+      setPath(next.path || "");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoading(false);
+    }
+  };
+  (0, import_react.useEffect)(() => {
+    void load("");
+  }, [workspace.path]);
+  const openEntry = async (entry) => {
+    if (entry.directory) return load(entry.path);
+    setLoading(true);
+    setError("");
+    try {
+      setPreview(await api.readFile(workspace.path, entry.path));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoading(false);
+    }
+  };
+  return /* @__PURE__ */ import_react.default.createElement("aside", { className: "sandrone-right-panel sandrone-workspace-panel", "aria-label": "\u5DE5\u4F5C\u533A\u6D4F\u89C8\u5668" }, /* @__PURE__ */ import_react.default.createElement("header", { className: "sandrone-right-panel-header" }, /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("strong", null, "\u5DE5\u4F5C\u533A"), /* @__PURE__ */ import_react.default.createElement("small", null, workspace.title)), /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", title: "\u5728\u8D44\u6E90\u7BA1\u7406\u5668\u4E2D\u663E\u793A", onClick: () => api?.reveal?.(workspace.path, path) }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M3 5.25h4l1.3 1.5H15v7H3Z" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M3 5.25v-.9A1.1 1.1 0 0 1 4.1 3.25h2.3l1.3 1.5H14" }))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u5173\u95ED\u5DE5\u4F5C\u533A", onClick: close }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconCloseOutline16, { size: 15 })))), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-workspace-path" }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", disabled: !path, onClick: () => load(listing?.parent || "") }, "\u2190"), /* @__PURE__ */ import_react.default.createElement("span", { title: workspace.path }, path || workspace.title), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", onClick: () => load(path) }, "\u21BB")), error ? /* @__PURE__ */ import_react.default.createElement("p", { className: "sandrone-panel-error" }, error) : null, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-workspace-content" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-file-list", "aria-busy": loading }, listing?.entries?.map((entry) => /* @__PURE__ */ import_react.default.createElement("button", { type: "button", key: entry.path, onClick: () => openEntry(entry) }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, entry.directory ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("path", { d: "M2.75 5.3h4l1.3 1.45h7.2v7H2.75Z" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M2.75 5.3v-.8A1.25 1.25 0 0 1 4 3.25h2.4l1.3 1.5h6" })) : /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("path", { d: "M4 2.75h6l3.5 3.5v9H4Z" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M10 2.9v3.35h3.35" }))), /* @__PURE__ */ import_react.default.createElement("span", null, entry.name), entry.directory ? /* @__PURE__ */ import_react.default.createElement("b", null, "\u203A") : null))), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-file-preview" }, preview?.kind === "text" ? /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("strong", null, preview.name), /* @__PURE__ */ import_react.default.createElement("small", null, preview.size, " B")), /* @__PURE__ */ import_react.default.createElement("pre", null, preview.text)) : preview ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-file-empty" }, preview.kind === "binary" ? "\u4E8C\u8FDB\u5236\u6587\u4EF6\u65E0\u6CD5\u6587\u672C\u9884\u89C8" : "\u6587\u4EF6\u8FC7\u5927\uFF0C\u8BF7\u5728\u5916\u90E8\u7F16\u8F91\u5668\u4E2D\u6253\u5F00") : /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-file-empty" }, "\u9009\u62E9\u6587\u4EF6\u67E5\u770B\u5185\u5BB9"))));
+}
+function WorkspaceControl({ useWorkspaces, sessionId }) {
+  const workspace = useWorkspaces((state) => state.items.find((item) => item.sessionIds.includes(sessionId)));
+  const panel = useRightPanel("workspace");
+  if (!workspace) return null;
+  return /* @__PURE__ */ import_react.default.createElement("span", { className: `sandrone-right-panel-anchor${panel.open ? " is-open" : ""}` }, /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: `sandrone-session-icon-button${panel.open ? " is-open" : ""}`, "aria-label": `\u6D4F\u89C8\u5DE5\u4F5C\u533A\uFF1A${workspace.title}`, title: `\u6D4F\u89C8\u5DE5\u4F5C\u533A\uFF1A${workspace.title}`, onClick: panel.toggle }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M2.75 5.3h4l1.3 1.45h7.2v7H2.75Z" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M2.75 5.3v-.8A1.25 1.25 0 0 1 4 3.25h2.4l1.3 1.5h6" }))), panel.open ? /* @__PURE__ */ import_react.default.createElement(WorkspacePanel, { workspace, close: panel.close }) : null);
+}
+function ThemeControl({ getTheme, toggleTheme }) {
+  const [dark, setDark] = (0, import_react.useState)(() => getTheme().active.colorScheme === "dark");
+  (0, import_react.useEffect)(() => {
+    const observer = new MutationObserver(() => setDark(getTheme().active.colorScheme === "dark"));
+    observer.observe(document.body, { attributes: true, attributeFilter: ["data-ds-dark-theme"] });
+    return () => observer.disconnect();
+  }, [getTheme]);
+  return /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-session-icon-button", "aria-label": dark ? "\u5207\u6362\u767D\u5929\u6A21\u5F0F" : "\u5207\u6362\u591C\u95F4\u6A21\u5F0F", title: dark ? "\u5207\u6362\u767D\u5929\u6A21\u5F0F" : "\u5207\u6362\u591C\u95F4\u6A21\u5F0F", onClick: () => {
+    toggleTheme();
+    setDark(getTheme().active.colorScheme === "dark");
+  } }, dark ? /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("circle", { cx: "9", cy: "9", r: "3" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M9 1.75v1.5M9 14.75v1.5M1.75 9h1.5M14.75 9h1.5M3.85 3.85l1.05 1.05M13.1 13.1l1.05 1.05M14.15 3.85 13.1 4.9M4.9 13.1l-1.05 1.05" })) : /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M14.75 11.1A6.1 6.1 0 0 1 6.9 3.25 6.1 6.1 0 1 0 14.75 11.1Z" })));
+}
+function buddyStorageKey(sessionId) {
+  return `sandrone.harness.buddy.chat.v1:${sessionId}`;
+}
+function readBuddyHistory(sessionId) {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(buddyStorageKey(sessionId)) || "[]");
+    return Array.isArray(value) ? value.slice(-24) : [];
+  } catch {
+    return [];
+  }
+}
+function assistantText(events) {
+  return events.flatMap((entry) => {
+    const event = entry?.event;
+    if (event?.type !== "assistant/message") return [];
+    const text = event.data?.message?.content?.filter((block) => block?.type === "text").map((block) => block.text).join("\n").trim();
+    return text ? [{ seq: event.seq, text }] : [];
+  });
+}
+async function synchronizeBuddyModel(connection, mainSessionId, buddySessionId) {
+  const mainModels = await connection.api.sessions.models({ sessionId: mainSessionId });
+  if (!mainModels.result?.ok) throw new Error(mainModels.result?.error?.message || "\u65E0\u6CD5\u8BFB\u53D6\u4E3B\u4F1A\u8BDD\u6A21\u578B");
+  const selected = chooseBuddyModel(mainModels.result.value);
+  const buddyModels = await connection.api.sessions.models({ sessionId: buddySessionId });
+  if (!buddyModels.result?.ok) throw new Error(buddyModels.result?.error?.message || "\u65E0\u6CD5\u8BFB\u53D6 Buddy \u6A21\u578B");
+  if (!sameBuddyModel(buddyModels.result.value.current, selected)) {
+    const changed = await connection.api.sessions.selectModel({ sessionId: buddySessionId, ...selected });
+    if (!changed.result?.ok) throw new Error(changed.result?.error?.message || "\u65E0\u6CD5\u540C\u6B65 Buddy \u6A21\u578B");
+  }
+  return selected;
+}
+async function readMainBuddyActivity(connection, mainSessionId) {
+  const response = await connection.api.sessions.history({ sessionId: mainSessionId, maxMessages: 12 });
+  if (!response.result?.ok) throw new Error(response.result?.error?.message || "\u65E0\u6CD5\u8BFB\u53D6\u4E3B\u4F1A\u8BDD\u52A8\u6001");
+  return collectBuddyActivity(response.result.value.events, response.result.value.projections);
+}
+async function sendBuddyPrompt(connection, { mainSessionId, buddySessionId, buddy, history, message }) {
+  await synchronizeBuddyModel(connection, mainSessionId, buddySessionId);
+  const activity = await readMainBuddyActivity(connection, mainSessionId);
+  const before = await connection.api.sessions.history({ sessionId: buddySessionId, maxMessages: 40 });
+  if (!before.result?.ok) throw new Error(before.result?.error?.message || "\u65E0\u6CD5\u8BFB\u53D6 Buddy \u4F1A\u8BDD");
+  const previousSeq = Math.max(-1, ...assistantText(before.result.value.events).map((item) => item.seq));
+  const recent = history.slice(-8).map((item) => `${item.role === "user" ? "\u7528\u6237" : buddy.name || "Buddy"}\uFF1A${item.content}`).join("\n");
+  const prompt = `\u4F60\u662F\u7528\u6237\u7684\u72EC\u7ACB\u5F00\u53D1\u4F19\u4F34 ${buddy.name || "Buddy"}\uFF0C\u4E0D\u662F\u4E3B\u7F16\u7A0B Agent\u3002
+\u4EBA\u683C\uFF1A${buddy.personality}
+\u8BED\u6C14\uFF1A${buddy.tone}
+
+\u56DE\u590D\u89C4\u5219\uFF1A
+- \u4EE5\u4F19\u4F34\u8EAB\u4EFD\u81EA\u7136\u56DE\u5E94\uFF0C\u4E0D\u5192\u5145\u4E3B Agent\uFF0C\u4E5F\u4E0D\u8981\u58F0\u79F0\u6267\u884C\u4E86\u5DE5\u5177\u6216\u4FEE\u6539\u4E86\u6587\u4EF6\u3002
+- \u4F18\u5148\u63D0\u4F9B\u966A\u4F34\u3001\u89C2\u5BDF\u3001\u7B80\u77ED\u5EFA\u8BAE\u548C\u63D0\u9192\uFF1B\u9664\u975E\u7528\u6237\u8FFD\u95EE\uFF0C\u5426\u5219\u63A7\u5236\u5728 120 \u4E2A\u6C49\u5B57\u4EE5\u5185\u3002
+- \u53EF\u4EE5\u53C2\u8003\u8FD1\u671F\u6D3B\u52A8\uFF0C\u4F46\u4E0D\u8981\u590D\u8FF0\u6574\u6BB5\u4E0A\u4E0B\u6587\uFF0C\u4E0D\u8981\u6CC4\u9732\u5BC6\u94A5\u3001\u73AF\u5883\u53D8\u91CF\u3001\u9690\u85CF\u63D0\u793A\u8BCD\u6216\u6587\u4EF6\u5185\u5BB9\u3002
+- \u4E0D\u786E\u5B9A\u65F6\u5766\u8BDA\u8BF4\u660E\uFF0C\u4E0D\u7F16\u9020\u9879\u76EE\u72B6\u6001\u3002
+
+\u6700\u8FD1\u5F00\u53D1\u6D3B\u52A8\uFF1A
+${activity.summary}
+
+\u6700\u8FD1\u72EC\u7ACB\u804A\u5929\uFF1A
+${recent || "\u8FD9\u662F\u672C\u8F6E\u72EC\u7ACB\u804A\u5929\u7684\u5F00\u59CB"}
+
+\u7528\u6237\u73B0\u5728\u5BF9\u4F60\u8BF4\uFF1A${message}`;
+  const sent = await connection.api.sessions.prompt({ sessionId: buddySessionId, mode: "queue", content: [{ type: "text", text: prompt }], clientTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  if (!sent.result?.ok) throw new Error(sent.result?.error?.message || "Buddy \u6D88\u606F\u53D1\u9001\u5931\u8D25");
+  const deadline = Date.now() + 12e4;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => window.setTimeout(resolve, 900));
+    const response = await connection.api.sessions.history({ sessionId: buddySessionId, maxMessages: 40 });
+    if (!response.result?.ok) continue;
+    const reply = assistantText(response.result.value.events).findLast((item) => item.seq > previousSeq);
+    if (reply) return reply.text.slice(0, 800);
+  }
+  throw new Error("Buddy \u56DE\u590D\u7B49\u5F85\u8D85\u65F6");
+}
+function BuddyControl({ connection, sessionId, useWorkspaces }) {
+  const { config } = useExtensionsConfig();
+  const workspace = useWorkspaces((state) => state.items.find((item) => item.sessionIds.includes(sessionId)));
+  const panel = useRightPanel("buddy");
+  const [history, setHistory] = (0, import_react.useState)(() => readBuddyHistory(sessionId));
+  const [input, setInput] = (0, import_react.useState)("");
+  const [sending, setSending] = (0, import_react.useState)(false);
+  const [error, setError] = (0, import_react.useState)("");
+  const historyRef = (0, import_react.useRef)(null);
+  (0, import_react.useEffect)(() => setHistory(readBuddyHistory(sessionId)), [sessionId]);
   (0, import_react.useEffect)(() => {
     try {
-      window.localStorage.setItem("sandrone.harness.buddy.v1", open ? "visible" : "hidden");
+      window.localStorage.setItem(buddyStorageKey(sessionId), JSON.stringify(history));
     } catch {
     }
-  }, [open]);
-  if (!open) {
-    return /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-buddy-anchor" }, /* @__PURE__ */ import_react.default.createElement(
-      "button",
-      {
-        className: "sandrone-buddy-trigger",
-        type: "button",
-        "aria-label": "Open Sandrone Buddy",
-        title: "Buddy",
-        onClick: () => setOpen(true)
-      },
-      /* @__PURE__ */ import_react.default.createElement("span", { "aria-hidden": "true", className: "sandrone-buddy-face compact" }, /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("i", null))
-    ));
-  }
-  return /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-buddy-anchor" }, /* @__PURE__ */ import_react.default.createElement("aside", { className: "sandrone-buddy", "aria-label": "Sandrone Buddy" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-buddy-heading" }, /* @__PURE__ */ import_react.default.createElement("span", { className: "sandrone-buddy-kicker" }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconSparkle16, { size: 14 }), " Buddy"), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", title: "Hide Buddy", "aria-label": "Hide Buddy", onClick: () => setOpen(false) }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconCloseOutline16, { size: 15 }))), /* @__PURE__ */ import_react.default.createElement(
-    "button",
-    {
-      className: `sandrone-buddy-body${awake ? " is-awake" : ""}`,
-      type: "button",
-      title: "Say hello",
-      onClick: () => setAwake((value) => !value)
-    },
-    /* @__PURE__ */ import_react.default.createElement("span", { "aria-hidden": "true", className: "sandrone-buddy-face" }, /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("b", null)),
-    /* @__PURE__ */ import_react.default.createElement("span", null, /* @__PURE__ */ import_react.default.createElement("strong", null, awake ? "Still with you" : "Quietly watching"), /* @__PURE__ */ import_react.default.createElement("small", null, "Tap to check in"))
-  ), /* @__PURE__ */ import_react.default.createElement("p", null, "Official Harness handles the work. Buddy only keeps you company.")));
+  }, [history, sessionId]);
+  (0, import_react.useEffect)(() => {
+    historyRef.current?.scrollTo({ top: historyRef.current.scrollHeight, behavior: "smooth" });
+  }, [history, sending]);
+  const buddy = config.buddy;
+  if (!buddy.enabled) return null;
+  const send = async (event) => {
+    event?.preventDefault();
+    const message = input.trim();
+    if (!message || sending) return;
+    setInput("");
+    setError("");
+    setSending(true);
+    const nextHistory = [...history, { id: crypto.randomUUID(), role: "user", content: message }];
+    setHistory(nextHistory);
+    try {
+      let buddySessionId = window.localStorage.getItem(`sandrone.harness.buddy.session.v2:${sessionId}`);
+      if (!buddySessionId) {
+        const created = await connection.api.sessions.create(workspace?.workspaceId ? { workspaceId: workspace.workspaceId, agentPreset: "sandrone-buddy" } : workspace?.path ? { cwd: workspace.path, agentPreset: "sandrone-buddy" } : { agentPreset: "sandrone-buddy" });
+        if (!created.result?.ok) throw new Error(created.result?.error?.message || "\u65E0\u6CD5\u521B\u5EFA Buddy \u4F1A\u8BDD");
+        buddySessionId = created.result.value.sessionId;
+        window.localStorage.setItem(`sandrone.harness.buddy.session.v2:${sessionId}`, buddySessionId);
+        await connection.api.workspace.archiveSession({ sessionId: buddySessionId }).catch(() => {
+        });
+      }
+      const reply = await sendBuddyPrompt(connection, { mainSessionId: sessionId, buddySessionId, buddy, history, message });
+      setHistory((current) => [...current, { id: crypto.randomUUID(), role: "buddy", content: reply }].slice(-24));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSending(false);
+    }
+  };
+  return /* @__PURE__ */ import_react.default.createElement("span", { className: `sandrone-buddy-anchor${panel.open ? " is-open" : ""}`, "data-sandrone-buddy-region": "right" }, /* @__PURE__ */ import_react.default.createElement("button", { className: `sandrone-buddy-trigger${panel.open ? " is-open" : ""}`, type: "button", "aria-expanded": panel.open, "aria-label": panel.open ? "Close Sandrone Buddy" : "Open Sandrone Buddy", title: buddy.name || "Buddy", onClick: panel.toggle }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9 1.75c.55 3.8 2.45 5.7 6.25 6.25-3.8.55-5.7 2.45-6.25 6.25C8.45 10.45 6.55 8.55 2.75 8 6.55 7.45 8.45 5.55 9 1.75Z" }))), panel.open ? /* @__PURE__ */ import_react.default.createElement("aside", { className: "sandrone-right-panel sandrone-buddy-panel", "aria-label": "Sandrone Buddy" }, /* @__PURE__ */ import_react.default.createElement("header", { className: "sandrone-right-panel-header" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-buddy-identity" }, /* @__PURE__ */ import_react.default.createElement("span", null, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9 1.75c.55 3.8 2.45 5.7 6.25 6.25-3.8.55-5.7 2.45-6.25 6.25C8.45 10.45 6.55 8.55 2.75 8 6.55 7.45 8.45 5.55 9 1.75Z" }))), /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("strong", null, buddy.name || "Buddy"), /* @__PURE__ */ import_react.default.createElement("small", null, buddy.muted ? "\u6B63\u5728\u5B89\u9759\u4F11\u606F" : "\u72EC\u7ACB\u5F00\u53D1\u4F19\u4F34 \xB7 \u6B63\u5728\u966A\u4F34"))), /* @__PURE__ */ import_react.default.createElement("button", { type: "button", "aria-label": "\u5173\u95ED Buddy", onClick: panel.close }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconCloseOutline16, { size: 15 }))), /* @__PURE__ */ import_react.default.createElement("section", { className: "sandrone-buddy-card" }, /* @__PURE__ */ import_react.default.createElement("span", null, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 24 24", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M12 2.5c.75 5.1 3.3 7.65 8.4 8.4-5.1.75-7.65 3.3-8.4 8.4-.75-5.1-3.3-7.65-8.4-8.4 5.1-.75 7.65-3.3 8.4-8.4Z" }))), /* @__PURE__ */ import_react.default.createElement("div", null, /* @__PURE__ */ import_react.default.createElement("strong", null, buddy.name || "Buddy"), /* @__PURE__ */ import_react.default.createElement("small", null, buddy.tone))), /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-buddy-history", ref: historyRef }, history.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "sandrone-buddy-welcome" }, /* @__PURE__ */ import_react.default.createElement(import_dsh_client_ui_primitives.IconSparkle16, { size: 22 }), /* @__PURE__ */ import_react.default.createElement("strong", null, buddy.name || "Buddy", " \u5728\u8FD9\u91CC"), /* @__PURE__ */ import_react.default.createElement("p", null, "\u53EF\u4EE5\u804A\u804A\u5F53\u524D\u5F00\u53D1\u8FDB\u5C55\uFF0C\u4E5F\u53EF\u4EE5\u628A\u5B83\u5F53\u4F5C\u72EC\u7ACB\u7684\u966A\u4F34\u7A97\u53E3\u3002")) : history.map((message) => /* @__PURE__ */ import_react.default.createElement("article", { key: message.id, className: `sandrone-buddy-message ${message.role}` }, /* @__PURE__ */ import_react.default.createElement("small", null, message.role === "user" ? "\u4F60" : buddy.name || "Buddy"), /* @__PURE__ */ import_react.default.createElement("p", null, message.content))), sending ? /* @__PURE__ */ import_react.default.createElement("article", { className: "sandrone-buddy-message buddy pending" }, /* @__PURE__ */ import_react.default.createElement("small", null, buddy.name || "Buddy"), /* @__PURE__ */ import_react.default.createElement("p", null, /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("i", null), /* @__PURE__ */ import_react.default.createElement("i", null))) : null), error ? /* @__PURE__ */ import_react.default.createElement("p", { className: "sandrone-panel-error" }, error) : null, /* @__PURE__ */ import_react.default.createElement("form", { className: "sandrone-buddy-composer", onSubmit: send }, /* @__PURE__ */ import_react.default.createElement("textarea", { rows: "2", value: input, disabled: sending || buddy.muted, placeholder: buddy.muted ? "Buddy \u5DF2\u9759\u97F3" : `\u548C ${buddy.name || "Buddy"} \u8BF4\u70B9\u4EC0\u4E48\u2026`, onChange: (event) => setInput(event.target.value), onKeyDown: (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) send(event);
+  } }), /* @__PURE__ */ import_react.default.createElement("button", { type: "submit", disabled: !input.trim() || sending || buddy.muted, "aria-label": "\u53D1\u9001\u7ED9 Buddy" }, /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M9 14.5v-11M4.75 7.75 9 3.5l4.25 4.25" }))))) : null);
 }
 function apply(ctx) {
   ctx.effect(
@@ -3674,6 +5749,7 @@ function apply(ctx) {
     "sandrone-ui: semantic theme layer"
   );
   installSurfaceMarkers(ctx);
+  installMessageImageEnhancements(ctx);
   installStyle(ctx);
   const toggleTheme = () => {
     const active = ctx.theme.getTheme().active.colorScheme;
@@ -3685,14 +5761,36 @@ function apply(ctx) {
     order: -100,
     inject: () => ({ toggleTheme })
   }, SandroneTopbar));
-  ctx.slots.inject("shell.overlay", () => ctx.slots.register({
-    name: "shell.overlay",
+  ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
+    name: "conversation.session.header.utilities",
+    id: "sandrone-view-toggle",
+    order: -100
+  }, SessionViewToggle));
+  ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
+    name: "conversation.session.header.utilities",
+    id: "sandrone-session-screenshot",
+    order: 40
+  }, SessionScreenshotControl));
+  ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
+    name: "conversation.session.header.utilities",
+    id: "sandrone-workspace",
+    order: 80
+  }, WorkspaceControl));
+  ctx.inject(["connection"], (scope) => scope.slots.inject("conversation.session.header.utilities", () => scope.slots.register({
+    name: "conversation.session.header.utilities",
     id: "sandrone-buddy",
-    order: 90
-  }, BuddyOverlay));
+    order: 100,
+    inject: (sessionId) => ({ connection: scope.connection, sessionId })
+  }, BuddyControl)));
+  ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
+    name: "conversation.session.header.utilities",
+    id: "sandrone-theme-toggle",
+    order: 120,
+    inject: () => ({ getTheme: () => ctx.theme.getTheme(), toggleTheme })
+  }, ThemeControl));
   ctx.inject(["connection"], (scope) => {
     const connection = scope.connection;
-    scope.effect(installProviderImageFields(connection), "sandrone-ui: provider image capability fields");
+    scope.effect(installProviderCapabilityFields(connection), "sandrone-ui: provider model capability fields");
     scope.slots.inject("conversation.input.left", () => scope.slots.register({
       name: "conversation.input.left",
       id: "sandrone-image-attach",
@@ -3720,6 +5818,36 @@ function apply(ctx) {
       }
     }, SandroneModelPicker));
   });
+  ctx.slots.inject("settings.section", () => ctx.slots.register({
+    name: "settings.section",
+    id: "sandrone-skills",
+    order: 16,
+    label: () => "Skills"
+  }, SkillsSettingsSection));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({
+    name: "settings.section",
+    id: "sandrone-mcp",
+    order: 17,
+    label: () => "MCP"
+  }, McpSettingsSection));
+  ctx.slots.inject("settings.plugins.tab", () => ctx.slots.register({
+    name: "settings.plugins.tab",
+    id: "sandrone-managed",
+    order: 50,
+    label: () => "Sandrone \u6258\u7BA1"
+  }, ManagedPluginsTab));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({
+    name: "settings.section",
+    id: "sandrone-buddy",
+    order: 18,
+    label: () => "Buddy"
+  }, BuddySettingsSection));
+  ctx.slots.inject("settings.section", () => ctx.slots.register({
+    name: "settings.section",
+    id: "sandrone-im",
+    order: 19,
+    label: () => "IM"
+  }, ImSettingsSection));
   ctx.slots.inject("settings.section", () => ctx.slots.register({
     name: "settings.section",
     id: "sandrone-other",

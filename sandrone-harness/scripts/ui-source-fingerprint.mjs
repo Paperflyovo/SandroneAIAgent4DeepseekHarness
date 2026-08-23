@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 const UI_BUILD_INPUTS = [
   ['src', 'client.jsx'],
+  ['src', 'buddy.js'],
   ['src', 'client.css'],
   ['src', 'index.js'],
   ['src', 'assets', 'header-bg.png'],

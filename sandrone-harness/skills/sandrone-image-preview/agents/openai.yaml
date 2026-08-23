@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sandrone Image Preview"
+  short_description: "Find and render images directly in answers"
+  default_prompt: "Use $sandrone-image-preview to find the requested image and render it directly in the answer without asking the user for Markdown syntax."

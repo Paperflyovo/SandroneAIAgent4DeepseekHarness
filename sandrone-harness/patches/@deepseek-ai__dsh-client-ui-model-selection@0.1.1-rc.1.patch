@@ -1,0 +1,14 @@
+diff --git a/lib/client.js b/lib/client.js
+index d01b91620c761a741e46d9685cb9dc87562586b0..272f05567f8f401b157408ea5735c9656b32978e 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -196,7 +196,8 @@ window.__ModuleLoader__.load({
+ 				const conversation = this.ctx.get("conversation");
+ 				if (conversation !== void 0) {
+ 					const publish = () => {
+-						conversation.blocks.set(sessionId, directory.store.getSnapshot().routable === false ? { reason: this.blockReason() } : void 0);
++						const snapshot = directory.store.getSnapshot();
++						conversation.blocks.set(sessionId, snapshot.routable === false || snapshot.status === "selecting" ? { reason: this.blockReason() } : void 0);
+ 					};
+ 					publish();
+ 					actx.effect(() => {

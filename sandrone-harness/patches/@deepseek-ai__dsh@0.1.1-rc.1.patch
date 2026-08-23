@@ -1,0 +1,42 @@
+diff --git a/config/agent-presets/code/agent.cordis.yml b/config/agent-presets/code/agent.cordis.yml
+index eedabe4cd7526ce3cdb50066f4c49e6548f78e8a..797abe88a8ca0e4fb23907de0b8d17ce6cb6133d 100644
+--- a/config/agent-presets/code/agent.cordis.yml
++++ b/config/agent-presets/code/agent.cordis.yml
+@@ -63,6 +63,9 @@
+ - id: tool-fs
+   name: '@deepseek-ai/dsh-tool-fs'
+ 
++- id: sandrone-image-tools
++  name: '@sandrone/harness-image-tools'
++
+ - id: tool-fs-search
+   name: '@deepseek-ai/dsh-tool-fs-search'
+   config:
+diff --git a/config/agent-presets/cordis/agent.cordis.yml b/config/agent-presets/cordis/agent.cordis.yml
+index aef4a250e45fca50bf7740fa1cb2953fba4ddbe3..26c945f0ed9a45a4c4be213a39e095651f5450fa 100644
+--- a/config/agent-presets/cordis/agent.cordis.yml
++++ b/config/agent-presets/cordis/agent.cordis.yml
+@@ -57,6 +57,9 @@
+ - id: tool-fs
+   name: '@deepseek-ai/dsh-tool-fs'
+ 
++- id: sandrone-image-tools
++  name: '@sandrone/harness-image-tools'
++
+ - id: tool-fs-search
+   name: '@deepseek-ai/dsh-tool-fs-search'
+   config:
+diff --git a/config/agent-presets/standard/agent.cordis.yml b/config/agent-presets/standard/agent.cordis.yml
+index 3bccbc73653dc06842e9f6be4025648eb434c102..dff71fa63c3637e4b2e3d74dc945f50a04635ecd 100644
+--- a/config/agent-presets/standard/agent.cordis.yml
++++ b/config/agent-presets/standard/agent.cordis.yml
+@@ -56,6 +56,9 @@
+ - id: tool-fs
+   name: '@deepseek-ai/dsh-tool-fs'
+ 
++- id: sandrone-image-tools
++  name: '@sandrone/harness-image-tools'
++
+ - id: tool-fs-search
+   name: '@deepseek-ai/dsh-tool-fs-search'
+   config:
