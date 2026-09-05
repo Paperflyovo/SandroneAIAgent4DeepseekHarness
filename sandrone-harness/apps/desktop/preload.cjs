@@ -54,6 +54,12 @@ contextBridge.exposeInMainWorld('sandroneDesktop', Object.freeze({
     ipcRenderer.on('desktop:command', wrapped)
     return () => ipcRenderer.removeListener('desktop:command', wrapped)
   },
+  onWebNavigation: (listener) => {
+    if (typeof listener !== 'function') throw new TypeError('listener must be a function')
+    const wrapped = (_event, url) => listener(String(url))
+    ipcRenderer.on('desktop:web-navigation', wrapped)
+    return () => ipcRenderer.removeListener('desktop:web-navigation', wrapped)
+  },
   window: Object.freeze({
     minimize: () => ipcRenderer.invoke('desktop:window-minimize'),
     toggleMaximize: () => ipcRenderer.invoke('desktop:window-toggle-maximize'),

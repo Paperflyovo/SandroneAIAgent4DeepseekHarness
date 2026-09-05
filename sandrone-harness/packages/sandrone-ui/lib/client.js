@@ -1,4 +1,4 @@
-/* sandrone-ui-source-sha256:79cc77ba0324ee70e4a43b8981ad2e77326e9d9e06f42b8a89c44166da6f8807 */
+/* sandrone-ui-source-sha256:bc249a547b098daaa449e52e2c19095a5287adae27f1375b735e57a18748bafa */
 window.__ModuleLoader__.load({ id: "@sandrone/harness-ui", factory: (require) => { var module = { exports: {} }; var exports = module.exports;
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -211,7 +211,7 @@ select {\r
   font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;\r
 }\r
 \r
-[data-sandrone-shell] {\r
+[data-sandrone-shell] {
   color: var(--sandrone-ink);\r
   background: var(--sandrone-paper);\r
   -webkit-font-smoothing: antialiased;\r
@@ -1461,6 +1461,7 @@ select {\r
 .sandrone-workspace-path span { min-width: 0; flex: 1; overflow: hidden; color: var(--sandrone-ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 
 .sandrone-workspace-content { display: grid; min-height: 0; flex: 1; grid-template-rows: minmax(170px, 42%) minmax(0, 1fr); }
+
 .sandrone-file-list { overflow: auto; border-bottom: 1px solid var(--sandrone-line); }
 .sandrone-file-list button { display: flex; width: 100%; min-height: 34px; box-sizing: border-box; align-items: center; gap: 8px; padding: 6px 12px; border: 0; background: transparent; color: var(--sandrone-ink); text-align: left; cursor: pointer; }
 .sandrone-file-list button:hover { background: var(--sandrone-paper-soft); }
@@ -1915,13 +1916,24 @@ select {\r
   display: none !important;\r
 }\r
 \r
-[data-sandrone-workspaces] > [class*="root"] {\r
+[data-sandrone-workspaces] > [class*="root"] {
   display: flex !important;\r
   width: 100% !important;\r
   max-width: none !important;\r
   box-sizing: border-box !important;\r
-  padding: 0 12px !important;\r
-}\r
+  padding: 0 12px !important;
+}
+
+[data-sandrone-workspace-mode] { position: relative; display: inline-flex; align-items: center; min-width: 0; }
+.sandrone-workspace-mode-trigger { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 5px 9px; border: 0; border-radius: 9px; background: transparent; color: var(--sandrone-ink-strong); font: inherit; font-size: 16px; font-weight: 650; cursor: pointer; }
+.sandrone-workspace-mode-trigger:hover, .sandrone-workspace-mode-trigger[aria-expanded="true"] { background: var(--sandrone-paper-soft); }
+.sandrone-workspace-mode-trigger svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.sandrone-workspace-mode-menu { position: fixed; z-index: 1000; display: grid; width: 250px; padding: 6px; border: 1px solid var(--sandrone-line); border-radius: 12px; background: var(--sandrone-paper-raised); box-shadow: 0 14px 34px rgb(54 45 37 / 16%); }
+.sandrone-workspace-mode-menu[hidden] { display: none; }
+.sandrone-workspace-mode-menu button { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 1px 6px; padding: 9px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--sandrone-ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.sandrone-workspace-mode-menu button:hover, .sandrone-workspace-mode-menu button.is-active { background: var(--sandrone-accent-soft); }
+.sandrone-workspace-mode-menu button small { grid-column: 2; color: var(--sandrone-muted); font-size: 10px; }
+.sandrone-mode-check { color: var(--sandrone-red); font-weight: 700; }
 \r
 [data-sandrone-settings] {\r
   display: block !important;\r
@@ -3790,6 +3802,987 @@ function installStyle(ctx) {
   }, "sandrone-ui: Buddy stylesheet");
 }
 
+// node_modules/html-to-image/es/util.js
+function resolveUrl(url, baseUrl) {
+  if (url.match(/^[a-z]+:\/\//i)) {
+    return url;
+  }
+  if (url.match(/^\/\//)) {
+    return window.location.protocol + url;
+  }
+  if (url.match(/^[a-z]+:/i)) {
+    return url;
+  }
+  const doc = document.implementation.createHTMLDocument();
+  const base = doc.createElement("base");
+  const a = doc.createElement("a");
+  doc.head.appendChild(base);
+  doc.body.appendChild(a);
+  if (baseUrl) {
+    base.href = baseUrl;
+  }
+  a.href = url;
+  return a.href;
+}
+var uuid = /* @__PURE__ */ (() => {
+  let counter = 0;
+  const random = () => (
+    // eslint-disable-next-line no-bitwise
+    `0000${(Math.random() * 36 ** 4 << 0).toString(36)}`.slice(-4)
+  );
+  return () => {
+    counter += 1;
+    return `u${random()}${counter}`;
+  };
+})();
+function toArray(arrayLike) {
+  const arr = [];
+  for (let i = 0, l = arrayLike.length; i < l; i++) {
+    arr.push(arrayLike[i]);
+  }
+  return arr;
+}
+var styleProps = null;
+function getStyleProperties(options = {}) {
+  if (styleProps) {
+    return styleProps;
+  }
+  if (options.includeStyleProperties) {
+    styleProps = options.includeStyleProperties;
+    return styleProps;
+  }
+  styleProps = toArray(window.getComputedStyle(document.documentElement));
+  return styleProps;
+}
+function canvasToBlob(canvas, options = {}) {
+  if (canvas.toBlob) {
+    return new Promise((resolve) => {
+      canvas.toBlob(resolve, options.type ? options.type : "image/png", options.quality ? options.quality : 1);
+    });
+  }
+  return new Promise((resolve) => {
+    const binaryString = window.atob(canvas.toDataURL(options.type ? options.type : void 0, options.quality ? options.quality : void 0).split(",")[1]);
+    const len = binaryString.length;
+    const binaryArray = new Uint8Array(len);
+    for (let i = 0; i < len; i += 1) {
+      binaryArray[i] = binaryString.charCodeAt(i);
+    }
+    resolve(new Blob([binaryArray], {
+      type: options.type ? options.type : "image/png"
+    }));
+  });
+}
+function createImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      img.decode().then(() => {
+        requestAnimationFrame(() => resolve(img));
+      });
+    };
+    img.onerror = reject;
+    img.crossOrigin = "anonymous";
+    img.decoding = "async";
+    img.src = url;
+  });
+}
+async function svgToDataURL(svg) {
+  return Promise.resolve().then(() => new XMLSerializer().serializeToString(svg)).then(encodeURIComponent).then((html) => `data:image/svg+xml;charset=utf-8,${html}`);
+}
+async function nodeToDataURL(node, width, height) {
+  const xmlns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(xmlns, "svg");
+  const foreignObject = document.createElementNS(xmlns, "foreignObject");
+  svg.setAttribute("width", `${width}`);
+  svg.setAttribute("height", `${height}`);
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  foreignObject.setAttribute("width", "100%");
+  foreignObject.setAttribute("height", "100%");
+  foreignObject.setAttribute("x", "0");
+  foreignObject.setAttribute("y", "0");
+  foreignObject.setAttribute("externalResourcesRequired", "true");
+  svg.appendChild(foreignObject);
+  foreignObject.appendChild(node);
+  return svgToDataURL(svg);
+}
+var isInstanceOfElement = (node, instance) => {
+  if (node instanceof instance)
+    return true;
+  const nodePrototype = Object.getPrototypeOf(node);
+  if (nodePrototype === null)
+    return false;
+  return nodePrototype.constructor.name === instance.name || isInstanceOfElement(nodePrototype, instance);
+};
+
+// node_modules/html-to-image/es/clone-pseudos.js
+function formatCSSText(style) {
+  const content = style.getPropertyValue("content");
+  return `${style.cssText} content: '${content.replace(/'|"/g, "")}';`;
+}
+function formatCSSProperties(style, options) {
+  return getStyleProperties(options).map((name) => {
+    const value = style.getPropertyValue(name);
+    const priority = style.getPropertyPriority(name);
+    return `${name}: ${value}${priority ? " !important" : ""};`;
+  }).join(" ");
+}
+function getPseudoElementStyle(className, pseudo, style, options) {
+  const selector = `.${className}:${pseudo}`;
+  const cssText = style.cssText ? formatCSSText(style) : formatCSSProperties(style, options);
+  return document.createTextNode(`${selector}{${cssText}}`);
+}
+function clonePseudoElement(nativeNode, clonedNode, pseudo, options) {
+  const style = window.getComputedStyle(nativeNode, pseudo);
+  const content = style.getPropertyValue("content");
+  if (content === "" || content === "none") {
+    return;
+  }
+  const className = uuid();
+  try {
+    clonedNode.className = `${clonedNode.className} ${className}`;
+  } catch (err) {
+    return;
+  }
+  const styleElement = document.createElement("style");
+  styleElement.appendChild(getPseudoElementStyle(className, pseudo, style, options));
+  clonedNode.appendChild(styleElement);
+}
+function clonePseudoElements(nativeNode, clonedNode, options) {
+  clonePseudoElement(nativeNode, clonedNode, ":before", options);
+  clonePseudoElement(nativeNode, clonedNode, ":after", options);
+}
+
+// node_modules/html-to-image/es/mimes.js
+var WOFF = "application/font-woff";
+var JPEG = "image/jpeg";
+var mimes = {
+  woff: WOFF,
+  woff2: WOFF,
+  ttf: "application/font-truetype",
+  eot: "application/vnd.ms-fontobject",
+  png: "image/png",
+  jpg: JPEG,
+  jpeg: JPEG,
+  gif: "image/gif",
+  tiff: "image/tiff",
+  svg: "image/svg+xml",
+  webp: "image/webp"
+};
+function getExtension(url) {
+  const match = /\.([^./]*?)$/g.exec(url);
+  return match ? match[1] : "";
+}
+function getMimeType(url) {
+  const extension = getExtension(url).toLowerCase();
+  return mimes[extension] || "";
+}
+
+// node_modules/html-to-image/es/dataurl.js
+function getContentFromDataUrl(dataURL) {
+  return dataURL.split(/,/)[1];
+}
+function isDataUrl(url) {
+  return url.search(/^(data:)/) !== -1;
+}
+function makeDataUrl(content, mimeType) {
+  return `data:${mimeType};base64,${content}`;
+}
+async function fetchAsDataURL(url, init, process2) {
+  const res = await fetch(url, init);
+  if (res.status === 404) {
+    throw new Error(`Resource "${res.url}" not found`);
+  }
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onloadend = () => {
+      try {
+        resolve(process2({ res, result: reader.result }));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+var cache = {};
+function getCacheKey(url, contentType, includeQueryParams) {
+  let key = url.replace(/\?.*/, "");
+  if (includeQueryParams) {
+    key = url;
+  }
+  if (/ttf|otf|eot|woff2?/i.test(key)) {
+    key = key.replace(/.*\//, "");
+  }
+  return contentType ? `[${contentType}]${key}` : key;
+}
+async function resourceToDataURL(resourceUrl, contentType, options) {
+  const cacheKey = getCacheKey(resourceUrl, contentType, options.includeQueryParams);
+  if (cache[cacheKey] != null) {
+    return cache[cacheKey];
+  }
+  if (options.cacheBust) {
+    resourceUrl += (/\?/.test(resourceUrl) ? "&" : "?") + (/* @__PURE__ */ new Date()).getTime();
+  }
+  let dataURL;
+  try {
+    const content = await fetchAsDataURL(resourceUrl, options.fetchRequestInit, ({ res, result }) => {
+      if (!contentType) {
+        contentType = res.headers.get("Content-Type") || "";
+      }
+      return getContentFromDataUrl(result);
+    });
+    dataURL = makeDataUrl(content, contentType);
+  } catch (error) {
+    dataURL = options.imagePlaceholder || "";
+    let msg = `Failed to fetch resource: ${resourceUrl}`;
+    if (error) {
+      msg = typeof error === "string" ? error : error.message;
+    }
+    if (msg) {
+      console.warn(msg);
+    }
+  }
+  cache[cacheKey] = dataURL;
+  return dataURL;
+}
+
+// node_modules/html-to-image/es/clone-node.js
+async function cloneCanvasElement(canvas) {
+  const dataURL = canvas.toDataURL();
+  if (dataURL === "data:,") {
+    return canvas.cloneNode(false);
+  }
+  return createImage(dataURL);
+}
+async function cloneVideoElement(video, options) {
+  if (video.currentSrc) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = video.clientWidth;
+    canvas.height = video.clientHeight;
+    ctx === null || ctx === void 0 ? void 0 : ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataURL2 = canvas.toDataURL();
+    return createImage(dataURL2);
+  }
+  const poster = video.poster;
+  const contentType = getMimeType(poster);
+  const dataURL = await resourceToDataURL(poster, contentType, options);
+  return createImage(dataURL);
+}
+async function cloneIFrameElement(iframe, options) {
+  var _a;
+  try {
+    if ((_a = iframe === null || iframe === void 0 ? void 0 : iframe.contentDocument) === null || _a === void 0 ? void 0 : _a.body) {
+      return await cloneNode(iframe.contentDocument.body, options, true);
+    }
+  } catch (_b) {
+  }
+  return iframe.cloneNode(false);
+}
+async function cloneSingleNode(node, options) {
+  if (isInstanceOfElement(node, HTMLCanvasElement)) {
+    return cloneCanvasElement(node);
+  }
+  if (isInstanceOfElement(node, HTMLVideoElement)) {
+    return cloneVideoElement(node, options);
+  }
+  if (isInstanceOfElement(node, HTMLIFrameElement)) {
+    return cloneIFrameElement(node, options);
+  }
+  return node.cloneNode(isSVGElement(node));
+}
+var isSlotElement = (node) => node.tagName != null && node.tagName.toUpperCase() === "SLOT";
+var isSVGElement = (node) => node.tagName != null && node.tagName.toUpperCase() === "SVG";
+async function cloneChildren(nativeNode, clonedNode, options) {
+  var _a, _b;
+  if (isSVGElement(clonedNode)) {
+    return clonedNode;
+  }
+  let children = [];
+  if (isSlotElement(nativeNode) && nativeNode.assignedNodes) {
+    children = toArray(nativeNode.assignedNodes());
+  } else if (isInstanceOfElement(nativeNode, HTMLIFrameElement) && ((_a = nativeNode.contentDocument) === null || _a === void 0 ? void 0 : _a.body)) {
+    children = toArray(nativeNode.contentDocument.body.childNodes);
+  } else {
+    children = toArray(((_b = nativeNode.shadowRoot) !== null && _b !== void 0 ? _b : nativeNode).childNodes);
+  }
+  if (children.length === 0 || isInstanceOfElement(nativeNode, HTMLVideoElement)) {
+    return clonedNode;
+  }
+  await children.reduce((deferred, child) => deferred.then(() => cloneNode(child, options)).then((clonedChild) => {
+    if (clonedChild) {
+      clonedNode.appendChild(clonedChild);
+    }
+  }), Promise.resolve());
+  return clonedNode;
+}
+function cloneCSSStyle(nativeNode, clonedNode, options) {
+  const targetStyle = clonedNode.style;
+  if (!targetStyle) {
+    return;
+  }
+  const sourceStyle = window.getComputedStyle(nativeNode);
+  if (sourceStyle.cssText) {
+    targetStyle.cssText = sourceStyle.cssText;
+    targetStyle.transformOrigin = sourceStyle.transformOrigin;
+  } else {
+    getStyleProperties(options).forEach((name) => {
+      let value = sourceStyle.getPropertyValue(name);
+      if (name === "font-size" && value.endsWith("px")) {
+        const reducedFont = Math.floor(parseFloat(value.substring(0, value.length - 2))) - 0.1;
+        value = `${reducedFont}px`;
+      }
+      if (isInstanceOfElement(nativeNode, HTMLIFrameElement) && name === "display" && value === "inline") {
+        value = "block";
+      }
+      if (name === "d" && clonedNode.getAttribute("d")) {
+        value = `path(${clonedNode.getAttribute("d")})`;
+      }
+      targetStyle.setProperty(name, value, sourceStyle.getPropertyPriority(name));
+    });
+  }
+}
+function cloneInputValue(nativeNode, clonedNode) {
+  if (isInstanceOfElement(nativeNode, HTMLTextAreaElement)) {
+    clonedNode.innerHTML = nativeNode.value;
+  }
+  if (isInstanceOfElement(nativeNode, HTMLInputElement)) {
+    clonedNode.setAttribute("value", nativeNode.value);
+  }
+}
+function cloneSelectValue(nativeNode, clonedNode) {
+  if (isInstanceOfElement(nativeNode, HTMLSelectElement)) {
+    const clonedSelect = clonedNode;
+    const selectedOption = Array.from(clonedSelect.children).find((child) => nativeNode.value === child.getAttribute("value"));
+    if (selectedOption) {
+      selectedOption.setAttribute("selected", "");
+    }
+  }
+}
+function decorate(nativeNode, clonedNode, options) {
+  if (isInstanceOfElement(clonedNode, Element)) {
+    cloneCSSStyle(nativeNode, clonedNode, options);
+    clonePseudoElements(nativeNode, clonedNode, options);
+    cloneInputValue(nativeNode, clonedNode);
+    cloneSelectValue(nativeNode, clonedNode);
+  }
+  return clonedNode;
+}
+async function ensureSVGSymbols(clone, options) {
+  const uses = clone.querySelectorAll ? clone.querySelectorAll("use") : [];
+  if (uses.length === 0) {
+    return clone;
+  }
+  const processedDefs = {};
+  for (let i = 0; i < uses.length; i++) {
+    const use = uses[i];
+    const id = use.getAttribute("xlink:href");
+    if (id) {
+      const exist = clone.querySelector(id);
+      const definition = document.querySelector(id);
+      if (!exist && definition && !processedDefs[id]) {
+        processedDefs[id] = await cloneNode(definition, options, true);
+      }
+    }
+  }
+  const nodes = Object.values(processedDefs);
+  if (nodes.length) {
+    const ns = "http://www.w3.org/1999/xhtml";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("xmlns", ns);
+    svg.style.position = "absolute";
+    svg.style.width = "0";
+    svg.style.height = "0";
+    svg.style.overflow = "hidden";
+    svg.style.display = "none";
+    const defs = document.createElementNS(ns, "defs");
+    svg.appendChild(defs);
+    for (let i = 0; i < nodes.length; i++) {
+      defs.appendChild(nodes[i]);
+    }
+    clone.appendChild(svg);
+  }
+  return clone;
+}
+async function cloneNode(node, options, isRoot) {
+  if (!isRoot && options.filter && !options.filter(node)) {
+    return null;
+  }
+  return Promise.resolve(node).then((clonedNode) => cloneSingleNode(clonedNode, options)).then((clonedNode) => cloneChildren(node, clonedNode, options)).then((clonedNode) => decorate(node, clonedNode, options)).then((clonedNode) => ensureSVGSymbols(clonedNode, options));
+}
+
+// node_modules/html-to-image/es/embed-resources.js
+var URL_REGEX = /url\((['"]?)([^'"]+?)\1\)/g;
+var URL_WITH_FORMAT_REGEX = /url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g;
+var FONT_SRC_REGEX = /src:\s*(?:url\([^)]+\)\s*format\([^)]+\)[,;]\s*)+/g;
+function toRegex(url) {
+  const escaped = url.replace(/([.*+?^${}()|\[\]\/\\])/g, "\\$1");
+  return new RegExp(`(url\\(['"]?)(${escaped})(['"]?\\))`, "g");
+}
+function parseURLs(cssText) {
+  const urls = [];
+  cssText.replace(URL_REGEX, (raw, quotation, url) => {
+    urls.push(url);
+    return raw;
+  });
+  return urls.filter((url) => !isDataUrl(url));
+}
+async function embed(cssText, resourceURL, baseURL, options, getContentFromUrl) {
+  try {
+    const resolvedURL = baseURL ? resolveUrl(resourceURL, baseURL) : resourceURL;
+    const contentType = getMimeType(resourceURL);
+    let dataURL;
+    if (getContentFromUrl) {
+      const content = await getContentFromUrl(resolvedURL);
+      dataURL = makeDataUrl(content, contentType);
+    } else {
+      dataURL = await resourceToDataURL(resolvedURL, contentType, options);
+    }
+    return cssText.replace(toRegex(resourceURL), `$1${dataURL}$3`);
+  } catch (error) {
+  }
+  return cssText;
+}
+function filterPreferredFontFormat(str, { preferredFontFormat }) {
+  return !preferredFontFormat ? str : str.replace(FONT_SRC_REGEX, (match) => {
+    while (true) {
+      const [src, , format] = URL_WITH_FORMAT_REGEX.exec(match) || [];
+      if (!format) {
+        return "";
+      }
+      if (format === preferredFontFormat) {
+        return `src: ${src};`;
+      }
+    }
+  });
+}
+function shouldEmbed(url) {
+  return url.search(URL_REGEX) !== -1;
+}
+async function embedResources(cssText, baseUrl, options) {
+  if (!shouldEmbed(cssText)) {
+    return cssText;
+  }
+  const filteredCSSText = filterPreferredFontFormat(cssText, options);
+  const urls = parseURLs(filteredCSSText);
+  return urls.reduce((deferred, url) => deferred.then((css2) => embed(css2, url, baseUrl, options)), Promise.resolve(filteredCSSText));
+}
+
+// node_modules/html-to-image/es/embed-images.js
+async function embedProp(propName, node, options) {
+  var _a;
+  const propValue = (_a = node.style) === null || _a === void 0 ? void 0 : _a.getPropertyValue(propName);
+  if (propValue) {
+    const cssString = await embedResources(propValue, null, options);
+    node.style.setProperty(propName, cssString, node.style.getPropertyPriority(propName));
+    return true;
+  }
+  return false;
+}
+async function embedBackground(clonedNode, options) {
+  ;
+  await embedProp("background", clonedNode, options) || await embedProp("background-image", clonedNode, options);
+  await embedProp("mask", clonedNode, options) || await embedProp("-webkit-mask", clonedNode, options) || await embedProp("mask-image", clonedNode, options) || await embedProp("-webkit-mask-image", clonedNode, options);
+}
+async function embedImageNode(clonedNode, options) {
+  const isImageElement = isInstanceOfElement(clonedNode, HTMLImageElement);
+  if (!(isImageElement && !isDataUrl(clonedNode.src)) && !(isInstanceOfElement(clonedNode, SVGImageElement) && !isDataUrl(clonedNode.href.baseVal))) {
+    return;
+  }
+  const url = isImageElement ? clonedNode.src : clonedNode.href.baseVal;
+  const dataURL = await resourceToDataURL(url, getMimeType(url), options);
+  await new Promise((resolve, reject) => {
+    clonedNode.onload = resolve;
+    clonedNode.onerror = options.onImageErrorHandler ? (...attributes) => {
+      try {
+        resolve(options.onImageErrorHandler(...attributes));
+      } catch (error) {
+        reject(error);
+      }
+    } : reject;
+    const image = clonedNode;
+    if (image.decode) {
+      image.decode = resolve;
+    }
+    if (image.loading === "lazy") {
+      image.loading = "eager";
+    }
+    if (isImageElement) {
+      clonedNode.srcset = "";
+      clonedNode.src = dataURL;
+    } else {
+      clonedNode.href.baseVal = dataURL;
+    }
+  });
+}
+async function embedChildren(clonedNode, options) {
+  const children = toArray(clonedNode.childNodes);
+  const deferreds = children.map((child) => embedImages(child, options));
+  await Promise.all(deferreds).then(() => clonedNode);
+}
+async function embedImages(clonedNode, options) {
+  if (isInstanceOfElement(clonedNode, Element)) {
+    await embedBackground(clonedNode, options);
+    await embedImageNode(clonedNode, options);
+    await embedChildren(clonedNode, options);
+  }
+}
+
+// node_modules/html-to-image/es/embed-webfonts.js
+var cssFetchCache = {};
+async function fetchCSS(url) {
+  let cache2 = cssFetchCache[url];
+  if (cache2 != null) {
+    return cache2;
+  }
+  const res = await fetch(url);
+  const cssText = await res.text();
+  cache2 = { url, cssText };
+  cssFetchCache[url] = cache2;
+  return cache2;
+}
+async function embedFonts(data, options) {
+  let cssText = data.cssText;
+  const regexUrl = /url\(["']?([^"')]+)["']?\)/g;
+  const fontLocs = cssText.match(/url\([^)]+\)/g) || [];
+  const loadFonts = fontLocs.map(async (loc) => {
+    let url = loc.replace(regexUrl, "$1");
+    if (!url.startsWith("https://")) {
+      url = new URL(url, data.url).href;
+    }
+    return fetchAsDataURL(url, options.fetchRequestInit, ({ result }) => {
+      cssText = cssText.replace(loc, `url(${result})`);
+      return [loc, result];
+    });
+  });
+  return Promise.all(loadFonts).then(() => cssText);
+}
+function parseCSS(source) {
+  if (source == null) {
+    return [];
+  }
+  const result = [];
+  const commentsRegex = /(\/\*[\s\S]*?\*\/)/gi;
+  let cssText = source.replace(commentsRegex, "");
+  const keyframesRegex = new RegExp("((@.*?keyframes [\\s\\S]*?){([\\s\\S]*?}\\s*?)})", "gi");
+  while (true) {
+    const matches = keyframesRegex.exec(cssText);
+    if (matches === null) {
+      break;
+    }
+    result.push(matches[0]);
+  }
+  cssText = cssText.replace(keyframesRegex, "");
+  const importRegex = /@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi;
+  const combinedCSSRegex = "((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})";
+  const unifiedRegex = new RegExp(combinedCSSRegex, "gi");
+  while (true) {
+    let matches = importRegex.exec(cssText);
+    if (matches === null) {
+      matches = unifiedRegex.exec(cssText);
+      if (matches === null) {
+        break;
+      } else {
+        importRegex.lastIndex = unifiedRegex.lastIndex;
+      }
+    } else {
+      unifiedRegex.lastIndex = importRegex.lastIndex;
+    }
+    result.push(matches[0]);
+  }
+  return result;
+}
+async function getCSSRules(styleSheets, options) {
+  const ret = [];
+  const deferreds = [];
+  styleSheets.forEach((sheet) => {
+    if ("cssRules" in sheet) {
+      try {
+        toArray(sheet.cssRules || []).forEach((item, index) => {
+          if (item.type === CSSRule.IMPORT_RULE) {
+            let importIndex = index + 1;
+            const url = item.href;
+            const deferred = fetchCSS(url).then((metadata) => embedFonts(metadata, options)).then((cssText) => parseCSS(cssText).forEach((rule) => {
+              try {
+                sheet.insertRule(rule, rule.startsWith("@import") ? importIndex += 1 : sheet.cssRules.length);
+              } catch (error) {
+                console.error("Error inserting rule from remote css", {
+                  rule,
+                  error
+                });
+              }
+            })).catch((e) => {
+              console.error("Error loading remote css", e.toString());
+            });
+            deferreds.push(deferred);
+          }
+        });
+      } catch (e) {
+        const inline = styleSheets.find((a) => a.href == null) || document.styleSheets[0];
+        if (sheet.href != null) {
+          deferreds.push(fetchCSS(sheet.href).then((metadata) => embedFonts(metadata, options)).then((cssText) => parseCSS(cssText).forEach((rule) => {
+            inline.insertRule(rule, inline.cssRules.length);
+          })).catch((err) => {
+            console.error("Error loading remote stylesheet", err);
+          }));
+        }
+        console.error("Error inlining remote css file", e);
+      }
+    }
+  });
+  return Promise.all(deferreds).then(() => {
+    styleSheets.forEach((sheet) => {
+      if ("cssRules" in sheet) {
+        try {
+          toArray(sheet.cssRules || []).forEach((item) => {
+            ret.push(item);
+          });
+        } catch (e) {
+          console.error(`Error while reading CSS rules from ${sheet.href}`, e);
+        }
+      }
+    });
+    return ret;
+  });
+}
+function getWebFontRules(cssRules) {
+  return cssRules.filter((rule) => rule.type === CSSRule.FONT_FACE_RULE).filter((rule) => shouldEmbed(rule.style.getPropertyValue("src")));
+}
+async function parseWebFontRules(node, options) {
+  if (node.ownerDocument == null) {
+    throw new Error("Provided element is not within a Document");
+  }
+  const styleSheets = toArray(node.ownerDocument.styleSheets);
+  const cssRules = await getCSSRules(styleSheets, options);
+  return getWebFontRules(cssRules);
+}
+function normalizeFontFamily(font) {
+  return font.trim().replace(/["']/g, "");
+}
+function getUsedFonts(node) {
+  const fonts = /* @__PURE__ */ new Set();
+  function traverse(node2) {
+    const fontFamily = node2.style.fontFamily || getComputedStyle(node2).fontFamily;
+    fontFamily.split(",").forEach((font) => {
+      fonts.add(normalizeFontFamily(font));
+    });
+    Array.from(node2.children).forEach((child) => {
+      if (child instanceof HTMLElement) {
+        traverse(child);
+      }
+    });
+  }
+  traverse(node);
+  return fonts;
+}
+async function getWebFontCSS(node, options) {
+  const rules = await parseWebFontRules(node, options);
+  const usedFonts = getUsedFonts(node);
+  const cssTexts = await Promise.all(rules.filter((rule) => usedFonts.has(normalizeFontFamily(rule.style.fontFamily))).map((rule) => {
+    const baseUrl = rule.parentStyleSheet ? rule.parentStyleSheet.href : null;
+    return embedResources(rule.cssText, baseUrl, options);
+  }));
+  return cssTexts.join("\n");
+}
+
+// node_modules/html-to-image/es/index.js
+async function getFontEmbedCSS(node, options = {}) {
+  return getWebFontCSS(node, options);
+}
+
+// packages/sandrone-ui/src/sessionScreenshot.js
+var SESSION_SCREENSHOT_CHUNK_HEIGHT = 6e3;
+var SESSION_SCREENSHOT_CHUNK_PIXELS = 18e6;
+var SESSION_SCREENSHOT_MAX_HEIGHT = 36e3;
+var SESSION_SCREENSHOT_MAX_WIDTH = 8e3;
+var SESSION_SCREENSHOT_MAX_PIXELS = 18e7;
+var SESSION_SCREENSHOT_RENDER_TIMEOUT_MS = 2e4;
+var SESSION_SCREENSHOT_TOTAL_TIMEOUT_MS = 6e4;
+var SESSION_SCREENSHOT_EXCLUDED = [
+  "[data-composer-seat]",
+  "[data-sandrone-screenshot-overlay]",
+  ".sandrone-session-screenshot-overlay",
+  ".sandrone-right-panel"
+].join(",");
+function screenshotTimeout(promise, timeoutMs, message) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+    })
+  ]).finally(() => window.clearTimeout(timer));
+}
+function screenshotBackground(element) {
+  for (let current = element; current instanceof HTMLElement; current = current.parentElement) {
+    const color = window.getComputedStyle(current).backgroundColor;
+    if (color && color !== "transparent" && color !== "rgba(0, 0, 0, 0)") return color;
+  }
+  return document.documentElement.dataset.colorScheme === "dark" ? "#1d1b1a" : "#faf8f4";
+}
+function prepareScreenshotClone(clone) {
+  clone.querySelectorAll("*").forEach((copy) => {
+    const position = copy.style.position;
+    if (position === "sticky" && copy.closest("[data-chat-flow-kind]")) {
+      copy.style.setProperty("position", "relative", "important");
+      copy.style.setProperty("inset", "auto", "important");
+    } else if (position === "fixed" || position === "sticky") {
+      copy.setAttribute("data-sandrone-capture-excluded", "true");
+    }
+  });
+}
+function captureMediaLayoutLocks(source) {
+  const locks = [];
+  let sequence = 0;
+  source.querySelectorAll("*").forEach((element) => {
+    if (!(element instanceof HTMLElement) || element.children.length < 2) return;
+    const style = window.getComputedStyle(element);
+    if (!["flex", "inline-flex", "grid", "inline-grid"].includes(style.display)) return;
+    const mediaChildren = [...element.children].filter((child) => child.matches("img, video, canvas, picture") || child.querySelector("img, video, canvas, picture"));
+    if (mediaChildren.length < 2) return;
+    const containerRect = element.getBoundingClientRect();
+    if (containerRect.width < 1 || containerRect.height < 1) return;
+    const id = `media-${sequence++}`;
+    element.setAttribute("data-sandrone-capture-layout-lock", id);
+    const children = [...element.children].map((child, index) => {
+      const rect = child.getBoundingClientRect();
+      child.setAttribute("data-sandrone-capture-layout-child", `${id}:${index}`);
+      return { id: `${id}:${index}`, left: rect.left - containerRect.left, top: rect.top - containerRect.top, width: rect.width, height: rect.height };
+    });
+    locks.push({ id, width: containerRect.width, height: containerRect.height, children });
+  });
+  return locks;
+}
+function clearMediaLayoutLockMarkers(source) {
+  source.querySelectorAll("[data-sandrone-capture-layout-lock], [data-sandrone-capture-layout-child]").forEach((element) => {
+    element.removeAttribute("data-sandrone-capture-layout-lock");
+    element.removeAttribute("data-sandrone-capture-layout-child");
+  });
+}
+function applyMediaLayoutLocks(clone, locks) {
+  for (const lock of locks) {
+    const container = clone.querySelector(`[data-sandrone-capture-layout-lock="${lock.id}"]`);
+    if (!(container instanceof HTMLElement)) continue;
+    container.style.setProperty("position", "relative", "important");
+    container.style.setProperty("display", "block", "important");
+    container.style.setProperty("box-sizing", "border-box", "important");
+    for (const property of ["width", "min-width", "max-width"]) container.style.setProperty(property, `${lock.width}px`, "important");
+    for (const property of ["height", "min-height", "max-height"]) container.style.setProperty(property, `${lock.height}px`, "important");
+    for (const childLock of lock.children) {
+      const child = container.querySelector(`:scope > [data-sandrone-capture-layout-child="${childLock.id}"]`);
+      if (!(child instanceof HTMLElement)) continue;
+      child.style.setProperty("position", "absolute", "important");
+      child.style.setProperty("inset", "auto", "important");
+      child.style.setProperty("left", `${childLock.left}px`, "important");
+      child.style.setProperty("top", `${childLock.top}px`, "important");
+      child.style.setProperty("box-sizing", "border-box", "important");
+      for (const property of ["width", "min-width", "max-width"]) child.style.setProperty(property, `${childLock.width}px`, "important");
+      for (const property of ["height", "min-height", "max-height"]) child.style.setProperty(property, `${childLock.height}px`, "important");
+      child.style.setProperty("margin", "0", "important");
+    }
+  }
+}
+async function renderFrozenViewport(viewport, host, width, height, backgroundColor) {
+  let dataUrl;
+  try {
+    dataUrl = await nodeToDataURL(viewport, width, height);
+  } finally {
+    host.appendChild(viewport);
+  }
+  const image = await createImage(dataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("\u65E0\u6CD5\u521B\u5EFA\u622A\u56FE\u753B\u5E03");
+  context.fillStyle = backgroundColor;
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+  return canvasToBlob(canvas, { type: "image/png", quality: 1 });
+}
+function relativeBox(element, root, rootRect, scrollTop = 0) {
+  const rect = element.getBoundingClientRect();
+  const top = rect.top - rootRect.top + scrollTop;
+  return { top, bottom: top + rect.height };
+}
+function captureAnchorPairs(source, clone) {
+  const sourceRect = source.getBoundingClientRect();
+  const cloneRect = clone.getBoundingClientRect();
+  const cloneByKey = /* @__PURE__ */ new Map();
+  clone.querySelectorAll("[data-chat-anchor-key]").forEach((element) => {
+    const key = element.getAttribute("data-chat-anchor-key");
+    if (!key) return;
+    const matches = cloneByKey.get(key) || [];
+    matches.push(element);
+    cloneByKey.set(key, matches);
+  });
+  const occurrences = /* @__PURE__ */ new Map();
+  const pairs = [];
+  source.querySelectorAll("[data-chat-anchor-key]").forEach((element) => {
+    const key = element.getAttribute("data-chat-anchor-key");
+    if (!key) return;
+    const occurrence = occurrences.get(key) || 0;
+    occurrences.set(key, occurrence + 1);
+    const cloneElement = cloneByKey.get(key)?.[occurrence];
+    if (!cloneElement) return;
+    const sourceBox = relativeBox(element, source, sourceRect, source.scrollTop);
+    const cloneBox = relativeBox(cloneElement, clone, cloneRect);
+    if (![sourceBox.top, sourceBox.bottom, cloneBox.top, cloneBox.bottom].every(Number.isFinite)) return;
+    if (sourceBox.bottom <= sourceBox.top || cloneBox.bottom <= cloneBox.top) return;
+    pairs.push({ source: sourceBox, clone: cloneBox });
+  });
+  pairs.sort((left, right) => left.source.top - right.source.top || left.source.bottom - right.source.bottom);
+  return pairs.filter((pair, index) => {
+    const previous = pairs[index - 1];
+    return !previous || Math.abs(previous.source.top - pair.source.top) > 0.5 || Math.abs(previous.source.bottom - pair.source.bottom) > 0.5 || Math.abs(previous.clone.top - pair.clone.top) > 0.5 || Math.abs(previous.clone.bottom - pair.clone.bottom) > 0.5;
+  });
+}
+function interpolate(value, sourceStart, sourceEnd, cloneStart, cloneEnd) {
+  if (sourceEnd <= sourceStart) return cloneStart;
+  const progress = Math.max(0, Math.min(1, (value - sourceStart) / (sourceEnd - sourceStart)));
+  return cloneStart + (cloneEnd - cloneStart) * progress;
+}
+function mapScreenshotCoordinate(value, anchors, sourceExtent, cloneExtent) {
+  const coordinate = Math.max(0, Math.min(sourceExtent, value));
+  if (anchors.length === 0) return Math.min(coordinate, cloneExtent);
+  const containing = anchors.filter((anchor) => coordinate >= anchor.source.top && coordinate <= anchor.source.bottom).sort((left, right) => left.source.bottom - left.source.top - (right.source.bottom - right.source.top))[0];
+  if (containing) {
+    return interpolate(coordinate, containing.source.top, containing.source.bottom, containing.clone.top, containing.clone.bottom);
+  }
+  let previous = null;
+  let next = null;
+  for (const anchor of anchors) {
+    if (anchor.source.bottom <= coordinate && (!previous || anchor.source.bottom > previous.source.bottom)) previous = anchor;
+    if (anchor.source.top >= coordinate && (!next || anchor.source.top < next.source.top)) next = anchor;
+  }
+  if (previous && next) {
+    return interpolate(coordinate, previous.source.bottom, next.source.top, previous.clone.bottom, next.clone.top);
+  }
+  if (next) return interpolate(coordinate, 0, next.source.top, 0, next.clone.top);
+  if (previous) return interpolate(coordinate, previous.source.bottom, sourceExtent, previous.clone.bottom, cloneExtent);
+  return Math.min(coordinate, cloneExtent);
+}
+async function renderSessionScreenshot(target, selection, baseline) {
+  const rect = target.getBoundingClientRect();
+  const scrollHeight = Math.max(target.scrollHeight, target.clientHeight);
+  if (baseline && (Math.abs(rect.width - baseline.width) > 1 || Math.abs(scrollHeight - baseline.scrollHeight) > 1)) {
+    throw new Error("\u4F1A\u8BDD\u5185\u5BB9\u6216\u5E03\u5C40\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+  }
+  if (selection.bottom > scrollHeight) throw new Error("\u622A\u56FE\u7EC8\u70B9\u8D85\u51FA\u5F53\u524D\u4F1A\u8BDD\u5185\u5BB9");
+  const width = Math.ceil(rect.width);
+  const requestedHeight = selection.bottom - selection.top;
+  if (width < 1 || requestedHeight < 1) throw new Error("\u622A\u56FE\u9009\u533A\u4E3A\u7A7A");
+  if (width > SESSION_SCREENSHOT_MAX_WIDTH) throw new Error("\u4F1A\u8BDD\u5BBD\u5EA6\u8D85\u51FA\u622A\u56FE\u8303\u56F4");
+  if (requestedHeight > SESSION_SCREENSHOT_MAX_HEIGHT) throw new Error(`\u9009\u53D6\u8303\u56F4\u8FC7\u957F\uFF0C\u8BF7\u5206\u6BB5\u622A\u56FE\uFF08\u4E0A\u9650 ${SESSION_SCREENSHOT_MAX_HEIGHT} \u50CF\u7D20\uFF09`);
+  if (width * requestedHeight > SESSION_SCREENSHOT_MAX_PIXELS) throw new Error("\u622A\u56FE\u533A\u57DF\u8FC7\u5927\uFF0C\u8BF7\u7F29\u5C0F\u9009\u533A\u6216\u5206\u6BB5\u622A\u56FE");
+  const backgroundColor = screenshotBackground(target);
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.setAttribute("data-sandrone-capture-host", "true");
+  Object.assign(host.style, {
+    position: "fixed",
+    left: "-100000px",
+    top: "0",
+    width: `${width}px`,
+    height: "1px",
+    overflow: "hidden",
+    pointerEvents: "none",
+    contain: "strict",
+    zIndex: "-2147483648"
+  });
+  const viewport = document.createElement("div");
+  const mediaLayoutLocks = captureMediaLayoutLocks(target);
+  let snapshot;
+  try {
+    snapshot = await screenshotTimeout(cloneNode(target, {
+      filter: (node) => !(node instanceof Element) || !node.matches(SESSION_SCREENSHOT_EXCLUDED)
+    }, true), SESSION_SCREENSHOT_RENDER_TIMEOUT_MS, "\u51BB\u7ED3\u4F1A\u8BDD\u5E03\u5C40\u8D85\u65F6");
+  } finally {
+    clearMediaLayoutLockMarkers(target);
+  }
+  if (!(snapshot instanceof HTMLElement)) throw new Error("\u65E0\u6CD5\u521B\u5EFA\u4F1A\u8BDD\u622A\u56FE\u526F\u672C");
+  const freezeStyle = document.createElement("style");
+  freezeStyle.textContent = `
+    [data-sandrone-capture-clone], [data-sandrone-capture-clone] *,
+    [data-sandrone-capture-clone] *::before, [data-sandrone-capture-clone] *::after {
+      animation: none !important; transition: none !important; caret-color: transparent !important;
+      scrollbar-width: none !important;
+    }
+    [data-sandrone-capture-clone] *::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
+    [data-sandrone-capture-clone] [data-sandrone-capture-excluded="true"] { visibility: hidden !important; }
+  `;
+  Object.assign(viewport.style, {
+    position: "relative",
+    width: `${width}px`,
+    overflow: "hidden",
+    background: backgroundColor
+  });
+  snapshot.setAttribute("data-sandrone-capture-clone", "true");
+  snapshot.setAttribute("inert", "");
+  prepareScreenshotClone(snapshot);
+  applyMediaLayoutLocks(snapshot, mediaLayoutLocks);
+  Object.assign(snapshot.style, {
+    position: "absolute",
+    left: "0",
+    top: "0",
+    width: `${rect.width}px`,
+    minWidth: `${rect.width}px`,
+    maxWidth: `${rect.width}px`,
+    height: `${rect.height}px`,
+    minHeight: `${rect.height}px`,
+    maxHeight: `${rect.height}px`,
+    overflow: "visible",
+    transform: "translate3d(0, 0, 0)",
+    scrollBehavior: "auto",
+    scrollbarGutter: "auto"
+  });
+  snapshot.querySelectorAll(SESSION_SCREENSHOT_EXCLUDED).forEach((element) => element.setAttribute("data-sandrone-capture-excluded", "true"));
+  viewport.append(freezeStyle, snapshot);
+  host.appendChild(viewport);
+  document.body.appendChild(host);
+  try {
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    const cloneExtent = Math.max(snapshot.scrollHeight, snapshot.clientHeight);
+    const anchors = captureAnchorPairs(target, snapshot);
+    const mappedTop = Math.max(0, Math.floor(mapScreenshotCoordinate(selection.top, anchors, scrollHeight, cloneExtent)));
+    const mappedBottom = Math.min(cloneExtent, Math.ceil(mapScreenshotCoordinate(selection.bottom, anchors, scrollHeight, cloneExtent)));
+    const height = mappedBottom - mappedTop;
+    if (height < 1) throw new Error("\u622A\u56FE\u9009\u533A\u6620\u5C04\u4E3A\u7A7A\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9");
+    if (height > SESSION_SCREENSHOT_MAX_HEIGHT || width * height > SESSION_SCREENSHOT_MAX_PIXELS) throw new Error("\u6620\u5C04\u540E\u7684\u622A\u56FE\u533A\u57DF\u8FC7\u5927\uFF0C\u8BF7\u7F29\u5C0F\u9009\u533A\u6216\u5206\u6BB5\u622A\u56FE");
+    const chunkHeightLimit = Math.max(1, Math.min(SESSION_SCREENSHOT_CHUNK_HEIGHT, Math.floor(SESSION_SCREENSHOT_CHUNK_PIXELS / width)));
+    const deadline = performance.now() + SESSION_SCREENSHOT_TOTAL_TIMEOUT_MS;
+    const remaining = (limit) => Math.max(1, Math.min(limit, deadline - performance.now()));
+    await screenshotTimeout(document.fonts?.ready || Promise.resolve(), remaining(3e3), "\u7B49\u5F85\u5B57\u4F53\u52A0\u8F7D\u8D85\u65F6").catch(() => {
+    });
+    let fontEmbedCSS;
+    try {
+      fontEmbedCSS = await screenshotTimeout(getFontEmbedCSS(viewport, { preferredFontFormat: "woff2" }), remaining(8e3), "\u5D4C\u5165\u5B57\u4F53\u8D85\u65F6");
+    } catch {
+      fontEmbedCSS = void 0;
+    }
+    if (fontEmbedCSS) {
+      const fontStyle = document.createElement("style");
+      fontStyle.textContent = fontEmbedCSS;
+      viewport.prepend(fontStyle);
+    }
+    await screenshotTimeout(embedImages(viewport, { cacheBust: false }), remaining(SESSION_SCREENSHOT_RENDER_TIMEOUT_MS), "\u5D4C\u5165\u622A\u56FE\u56FE\u7247\u8D85\u65F6");
+    const chunks = [];
+    for (let offset = 0; offset < height; offset += chunkHeightLimit) {
+      const chunkHeight = Math.min(chunkHeightLimit, height - offset);
+      viewport.style.height = `${chunkHeight}px`;
+      snapshot.style.transform = `translate3d(0, ${-(mappedTop + offset)}px, 0)`;
+      const blob = await screenshotTimeout(renderFrozenViewport(viewport, host, width, chunkHeight, backgroundColor), remaining(SESSION_SCREENSHOT_RENDER_TIMEOUT_MS), `\u6E32\u67D3\u622A\u56FE\u7247\u6BB5 ${chunks.length + 1} \u8D85\u65F6`);
+      if (!(blob instanceof Blob) || blob.size < 1) throw new Error(`\u622A\u56FE\u7247\u6BB5 ${chunks.length + 1} \u4E3A\u7A7A`);
+      chunks.push(new Uint8Array(await blob.arrayBuffer()));
+    }
+    return { chunks, width, height };
+  } finally {
+    host.remove();
+  }
+}
+
 // packages/sandrone-ui/src/client.jsx
 var inject = ["slots", "theme"];
 var TOKEN_LAYER = Object.freeze({
@@ -4700,13 +5693,14 @@ function ImSettingsSection() {
 }
 function insertFallbackFileText(files) {
   const textarea = document.querySelector("[data-sandrone-composer-input]");
-  if (!(textarea instanceof HTMLTextAreaElement)) return;
+  if (!(textarea instanceof HTMLTextAreaElement)) return false;
   const names = files.map((file) => `[${file.name || "image.png"}]`).join(" ");
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-  if (!setter) return;
+  if (!setter) return false;
   const prefix = textarea.value.trim() === "" ? "" : `${textarea.value.endsWith(" ") ? "" : " "}`;
   setter.call(textarea, `${textarea.value}${prefix}${names}`);
   textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
 }
 function dispatchFilesToOfficialInput(files) {
   const textarea = document.querySelector("[data-sandrone-composer-input]");
@@ -4781,7 +5775,7 @@ function installProviderCapabilityFields(connection) {
       if (frame || decorating) return;
       frame = window.requestAnimationFrame(() => {
         frame = 0;
-        void decorate();
+        void decorate2();
       });
     };
     const snapshot = async () => {
@@ -4827,7 +5821,7 @@ function installProviderCapabilityFields(connection) {
         savingReasoning.delete(key);
       }
     };
-    const decorate = async () => {
+    const decorate2 = async () => {
       const panel = document.querySelector('[role="dialog"][aria-modal="true"]');
       if (!panel || !connection?.api?.settings?.describe) return;
       decorating = true;
@@ -5443,15 +6437,17 @@ function SessionViewToggle() {
   };
   return /* @__PURE__ */ import_react.default.createElement("button", { type: "button", className: "sandrone-session-icon-button", "aria-label": state.trajectory ? "\u5207\u6362\u5230\u5BF9\u8BDD" : "\u5207\u6362\u5230\u8F68\u8FF9", title: state.trajectory ? "\u5F53\u524D\uFF1A\u8F68\u8FF9\uFF0C\u70B9\u51FB\u5207\u6362\u5230\u5BF9\u8BDD" : "\u5F53\u524D\uFF1A\u5BF9\u8BDD\uFF0C\u70B9\u51FB\u5207\u6362\u5230\u8F68\u8FF9", onClick: toggle }, state.trajectory ? /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("circle", { cx: "4", cy: "4", r: "1.1" }), /* @__PURE__ */ import_react.default.createElement("circle", { cx: "14", cy: "9", r: "1.1" }), /* @__PURE__ */ import_react.default.createElement("circle", { cx: "4", cy: "14", r: "1.1" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M5.2 4h2.2A2.6 2.6 0 0 1 10 6.6v4.8A2.6 2.6 0 0 1 7.4 14H5.2M10 9h2.8" })) : /* @__PURE__ */ import_react.default.createElement("svg", { viewBox: "0 0 18 18", "aria-hidden": "true" }, /* @__PURE__ */ import_react.default.createElement("path", { d: "M3.5 4.25h11v7.5H8.25L5 14.25l.65-2.5H3.5Z" }), /* @__PURE__ */ import_react.default.createElement("path", { d: "M5.75 7h6.5M5.75 9.15h4.2" })));
 }
-function SessionScreenshotControl() {
+function SessionScreenshotControl({ sessionId }) {
   const [state, setState] = (0, import_react.useState)({ phase: "idle", message: "", start: null });
   const [pointerOffset, setPointerOffset] = (0, import_react.useState)(null);
   const [, setViewportTick] = (0, import_react.useState)(0);
   const targetRef = (0, import_react.useRef)(null);
+  const baselineRef = (0, import_react.useRef)(null);
   const desktop = window.sandroneDesktop;
   if (!desktop?.screenshot?.captureSession) return null;
   const findTarget = () => {
-    const element2 = document.querySelector("[data-conversation-scroll]");
+    const session = document.querySelector("[data-sandrone-session-body]");
+    const element2 = session?.querySelector("[data-conversation-scroll]") || document.querySelector("[data-conversation-scroll]") || session;
     if (!(element2 instanceof HTMLElement)) throw new Error("\u5F53\u524D\u6CA1\u6709\u53EF\u622A\u56FE\u7684\u4F1A\u8BDD\u5185\u5BB9");
     return element2;
   };
@@ -5460,23 +6456,31 @@ function SessionScreenshotControl() {
     try {
       const element2 = findTarget();
       targetRef.current = element2;
+      baselineRef.current = { sessionId, width: element2.getBoundingClientRect().width, scrollHeight: element2.scrollHeight };
       setPointerOffset(Math.round(element2.clientHeight / 2));
       setState({ phase: "selecting-start", message: "", start: null });
     } catch (cause) {
       setState({ phase: "error", message: cause instanceof Error ? cause.message : String(cause) });
     }
   };
-  const cancelSelection = () => {
+  const cancelSelection = (message = "") => {
     targetRef.current = null;
+    baselineRef.current = null;
     setPointerOffset(null);
-    setState({ phase: "idle", message: "", start: null });
+    setState({ phase: message ? "error" : "idle", message, start: null });
   };
   const choosePoint = async (event) => {
     event.preventDefault();
     event.stopPropagation();
     const element2 = targetRef.current;
-    if (!(element2 instanceof HTMLElement) || pointerOffset === null) return;
-    const offset = Math.max(0, Math.round(element2.scrollTop + pointerOffset));
+    if (!(element2 instanceof HTMLElement) || !element2.isConnected) {
+      cancelSelection("\u4F1A\u8BDD\u5185\u5BB9\u5DF2\u5207\u6362\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+      return;
+    }
+    const rect = element2.getBoundingClientRect();
+    const localOffset = Number.isFinite(event.clientY) ? Math.max(0, Math.min(rect.height, event.clientY - rect.top)) : pointerOffset;
+    if (localOffset === null || !Number.isFinite(localOffset)) return;
+    const offset = Math.max(0, Math.round(element2.scrollTop + localOffset));
     if (state.phase === "selecting-start") {
       setState({ phase: "selecting-end", message: "", start: offset });
       return;
@@ -5486,28 +6490,32 @@ function SessionScreenshotControl() {
     const bottom = Math.max(state.start, offset);
     setState({ phase: "capturing", message: "" });
     try {
-      await new Promise((resolve) => window.requestAnimationFrame(resolve));
-      const result = await desktop.screenshot.captureSession({ selection: { top, bottom } });
+      const rendered = await renderSessionScreenshot(element2, { top, bottom }, baselineRef.current);
+      const result = await screenshotTimeout(desktop.screenshot.captureSession(rendered), 45e3, "\u4FDD\u5B58\u4F1A\u8BDD\u622A\u56FE\u8D85\u65F6");
       if (result?.canceled) {
         cancelSelection();
         return;
       }
       if (!result?.ok) throw new Error(result?.error || "\u4FDD\u5B58\u622A\u56FE\u5931\u8D25");
       let attached = false;
+      let fallback = false;
       if (result.bytes) {
         const fileName = String(result.path || "").split(/[\\/]/).pop() || `Sandrone-session-${Date.now()}.png`;
         const screenshotFile = new File([result.bytes], fileName, { type: "image/png" });
         attached = dispatchFilesToOfficialInput([screenshotFile]);
-        if (!attached) insertFallbackFileText([screenshotFile]);
+        if (!attached) fallback = insertFallbackFileText([screenshotFile]);
       }
       targetRef.current = null;
+      baselineRef.current = null;
       setPointerOffset(null);
-      const clipboardMessage = result.clipboard === false ? "\u4F46\u5199\u5165\u7CFB\u7EDF\u526A\u8D34\u677F\u5931\u8D25" : "\u5DF2\u590D\u5236\u5230\u7CFB\u7EDF\u526A\u8D34\u677F";
-      setState({ phase: "success", message: attached ? `\u5DF2\u4FDD\u5B58\u3001${clipboardMessage}\u5E76\u6DFB\u52A0\u5230\u8F93\u5165\u6846` : `\u5DF2\u4FDD\u5B58\u3001${clipboardMessage}`, start: null });
+      const clipboardMessage = result.clipboard === true ? "\u5DF2\u590D\u5236\u5230\u7CFB\u7EDF\u526A\u8D34\u677F" : result.clipboard === false ? "\u4F46\u5199\u5165\u7CFB\u7EDF\u526A\u8D34\u677F\u5931\u8D25" : "\u672A\u5199\u5165\u7CFB\u7EDF\u526A\u8D34\u677F";
+      const attachmentMessage = result.attachment === false ? "\u56FE\u7247\u8FC7\u5927\uFF0C\u672A\u81EA\u52A8\u6DFB\u52A0\u5230\u8F93\u5165\u6846" : attached ? "\u5DF2\u6DFB\u52A0\u5230\u8F93\u5165\u6846" : fallback ? "\u5DF2\u5728\u8F93\u5165\u6846\u63D2\u5165\u56FE\u7247\u5360\u4F4D\u7B26" : result.bytes ? "\u672A\u80FD\u6DFB\u52A0\u5230\u8F93\u5165\u6846" : "\u672A\u4F20\u5165\u8F93\u5165\u6846";
+      setState({ phase: "success", message: `\u5DF2\u4FDD\u5B58\u3001${clipboardMessage}\u3001${attachmentMessage}`, start: null });
       window.setTimeout(() => setState((current) => current.phase === "success" ? { phase: "idle", message: "", start: null } : current), 1800);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       targetRef.current = null;
+      baselineRef.current = null;
       setPointerOffset(null);
       setState({ phase: "error", message, start: null });
     }
@@ -5515,31 +6523,74 @@ function SessionScreenshotControl() {
   (0, import_react.useEffect)(() => {
     const element2 = targetRef.current;
     if (!element2 || state.phase !== "selecting-start" && state.phase !== "selecting-end") return void 0;
+    if (baselineRef.current?.sessionId !== sessionId) {
+      cancelSelection("\u4F1A\u8BDD\u5DF2\u5207\u6362\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+      return void 0;
+    }
     const onKeyDown = (event) => {
       if (event.key === "Escape") cancelSelection();
     };
     const onPointerMove = (event) => {
+      if (!element2.isConnected) {
+        cancelSelection("\u4F1A\u8BDD\u5185\u5BB9\u5DF2\u5207\u6362\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+        return;
+      }
       const rect = element2.getBoundingClientRect();
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
       setPointerOffset(Math.max(0, Math.min(rect.height, event.clientY - rect.top)));
     };
     const onWheel = (event) => {
       if (event.target instanceof Element && event.target.closest(".sandrone-session-screenshot-cancel")) return;
+      if (!element2.isConnected) {
+        cancelSelection("\u4F1A\u8BDD\u5185\u5BB9\u5DF2\u5207\u6362\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+        return;
+      }
+      const rect = element2.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return;
       event.preventDefault();
-      element2.scrollTop = Math.max(0, Math.min(element2.scrollHeight - element2.clientHeight, element2.scrollTop + event.deltaY));
+      event.stopPropagation();
+      const lineHeight = Number.parseFloat(window.getComputedStyle(element2).lineHeight) || 16;
+      const unit = event.deltaMode === 1 ? lineHeight : event.deltaMode === 2 ? element2.clientHeight : 1;
+      const maxScroll = Math.max(0, element2.scrollHeight - element2.clientHeight);
+      element2.scrollTop = Math.max(0, Math.min(maxScroll, element2.scrollTop + event.deltaY * unit));
     };
-    const onScroll = () => setViewportTick((value) => value + 1);
+    const onScroll = () => {
+      const baseline = baselineRef.current;
+      if (baseline && (Math.abs(element2.scrollHeight - baseline.scrollHeight) > 1 || Math.abs(element2.getBoundingClientRect().width - baseline.width) > 1)) {
+        cancelSelection("\u4F1A\u8BDD\u5185\u5BB9\u53D1\u751F\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+        return;
+      }
+      setViewportTick((value) => value + 1);
+    };
+    const onResize = () => cancelSelection("\u7A97\u53E3\u5C3A\u5BF8\u53D1\u751F\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+    const onVisibilityChange = () => {
+      if (document.hidden) cancelSelection("\u7A97\u53E3\u5931\u53BB\u7126\u70B9\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+    };
+    const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(() => {
+      const baseline = baselineRef.current;
+      if (baseline && (Math.abs(element2.scrollHeight - baseline.scrollHeight) > 1 || Math.abs(element2.getBoundingClientRect().width - baseline.width) > 1)) {
+        cancelSelection("\u4F1A\u8BDD\u5E03\u5C40\u53D1\u751F\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9\u622A\u56FE");
+      } else {
+        setViewportTick((value) => value + 1);
+      }
+    }) : null;
+    resizeObserver?.observe(element2);
     document.addEventListener("keydown", onKeyDown, true);
     document.addEventListener("pointermove", onPointerMove, true);
     document.addEventListener("wheel", onWheel, { capture: true, passive: false });
     element2.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("pointermove", onPointerMove, true);
       document.removeEventListener("wheel", onWheel, true);
       element2.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      resizeObserver?.disconnect();
     };
-  }, [state.phase]);
+  }, [state.phase, sessionId]);
   const element = targetRef.current;
   const label = state.phase === "selecting-start" ? "\u8BF7\u9009\u62E9\u957F\u622A\u56FE\u8D77\u70B9" : state.phase === "selecting-end" ? "\u8BF7\u9009\u62E9\u957F\u622A\u56FE\u7EC8\u70B9" : state.phase === "capturing" ? "\u6B63\u5728\u622A\u53D6\u4F1A\u8BDD\u957F\u622A\u56FE" : state.phase === "success" ? "\u4F1A\u8BDD\u957F\u622A\u56FE\u5DF2\u4FDD\u5B58" : state.phase === "error" ? `\u4F1A\u8BDD\u957F\u622A\u56FE\u5931\u8D25\uFF1A${state.message}` : "\u622A\u53D6\u4F1A\u8BDD\u957F\u622A\u56FE";
   const overlay = element instanceof HTMLElement && (state.phase === "selecting-start" || state.phase === "selecting-end") ? (() => {
@@ -5775,7 +6826,8 @@ function apply(ctx) {
   ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
     name: "conversation.session.header.utilities",
     id: "sandrone-session-screenshot",
-    order: 40
+    order: 40,
+    inject: (sessionId) => ({ sessionId })
   }, SessionScreenshotControl));
   ctx.slots.inject("conversation.session.header.utilities", () => ctx.slots.register({
     name: "conversation.session.header.utilities",

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import test from 'node:test'
+import sharp from 'sharp'
 
 import ipcPolicy from '../apps/desktop/lib/ipc-policy.cjs'
 import navigationPolicy from '../apps/desktop/lib/navigation-policy.cjs'
@@ -12,6 +13,7 @@ import resolvePackage from '../apps/desktop/lib/resolve-package.cjs'
 import localImagePolicy from '../apps/desktop/lib/local-image-policy.cjs'
 import skillDeployment from '../apps/desktop/lib/deploy-skills.cjs'
 import presetDeployment from '../apps/desktop/lib/deploy-agent-presets.cjs'
+import screenshotModule from '../apps/desktop/lib/session-screenshot.cjs'
 
 const { assertTrustedIpcSender, isTrustedIpcSender } = ipcPolicy
 const { classifyNavigation, isExternalHttpUrl, isInternalHarnessUrl } = navigationPolicy
@@ -20,6 +22,7 @@ const { packageBin } = resolvePackage
 const { resolveAuthorizedLocalImage, workspaceRootsFromStorage } = localImagePolicy
 const { deploySkills } = skillDeployment
 const { deployAgentPresets, MANAGED_MARKER } = presetDeployment
+const { composeSessionScreenshot } = screenshotModule
 
 function deferred() {
   let resolve
@@ -146,28 +149,47 @@ test('preload exposes only the narrow invoke surface and a removable status list
 
 test('desktop screenshot capture remains main-process owned and bounded', async () => {
   const source = await readFile(new URL('../apps/desktop/main.cjs', import.meta.url), 'utf8')
+  const compositor = await readFile(new URL('../apps/desktop/lib/session-screenshot.cjs', import.meta.url), 'utf8')
   assert.match(source, /ipcMain\.handle\(['"]desktop:capture-session-screenshot['"]\s*,\s*async \(event, options/)
   assert.match(source, /assertTrusted\(event\)/)
-  assert.match(source, /webContents\.capturePage\(/)
-  assert.match(source, /executeJavaScript\(`\(async \(selection\) =>/)
-  assert.match(source, /MAX_SESSION_SCREENSHOT_HEIGHT/)
-  assert.match(source, /selection\.top/)
+  assert.match(source, /composeSessionScreenshot\(options, sharp\)/)
+  assert.match(source, /MAX_SESSION_SCREENSHOT_TRANSFER_BYTES/)
+  assert.match(source, /screenshotInFlight/)
   assert.match(source, /desktopSettings\.screenshotDirectory/)
   assert.match(source, /function writeScreenshotFile\(directory, bytes, now = new Date\(\)\)/)
   assert.match(source, /fs\.writeFileSync\(targetPath, bytes, \{ flag: ['"]wx['"] \}\)/)
   assert.match(source, /const targetPath = writeScreenshotFile\(screenshotDirectory, bytes\)/)
   assert.doesNotMatch(source, /dialog\.showSaveDialog\(mainWindow/)
   assert.match(source, /clipboard\.writeImage\(nativeImage\.createFromBuffer\(bytes\)\)/)
-  assert.match(source, /bytes: Uint8Array\.from\(bytes\)/)
-  assert.match(source, /const chunks = \[\]/)
-  assert.match(source, /sharp\(\{[\s\S]*?create:/)
-  assert.match(source, /translate3d\(0,/)
-  assert.match(source, /data-sandrone-screenshot-overlay/)
-  assert.match(source, /setProperty\(['"]visibility['"],\s*['"]hidden['"],\s*['"]important['"]\)/)
-  assert.match(source, /setProperty\(['"]scroll-behavior['"],\s*['"]auto['"],\s*['"]important['"]\)/)
-  assert.ok(source.includes("setProperty('padding-bottom'"))
+  assert.match(source, /bytes: transferable \? Uint8Array\.from\(bytes\) : undefined/)
+  assert.match(compositor, /MAX_SESSION_SCREENSHOT_HEIGHT/)
+  assert.match(compositor, /MAX_SESSION_SCREENSHOT_PIXELS/)
+  assert.match(compositor, /MAX_SESSION_SCREENSHOT_CHUNKS/)
+  assert.match(compositor, /outputHeight \+= metadata\.height/)
+  assert.match(compositor, /if \(outputHeight !== height\)/)
+  assert.match(compositor, /top: outputHeight/)
+  assert.match(compositor, /拼接会话截图超时/)
+  assert.doesNotMatch(source, /webContents\.capturePage|executeJavaScript|SCREENSHOT_COVER_URL|__sandroneScreenshotState|translate3d\(0,/)
   assert.match(source, /return \{ ok: false, error: message \}/)
   assert.doesNotMatch(source, /result\?\.path|options\?\.path|requestedPath.*screenshot/)
+})
+
+test('desktop screenshot compositor preserves exact chunk order without gaps or overlap', async () => {
+  const width = 4
+  const red = await sharp({ create: { width, height: 2, channels: 4, background: '#ff0000' } }).png().toBuffer()
+  const blue = await sharp({ create: { width, height: 3, channels: 4, background: '#0000ff' } }).png().toBuffer()
+  const result = await composeSessionScreenshot({ width, height: 5, chunks: [red, blue] }, sharp)
+  const decoded = await sharp(result.bytes).raw().toBuffer({ resolveWithObject: true })
+  assert.equal(decoded.info.width, 4)
+  assert.equal(decoded.info.height, 5)
+  assert.equal(decoded.info.channels, 4)
+  assert.equal(decoded.info.size, 80)
+  const pixel = (x, y) => [...decoded.data.subarray((y * width + x) * 4, (y * width + x + 1) * 4)]
+  assert.deepEqual(pixel(1, 0), [255, 0, 0, 255])
+  assert.deepEqual(pixel(1, 1), [255, 0, 0, 255])
+  assert.deepEqual(pixel(1, 2), [0, 0, 255, 255])
+  assert.deepEqual(pixel(1, 4), [0, 0, 255, 255])
+  await assert.rejects(composeSessionScreenshot({ width, height: 6, chunks: [red, blue] }, sharp), /高度与选区不一致/)
 })
 
 test('local image policy permits only real image files inside persisted workspaces', async t => {
@@ -386,6 +408,21 @@ test('desktop menu avoids duplicate window actions and labels theme destination'
   assert.doesNotMatch(source, /role:\s*['"]resetZoom['"],\s*label:\s*['"]实际大小['"]/)
   assert.match(source, /id:\s*['"]toggle-theme['"]/)
   assert.match(source, /colorScheme === ['"]dark['"] \? ['"]切换白天模式['"] : ['"]切换夜间模式['"]/)
+})
+
+test('development menu exposes a full Electron restart below UI rebuild', async () => {
+  const source = await readFile(new URL('../apps/desktop/main.cjs', import.meta.url), 'utf8')
+  assert.match(source, /完整重启 Electron/)
+  assert.match(source, /app\.relaunch\(\)/)
+  assert.match(source, /app\.exit\(0\)/)
+})
+
+test('desktop navigation leaves iframe web links inside Electron', async () => {
+  const source = await readFile(new URL('../apps/desktop/main.cjs', import.meta.url), 'utf8')
+  assert.match(source, /if \(event\.isMainFrame === false\) return/)
+  assert.match(source, /desktop:web-navigation/)
+  const preload = await readFile(new URL('../apps/desktop/preload.cjs', import.meta.url), 'utf8')
+  assert.match(preload, /onWebNavigation/)
 })
 
 test('manual restart revokes the old origin before stopping Harness', async () => {

@@ -81,12 +81,14 @@ test('conversation toolbar preserves upstream session chrome and seats Buddy on 
 })
 
 test('conversation toolbar compacts native views and unifies Sandrone utilities', async () => {
-  const [component, stylesheet] = await Promise.all([
+  const [component, stylesheet, screenshot] = await Promise.all([
     readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
     readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
+    readFile(join(root, 'packages/sandrone-ui/src/sessionScreenshot.js'), 'utf8'),
   ])
   assert.match(component, /function SessionViewToggle\(/)
   assert.match(component, /function SessionScreenshotControl\(/)
+  assert.match(component, /id:\s*['"]sandrone-session-screenshot['"][\s\S]*?inject: sessionId => \(\{ sessionId \}\)/)
   assert.match(component, /sandrone-session-screenshot/)
   assert.match(component, /请选择长截图起点/)
   assert.match(component, /请选择长截图终点/)
@@ -95,9 +97,35 @@ test('conversation toolbar compacts native views and unifies Sandrone utilities'
   assert.match(component, /document\.addEventListener\(['"]wheel/)
   assert.match(component, /document\.addEventListener\(['"]pointermove/)
   assert.match(component, /element\.addEventListener\(['"]scroll/)
-  assert.match(component, /requestAnimationFrame\(resolve\)/)
+  assert.match(component, /new ResizeObserver/)
+  assert.match(component, /window\.addEventListener\(['"]resize['"]/)
+  assert.match(component, /event\.deltaMode === 1/)
+  assert.match(component, /baselineRef\.current/)
+  assert.match(component, /会话内容发生变化，请重新选择截图/)
+  assert.match(component, /renderSessionScreenshot\(element, \{ top, bottom \}, baselineRef\.current\)/)
+  assert.doesNotMatch(screenshot, /target\.cloneNode\(true\)/)
+  assert.match(screenshot, /left:\s*['"]-100000px['"]/)
+  assert.match(screenshot, /SESSION_SCREENSHOT_CHUNK_HEIGHT/)
+  assert.match(screenshot, /SESSION_SCREENSHOT_CHUNK_PIXELS/)
+  assert.match(screenshot, /SESSION_SCREENSHOT_MAX_HEIGHT/)
+  assert.match(screenshot, /width \* height > SESSION_SCREENSHOT_MAX_PIXELS/)
+  assert.doesNotMatch(screenshot, /toBlob\(/)
+  assert.match(screenshot, /nodeToDataURL\(viewport, width, height\)/)
+  assert.match(screenshot, /embedImages\(viewport/)
+  assert.match(screenshot, /captureMediaLayoutLocks\(target\)/)
+  assert.match(screenshot, /applyMediaLayoutLocks\(snapshot, mediaLayoutLocks\)/)
+  assert.match(screenshot, /snapshot\.style\.transform = `translate3d\(0, \$\{-\(mappedTop \+ offset\)\}px, 0\)`/)
+  assert.match(screenshot, /cloneScreenshotNode\(target/)
+  assert.equal((screenshot.match(/cloneScreenshotNode\(/g) || []).length, 1)
+  assert.match(screenshot, /data-chat-anchor-key/)
+  assert.match(screenshot, /mapScreenshotCoordinate/)
+  assert.match(screenshot, /height:\s*`\$\{rect\.height\}px`/)
+  assert.doesNotMatch(screenshot, /height:\s*`\$\{scrollHeight\}px`/)
+  assert.match(component, /screenshotTimeout\(desktop\.screenshot\.captureSession\(rendered\)/)
+  assert.doesNotMatch(`${component}\n${screenshot}`, /window\.__sandroneScreenshotState|document\.documentElement\.setAttribute\(['"]data-sandrone-screenshot-freeze/)
   assert.match(component, /top: Math\.max\(0, Math\.min\(rect\.height, lineOffset\)\)/)
   assert.match(component, /dispatchFilesToOfficialInput\(\[screenshotFile\]\)/)
+  assert.match(component, /图片过大，未自动添加到输入框/)
   assert.match(component, /sandrone-session-screenshot-status/)
   assert.match(component, /function ScreenshotDirectoryRow\(/)
   assert.match(component, /chooseScreenshotDirectory/)
@@ -123,8 +151,11 @@ test('conversation toolbar compacts native views and unifies Sandrone utilities'
   assert.match(stylesheet, /\[data-sandrone-session-tabs\][\s\S]*?clip-path:\s*inset\(50%\)/)
   assert.match(stylesheet, /\[data-sandrone-session-log-icon\]/)
   assert.match(stylesheet, /\.sandrone-right-panel/)
+  assert.doesNotMatch(stylesheet, /data-sandrone-screenshot-freeze/)
   assert.match(stylesheet, /\.sandrone-buddy-anchor\.is-open,\s*\n\.sandrone-right-panel-anchor\.is-open\s*\{\s*z-index:\s*72/)
   assert.match(component, /className="sandrone-right-panel sandrone-workspace-panel"/)
+  assert.doesNotMatch(component, /WebPanel|WebControl|sandrone-web/)
+  assert.doesNotMatch(stylesheet, /sandrone-web|data-sandrone-web-mode/)
   assert.match(component, /className="sandrone-right-panel sandrone-buddy-panel"/)
 })
 
@@ -336,7 +367,7 @@ test('UI build and sync verification share a complete source fingerprint', async
   assert.match(buildScript, /sandrone-ui-source-sha256:/)
   assert.match(verifyScript, /fingerprintUiSources\(packageRoot\)/)
   assert.match(verifyScript, /sandrone-ui-source-sha256:\(\[a-f0-9\]\{64\}\)/)
-  for (const input of ['client.jsx', 'buddy.js', 'client.css', 'index.js', 'header-bg.png', 'header-bg-dark.png']) {
+  for (const input of ['client.jsx', 'buddy.js', 'sessionScreenshot.js', 'client.css', 'index.js', 'header-bg.png', 'header-bg-dark.png']) {
     assert.match(fingerprintScript, new RegExp(input.replace('.', '\\.')))
   }
 })

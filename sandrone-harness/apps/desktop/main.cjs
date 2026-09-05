@@ -38,6 +38,7 @@ const {
 } = require('./lib/local-image-policy.cjs')
 const { createQuitCoordinator } = require('./lib/quit-coordinator.cjs')
 const { packageBin } = require('./lib/resolve-package.cjs')
+const { MAX_SESSION_SCREENSHOT_TRANSFER_BYTES, composeSessionScreenshot } = require('./lib/session-screenshot.cjs')
 const { UpdateService } = require('./lib/update-service.cjs')
 const { listWorkspaceDirectory, readWorkspaceFile, resolveWorkspaceTarget } = require('./lib/workspace-browser.cjs')
 
@@ -60,10 +61,6 @@ const LOADING_PAGE = path.join(__dirname, 'loading.html')
 const LOADING_URL = pathToFileURL(LOADING_PAGE).href
 const NAVIGATION_RETRY_DELAYS = [500, 1_500, 4_000]
 const HARNESS_READINESS_TIMEOUT_MS = 10 * 60_000
-const MAX_SESSION_SCREENSHOT_HEIGHT = 36_000
-const MAX_SESSION_SCREENSHOT_WIDTH = 8_000
-const MAX_CAPTURE_SESSION_CHUNK_HEIGHT = 8_000
-
 app.setName(APP_NAME)
 
 let mainWindow = null
@@ -73,6 +70,7 @@ let navigationTimer = null
 let quitting = false
 let reloadUiInFlight = null
 let updateService = null
+let screenshotInFlight = false
 
 function desktopSettingsPath() {
   return path.join(app.getPath('userData'), 'desktop-settings.json')
@@ -349,6 +347,12 @@ function triggerReloadUi() {
   })
 }
 
+function restartElectron() {
+  if (app.isPackaged) return
+  app.relaunch()
+  app.exit(0)
+}
+
 const supervisor = new HarnessSupervisor({
   launch: launchHarness,
   readinessTimeoutMs: HARNESS_READINESS_TIMEOUT_MS,
@@ -413,10 +417,11 @@ function installNavigationPolicy(window) {
   window.webContents.setWindowOpenHandler(({ url }) => {
     const action = classifyNavigation(url, { internalOrigin: activeOrigin, trustedFileUrl: LOADING_URL })
     if (action === 'internal') void window.loadURL(url)
-    else if (action === 'external') void shell.openExternal(url)
+    else if (action === 'external') window.webContents.send('desktop:web-navigation', url)
     return { action: 'deny' }
   })
   const guard = (event, url) => {
+    if (event.isMainFrame === false) return
     const action = classifyNavigation(url, { internalOrigin: activeOrigin, trustedFileUrl: LOADING_URL })
     if (action === 'internal' || action === 'trusted-file') return
     event.preventDefault()
@@ -493,6 +498,7 @@ function createApplicationMenu() {
         { label: 'GPU 硬件加速', type: 'checkbox', checked: desktopSettings.gpuAcceleration, click: item => toggleGpuAcceleration(item.checked) },
         { type: 'separator' },
         { label: app.isPackaged ? '刷新界面' : '刷新界面（重建 UI）', accelerator: 'CmdOrCtrl+R', click: triggerReloadUi },
+        ...(!app.isPackaged ? [{ label: '完整重启 Electron', click: restartElectron }] : []),
         { type: 'separator' },
         { role: 'togglefullscreen', label: '全屏' },
       ],
@@ -736,159 +742,36 @@ function registerIpc() {
   })
   ipcMain.handle('desktop:capture-session-screenshot', async (event, options = {}) => {
     assertTrusted(event)
+    if (screenshotInFlight) return { ok: false, error: '已有截图任务正在进行，请稍候' }
+    screenshotInFlight = true
     try {
-      if (!mainWindow || mainWindow.isDestroyed()) throw new Error('桌面窗口不可用')
-      const requested = options?.selection
-      if (!requested || !Number.isFinite(requested.top) || !Number.isFinite(requested.bottom)) {
-        throw new Error('请先选择截图起点和终点')
+      const { bytes, width, height } = await composeSessionScreenshot(options, sharp)
+      const screenshotDirectory = desktopSettings.screenshotDirectory || defaultScreenshotDirectory()
+      const targetPath = writeScreenshotFile(screenshotDirectory, bytes)
+      let clipboardOk = false
+      try {
+        clipboard.writeImage(nativeImage.createFromBuffer(bytes))
+        clipboardOk = true
+      } catch (error) {
+        console.error(`[sandrone-desktop] screenshot clipboard write failed: ${String(error)}`)
       }
-      const selection = {
-        top: Math.max(0, Math.floor(requested.top)),
-        bottom: Math.max(0, Math.floor(requested.bottom)),
-      }
-      if (selection.bottom <= selection.top) throw new Error('截图终点必须低于起点')
-      if (selection.bottom - selection.top > MAX_SESSION_SCREENSHOT_HEIGHT) {
-        throw new Error(`选取范围过长，请分段截图（上限 ${MAX_SESSION_SCREENSHOT_HEIGHT} 像素）`)
-      }
-      const webContents = mainWindow.webContents
-      const setup = await webContents.executeJavaScript(`(async (selection) => {
-      const scroll = document.querySelector('[data-conversation-scroll]')
-      const session = document.querySelector('[data-sandrone-session-body]')
-      const target = scroll || session
-      if (!(target instanceof HTMLElement)) return { ok: false, error: '当前没有可截图的会话内容' }
-      const elements = [
-        document.querySelector('[data-sandrone-session-header]'),
-        document.querySelector('[data-sandrone-composer]'),
-        document.querySelector('[data-sandrone-sidebar-column]'),
-        document.querySelector('[data-sandrone-details]'),
-        document.querySelector('[data-sandrone-overlay]'),
-        document.querySelector('[data-sandrone-screenshot-overlay]'),
-      ].filter(Boolean)
-      const records = elements.map(element => ({ element, style: element.getAttribute('style'), hidden: element.getAttribute('aria-hidden') }))
-      const styleRecords = [target, target.parentElement, document.documentElement, document.body].filter(Boolean).map(element => ({ element, style: element.getAttribute('style') }))
-      const scrollTop = target.scrollTop
-      const scrollHeight = Math.max(target.scrollHeight, target.clientHeight)
-      if (selection.bottom > scrollHeight) return { ok: false, error: '截图终点超出当前会话内容' }
-      window.__sandroneScreenshotState = { records, styleRecords, target, scrollTop, windowScrollY: window.scrollY }
-      records.forEach(({ element }) => {
-        element.setAttribute('data-sandrone-screenshot-hidden', 'true')
-        element.style.setProperty('visibility', 'hidden', 'important')
-        element.style.setProperty('pointer-events', 'none', 'important')
-      })
-      target.scrollTop = 0
-      target.style.setProperty('overflow', 'visible', 'important')
-      target.style.setProperty('height', scrollHeight + 'px', 'important')
-      target.style.setProperty('max-height', 'none', 'important')
-      target.style.setProperty('min-height', scrollHeight + 'px', 'important')
-      target.style.setProperty('scroll-behavior', 'auto', 'important')
-      target.style.setProperty('padding-bottom', String(Math.max(1, target.clientHeight)) + 'px', 'important')
-      if (target.parentElement) target.parentElement.style.setProperty('min-height', scrollHeight + 'px', 'important')
-      document.documentElement.style.setProperty('overflow', 'visible', 'important')
-      document.body.style.setProperty('overflow', 'visible', 'important')
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-      const rect = target.getBoundingClientRect()
+      const transferable = bytes.length <= MAX_SESSION_SCREENSHOT_TRANSFER_BYTES
       return {
         ok: true,
-        rect: { x: rect.left, y: rect.top + selection.top, width: rect.width, height: selection.bottom - selection.top },
-        targetTop: rect.top,
-      }
-    })(${JSON.stringify(selection)})`, true)
-      if (!setup?.ok) throw new Error(setup?.error || '无法准备会话截图')
-      const restore = async () => {
-      await webContents.executeJavaScript(`(() => {
-        const state = window.__sandroneScreenshotState
-        if (!state) return
-        state.records.forEach(({ element, style, hidden }) => {
-          if (style === null) element.removeAttribute('style'); else element.setAttribute('style', style)
-          if (hidden === null) element.removeAttribute('aria-hidden'); else element.setAttribute('aria-hidden', hidden)
-          element.removeAttribute('data-sandrone-screenshot-hidden')
-        })
-        state.styleRecords.forEach(({ element, style }) => {
-          if (style === null) element.removeAttribute('style'); else element.setAttribute('style', style)
-        })
-        state.target.scrollTop = state.scrollTop
-        window.scrollTo(0, state.windowScrollY || 0)
-        delete window.__sandroneScreenshotState
-      })()`, true)
-    }
-      try {
-        const width = Math.ceil(setup.rect.width)
-        const height = Math.ceil(setup.rect.height)
-        if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) throw new Error('会话内容为空')
-        if (width > MAX_SESSION_SCREENSHOT_WIDTH) throw new Error('会话宽度超出截图范围')
-        if (height > MAX_SESSION_SCREENSHOT_HEIGHT) throw new Error(`会话过长，请先折叠轨迹或分段截图（上限 ${MAX_SESSION_SCREENSHOT_HEIGHT} 像素）`)
-        const chunks = []
-        let offset = 0
-        let outputWidth = 0
-        let pixelScale = 1
-        while (offset < height) {
-          const chunkHeight = Math.min(MAX_CAPTURE_SESSION_CHUNK_HEIGHT, height - offset)
-          const chunk = await webContents.executeJavaScript(`(async (payload) => {
-            const state = window.__sandroneScreenshotState
-            const target = state?.target
-            if (!(target instanceof HTMLElement)) return { ok: false, error: '当前没有可截图的会话内容' }
-            target.style.setProperty('transform', 'translate3d(0, ' + (-payload.targetTop - payload.selectionTop - payload.offset) + 'px, 0)', 'important')
-            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
-            const rect = target.getBoundingClientRect()
-            const y = Math.max(0, Math.floor(rect.top))
-            const available = Math.min(payload.chunkHeight, Math.max(0, Math.floor(window.innerHeight - y)))
-            return { ok: available > 0, x: rect.left, y, height: available }
-          })(${JSON.stringify({ targetTop: setup.targetTop, selectionTop: selection.top, offset, chunkHeight })})`, true)
-          if (!chunk?.ok || chunk.height < 1) throw new Error(chunk?.error || `无法定位截图片段（${offset}px）`)
-          const image = await webContents.capturePage({
-            x: Math.max(0, Math.floor(chunk.x)),
-            y: Math.max(0, Math.floor(chunk.y)),
-            width,
-            height: Math.floor(chunk.height),
-          })
-          const png = image.toPNG()
-          if (!png?.length) throw new Error(`截图片段为空（${offset}px）`)
-          const size = image.getSize()
-          if (!Number.isFinite(size.width) || !Number.isFinite(size.height) || size.width < 1 || size.height < 1) {
-            throw new Error(`截图片段尺寸无效（${offset}px）`)
-          }
-          if (outputWidth === 0) {
-            outputWidth = size.width
-            pixelScale = outputWidth / width
-          }
-          if (size.width !== outputWidth) throw new Error('截图片段宽度不一致')
-          chunks.push({ top: Math.round(offset * pixelScale), data: png })
-          offset += chunk.height
-        }
-        const outputHeight = Math.max(1, Math.round(height * pixelScale))
-        const bytes = await sharp({
-          create: {
-            width: outputWidth,
-            height: outputHeight,
-            channels: 4,
-            background: { r: 255, g: 255, b: 255, alpha: 1 },
-          },
-        }).composite(chunks.map(chunk => ({ input: chunk.data, left: 0, top: chunk.top }))).png().toBuffer()
-        const screenshotDirectory = desktopSettings.screenshotDirectory || defaultScreenshotDirectory()
-        const targetPath = writeScreenshotFile(screenshotDirectory, bytes)
-        let clipboardOk = false
-        try {
-          clipboard.writeImage(nativeImage.createFromBuffer(bytes))
-          clipboardOk = true
-        } catch (error) {
-          console.error(`[sandrone-desktop] screenshot clipboard write failed: ${String(error)}`)
-        }
-        return {
-          ok: true,
-          path: targetPath,
-          bytes: Uint8Array.from(bytes),
-          width,
-          height,
-          clipboard: clipboardOk,
-          warning: clipboardOk ? undefined : '图片已保存，但写入系统剪贴板失败',
-        }
-      } finally {
-        await restore().catch(error => console.error(`[sandrone-desktop] screenshot restore failed: ${String(error)}`))
+        path: targetPath,
+        bytes: transferable ? Uint8Array.from(bytes) : undefined,
+        width,
+        height,
+        clipboard: clipboardOk,
+        attachment: transferable,
+        warning: clipboardOk ? undefined : '图片已保存，但写入系统剪贴板失败',
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error(`[sandrone-desktop] screenshot failed: ${message}`, error)
       return { ok: false, error: message }
+    } finally {
+      screenshotInFlight = false
     }
   })
   ipcMain.handle('desktop:window-minimize', event => {

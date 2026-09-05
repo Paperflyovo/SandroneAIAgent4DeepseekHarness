@@ -11,6 +11,7 @@ import {
   sameBuddyModel,
 } from './buddy.js'
 import { installStyle } from './client.css'
+import { renderSessionScreenshot, screenshotTimeout } from './sessionScreenshot.js'
 
 export const inject = ['slots', 'theme']
 
@@ -47,7 +48,6 @@ const TOKEN_LAYER = Object.freeze({
 })
 
 const DESKTOP_SIDEBAR_WIDTH = 380
-
 function markSurface() {
   const root = document.getElementById('root')
   const frame = root?.querySelector('[data-details-collapsed]') || root?.firstElementChild
@@ -1087,13 +1087,14 @@ function ImSettingsSection() {
 
 function insertFallbackFileText(files) {
   const textarea = document.querySelector('[data-sandrone-composer-input]')
-  if (!(textarea instanceof HTMLTextAreaElement)) return
+  if (!(textarea instanceof HTMLTextAreaElement)) return false
   const names = files.map(file => `[${file.name || 'image.png'}]`).join(' ')
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
-  if (!setter) return
+  if (!setter) return false
   const prefix = textarea.value.trim() === '' ? '' : `${textarea.value.endsWith(' ') ? '' : ' '}`
   setter.call(textarea, `${textarea.value}${prefix}${names}`)
   textarea.dispatchEvent(new Event('input', { bubbles: true }))
+  return true
 }
 
 function dispatchFilesToOfficialInput(files) {
@@ -2038,15 +2039,17 @@ function SessionViewToggle() {
   </button>
 }
 
-function SessionScreenshotControl() {
+function SessionScreenshotControl({ sessionId }) {
   const [state, setState] = useState({ phase: 'idle', message: '', start: null })
   const [pointerOffset, setPointerOffset] = useState(null)
   const [, setViewportTick] = useState(0)
   const targetRef = useRef(null)
+  const baselineRef = useRef(null)
   const desktop = window.sandroneDesktop
   if (!desktop?.screenshot?.captureSession) return null
   const findTarget = () => {
-    const element = document.querySelector('[data-conversation-scroll]')
+    const session = document.querySelector('[data-sandrone-session-body]')
+    const element = session?.querySelector('[data-conversation-scroll]') || document.querySelector('[data-conversation-scroll]') || session
     if (!(element instanceof HTMLElement)) throw new Error('当前没有可截图的会话内容')
     return element
   }
@@ -2055,23 +2058,33 @@ function SessionScreenshotControl() {
     try {
       const element = findTarget()
       targetRef.current = element
+      baselineRef.current = { sessionId, width: element.getBoundingClientRect().width, scrollHeight: element.scrollHeight }
       setPointerOffset(Math.round(element.clientHeight / 2))
       setState({ phase: 'selecting-start', message: '', start: null })
     } catch (cause) {
       setState({ phase: 'error', message: cause instanceof Error ? cause.message : String(cause) })
     }
   }
-  const cancelSelection = () => {
+  const cancelSelection = (message = '') => {
     targetRef.current = null
+    baselineRef.current = null
     setPointerOffset(null)
-    setState({ phase: 'idle', message: '', start: null })
+    setState({ phase: message ? 'error' : 'idle', message, start: null })
   }
   const choosePoint = async event => {
     event.preventDefault()
     event.stopPropagation()
     const element = targetRef.current
-    if (!(element instanceof HTMLElement) || pointerOffset === null) return
-    const offset = Math.max(0, Math.round(element.scrollTop + pointerOffset))
+    if (!(element instanceof HTMLElement) || !element.isConnected) {
+      cancelSelection('会话内容已切换，请重新选择截图')
+      return
+    }
+    const rect = element.getBoundingClientRect()
+    const localOffset = Number.isFinite(event.clientY)
+      ? Math.max(0, Math.min(rect.height, event.clientY - rect.top))
+      : pointerOffset
+    if (localOffset === null || !Number.isFinite(localOffset)) return
+    const offset = Math.max(0, Math.round(element.scrollTop + localOffset))
     if (state.phase === 'selecting-start') {
       setState({ phase: 'selecting-end', message: '', start: offset })
       return
@@ -2081,28 +2094,44 @@ function SessionScreenshotControl() {
     const bottom = Math.max(state.start, offset)
     setState({ phase: 'capturing', message: '' })
     try {
-      await new Promise(resolve => window.requestAnimationFrame(resolve))
-      const result = await desktop.screenshot.captureSession({ selection: { top, bottom } })
+      const rendered = await renderSessionScreenshot(element, { top, bottom }, baselineRef.current)
+      const result = await screenshotTimeout(desktop.screenshot.captureSession(rendered), 45_000, '保存会话截图超时')
       if (result?.canceled) {
         cancelSelection()
         return
       }
       if (!result?.ok) throw new Error(result?.error || '保存截图失败')
       let attached = false
+      let fallback = false
       if (result.bytes) {
         const fileName = String(result.path || '').split(/[\\/]/).pop() || `Sandrone-session-${Date.now()}.png`
         const screenshotFile = new File([result.bytes], fileName, { type: 'image/png' })
         attached = dispatchFilesToOfficialInput([screenshotFile])
-        if (!attached) insertFallbackFileText([screenshotFile])
+        if (!attached) fallback = insertFallbackFileText([screenshotFile])
       }
       targetRef.current = null
+      baselineRef.current = null
       setPointerOffset(null)
-      const clipboardMessage = result.clipboard === false ? '但写入系统剪贴板失败' : '已复制到系统剪贴板'
-      setState({ phase: 'success', message: attached ? `已保存、${clipboardMessage}并添加到输入框` : `已保存、${clipboardMessage}`, start: null })
+      const clipboardMessage = result.clipboard === true
+        ? '已复制到系统剪贴板'
+        : result.clipboard === false
+          ? '但写入系统剪贴板失败'
+          : '未写入系统剪贴板'
+      const attachmentMessage = result.attachment === false
+        ? '图片过大，未自动添加到输入框'
+        : attached
+          ? '已添加到输入框'
+          : fallback
+            ? '已在输入框插入图片占位符'
+            : result.bytes
+              ? '未能添加到输入框'
+              : '未传入输入框'
+      setState({ phase: 'success', message: `已保存、${clipboardMessage}、${attachmentMessage}`, start: null })
       window.setTimeout(() => setState(current => current.phase === 'success' ? { phase: 'idle', message: '', start: null } : current), 1800)
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause)
       targetRef.current = null
+      baselineRef.current = null
       setPointerOffset(null)
       setState({ phase: 'error', message, start: null })
     }
@@ -2110,29 +2139,72 @@ function SessionScreenshotControl() {
   useEffect(() => {
     const element = targetRef.current
     if (!element || (state.phase !== 'selecting-start' && state.phase !== 'selecting-end')) return undefined
+    if (baselineRef.current?.sessionId !== sessionId) {
+      cancelSelection('会话已切换，请重新选择截图')
+      return undefined
+    }
     const onKeyDown = event => { if (event.key === 'Escape') cancelSelection() }
     const onPointerMove = event => {
+      if (!element.isConnected) {
+        cancelSelection('会话内容已切换，请重新选择截图')
+        return
+      }
       const rect = element.getBoundingClientRect()
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return
       setPointerOffset(Math.max(0, Math.min(rect.height, event.clientY - rect.top)))
     }
     const onWheel = event => {
       if (event.target instanceof Element && event.target.closest('.sandrone-session-screenshot-cancel')) return
+      if (!element.isConnected) {
+        cancelSelection('会话内容已切换，请重新选择截图')
+        return
+      }
+      const rect = element.getBoundingClientRect()
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return
       event.preventDefault()
-      element.scrollTop = Math.max(0, Math.min(element.scrollHeight - element.clientHeight, element.scrollTop + event.deltaY))
+      event.stopPropagation()
+      const lineHeight = Number.parseFloat(window.getComputedStyle(element).lineHeight) || 16
+      const unit = event.deltaMode === 1 ? lineHeight : event.deltaMode === 2 ? element.clientHeight : 1
+      const maxScroll = Math.max(0, element.scrollHeight - element.clientHeight)
+      element.scrollTop = Math.max(0, Math.min(maxScroll, element.scrollTop + event.deltaY * unit))
     }
-    const onScroll = () => setViewportTick(value => value + 1)
+    const onScroll = () => {
+      const baseline = baselineRef.current
+      if (baseline && (Math.abs(element.scrollHeight - baseline.scrollHeight) > 1 || Math.abs(element.getBoundingClientRect().width - baseline.width) > 1)) {
+        cancelSelection('会话内容发生变化，请重新选择截图')
+        return
+      }
+      setViewportTick(value => value + 1)
+    }
+    const onResize = () => cancelSelection('窗口尺寸发生变化，请重新选择截图')
+    const onVisibilityChange = () => {
+      if (document.hidden) cancelSelection('窗口失去焦点，请重新选择截图')
+    }
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+      const baseline = baselineRef.current
+      if (baseline && (Math.abs(element.scrollHeight - baseline.scrollHeight) > 1 || Math.abs(element.getBoundingClientRect().width - baseline.width) > 1)) {
+        cancelSelection('会话布局发生变化，请重新选择截图')
+      } else {
+        setViewportTick(value => value + 1)
+      }
+    }) : null
+    resizeObserver?.observe(element)
     document.addEventListener('keydown', onKeyDown, true)
     document.addEventListener('pointermove', onPointerMove, true)
     document.addEventListener('wheel', onWheel, { capture: true, passive: false })
     element.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onResize)
+    document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       document.removeEventListener('keydown', onKeyDown, true)
       document.removeEventListener('pointermove', onPointerMove, true)
       document.removeEventListener('wheel', onWheel, true)
       element.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onResize)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      resizeObserver?.disconnect()
     }
-  }, [state.phase])
+  }, [state.phase, sessionId])
   const element = targetRef.current
   const label = state.phase === 'selecting-start' ? '请选择长截图起点' : state.phase === 'selecting-end' ? '请选择长截图终点' : state.phase === 'capturing' ? '正在截取会话长截图' : state.phase === 'success' ? '会话长截图已保存' : state.phase === 'error' ? `会话长截图失败：${state.message}` : '截取会话长截图'
   const overlay = element instanceof HTMLElement && (state.phase === 'selecting-start' || state.phase === 'selecting-end') ? (() => {
@@ -2365,6 +2437,7 @@ export function apply(ctx) {
     name: 'conversation.session.header.utilities',
     id: 'sandrone-session-screenshot',
     order: 40,
+    inject: sessionId => ({ sessionId }),
   }, SessionScreenshotControl))
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
     name: 'conversation.session.header.utilities',
