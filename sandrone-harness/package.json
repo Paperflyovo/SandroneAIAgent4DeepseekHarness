@@ -1,6 +1,6 @@
 {
   "name": "sandrone-ai-agent-for-deepseek-harness",
-  "version": "1.0.1",
+  "version": "26.9.12",
   "private": true,
   "main": "apps/desktop/main.cjs",
   "description": "Sandrone desktop distribution of the official DeepSeek Harness.",

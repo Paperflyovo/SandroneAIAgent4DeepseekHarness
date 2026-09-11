@@ -15,7 +15,15 @@ DeepSeek Harness 负责 agent loop、会话与历史、流式事件、上下文�
 
 这样可以直接吸收 DeepSeek Harness 后续的后端和 Web 能力，同时保持 Sandrone 的产品识别度。移除 `sandrone-harness/packages/sandrone-ui` 后，官方 Harness 的状态、对话和运行时仍然完整可用。
 
-## 快速开始
+## 安装 Release 版
+
+从 [最新发布页](https://github.com/Paperflyovo/SandroneAIAgent4DeepseekHarness/releases/latest) 下载 Windows x64 安装包 `SandroneAIAgent-26.9.12-x64.exe`，双击安装后从桌面或开始菜单启动。
+
+安装包自带 Electron、Node 运行时、Harness、界面资源及 Windows 原生组件；启动应用无需另装 Node.js、pnpm、Python 或克隆源码。首次启动完成预览提示后，可填写 API Key 或选择“稍后配置”；使用模型对话需要配置可用的提供商并连接网络。Agent 操作的具体项目若依赖 Git、Python、编译器等工具，仍需按该项目要求安装。
+
+当前版本为 `V26.9.12`，对应 Git 标签 `v26.9.12`。安装包未签名，发布页附带 `SHA256SUMS.txt`，可用 PowerShell 的 `Get-FileHash -Algorithm SHA256` 核对下载文件。用户数据保存在本机应用数据目录，正常升级会保留会话和设置。
+
+## 从源码运行
 
 环境要求：Node.js 22.19 或更新版本，以及 pnpm 11。
 
@@ -43,7 +51,7 @@ cd .\sandrone-harness
 pnpm run desktop:pack
 ```
 
-Windows 安装包使用 DeepSeek 官方的应用内目录浏览器选择工作区，避免 Electron 内置 Node 与原生目录弹窗 worker 的 ABI 冲突。`node-pty` 使用其官方 Windows x64 预编译模块，因此普通打包不要求安装 Visual Studio Spectre 缓解库。
+Windows 安装包使用 Electron 原生文件夹对话框选择工作区。`node-pty` 使用其官方 Windows x64 预编译模块，因此普通打包不要求安装 Visual Studio Spectre 缓解库。
 
 当前开源构建没有商业代码签名证书，首次运行安装包时 Windows SmartScreen 可能要求用户确认。发布页提供 SHA-256 用于核对下载文件。
 

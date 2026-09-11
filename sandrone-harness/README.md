@@ -29,6 +29,24 @@ profile keeps DeepSeek's in-app browse picker unchanged. Packaging uses the
 official Windows x64 prebuild shipped by `node-pty`, so a normal build does not
 require Visual Studio Spectre-mitigated libraries.
 
+## Install a release build
+
+Download `SandroneAIAgent-26.9.12-x64.exe` from the
+[latest release](https://github.com/Paperflyovo/SandroneAIAgent4DeepseekHarness/releases/latest)
+and run it. The installer bundles
+Electron, the Harness runtime, the Web UI bundle, and native Windows helpers; a
+new machine does not need Node.js, pnpm, Python, or a separate Harness install
+to launch the application. Tools required by an Agent's target project, such as
+Git, Python, or a compiler, must still be installed for that project's tasks.
+Launch **Sandrone AI Agent** from the Start menu or desktop shortcut. Choose
+**稍后配置** on the optional API-key prompt if needed, then configure a provider
+in Settings before sending a prompt. User data and session history stay in the
+per-user application-data directory and survive upgrades.
+
+Maintainers can smoke-test the unpacked release with `pnpm run desktop:dir`,
+then start `release/win-unpacked/SandroneAIAgent.exe`. End users should use the
+installer asset instead of running from a source checkout.
+
 On first launch, finish DeepSeek's preview notice and API-key onboarding before using controls behind those dialogs; choosing **稍后配置** is supported. `pnpm run qa:desktop` exercises that cold-start flow, opens the picker from the official sidebar add-workspace button, adopts a real temporary directory, reloads the renderer, and verifies that the Workspace remains registered. Set `ELECTRON_EXECUTABLE_PATH` to a packaged executable to run the same checks against `win-unpacked` or an installed build.
 
 The desktop supervisor starts the official `dsh web` profile on a random
