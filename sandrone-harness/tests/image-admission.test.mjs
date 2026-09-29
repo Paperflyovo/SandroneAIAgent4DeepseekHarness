@@ -11,16 +11,15 @@ async function source(relative) {
 
 test('version-locked dependency patches remove declaration-based image rejection', async () => {
   const [hostPatch, piPatch, deepseekPatch, fsPatch, modelSelectionPatch, dshPatch, workspace] = await Promise.all([
-    source('patches/@deepseek-ai__dsh-host-apiproxy@0.1.1-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-llm-pi-ai@0.1.1-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-llm-deepseek@0.1.1-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-tool-fs@0.1.1-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.1-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh@0.1.1-rc.1.patch'),
+    source('patches/@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch'),
+    source('patches/@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch'),
+    source('patches/@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch'),
+    source('patches/@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch'),
+    source('patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch'),
+    source('patches/@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch'),
     source('pnpm-workspace.yaml'),
   ])
   assert.match(hostPatch, /^-.*MODEL_DOES_NOT_SUPPORT_IMAGES/m)
-  assert.match(hostPatch, /^-.*does not accept image input, but this session already contains images/m)
   assert.match(piPatch, /^-.*does not support image input/m)
   assert.match(deepseekPatch, /^-.*does not accept image input/m)
   assert.match(fsPatch, /^-.*assertImageCapableRoute/m)
@@ -28,30 +27,30 @@ test('version-locked dependency patches remove declaration-based image rejection
   assert.match(modelSelectionPatch, /^\+.*snapshot\.status === "selecting"/m)
   assert.match(dshPatch, /^\+.*@sandrone\/harness-image-tools/m)
   for (const filename of [
-    '@deepseek-ai__dsh-host-apiproxy@0.1.1-rc.1.patch',
-    '@deepseek-ai__dsh-llm-pi-ai@0.1.1-rc.1.patch',
-    '@deepseek-ai__dsh-llm-deepseek@0.1.1-rc.1.patch',
-    '@deepseek-ai__dsh-tool-fs@0.1.1-rc.1.patch',
-    '@deepseek-ai__dsh-client-ui-model-selection@0.1.1-rc.1.patch',
-    '@deepseek-ai__dsh@0.1.1-rc.1.patch',
+    '@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch',
+    '@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch',
+    '@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch',
+    '@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch',
+    '@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch',
+    '@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch',
   ]) assert.match(workspace, new RegExp(filename.replaceAll('.', '\\.')))
 })
 
 test('installed adapters and filesystem tool admit durable images', async () => {
   const [host, pi, deepseek, fsTool, modelSelection, standardPreset] = await Promise.all([
-    source('node_modules/@deepseek-ai/dsh-host-apiproxy/lib/index.js'),
+    source('node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js'),
     source('node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js'),
     source('node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js'),
     source('node_modules/@deepseek-ai/dsh-tool-fs/lib/index.js'),
     source('node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.js'),
-    source('node_modules/@deepseek-ai/dsh/config/agent-presets/standard/agent.cordis.yml'),
+    source('node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml'),
   ])
   assert.doesNotMatch(host, /MODEL_DOES_NOT_SUPPORT_IMAGES|does not accept image input, but this session already contains images/)
   assert.doesNotMatch(pi, /pi-ai model .* does not support image input/)
   assert.match(pi, /const DEFAULT_INPUT = \["text", "image"\]/)
   assert.doesNotMatch(deepseek, /DeepSeek model .* does not accept image input/)
-  assert.match(pi, /type:\s*['"]image['"][\s\S]*?Buffer\.from\(stored\.data\)\.toString\(['"]base64['"]\)[\s\S]*?mimeType:\s*stored\.ref\.mediaType/)
-  assert.match(deepseek, /type:\s*['"]image_url['"][\s\S]*?data:\$\{stored\.ref\.mediaType\};base64,\$\{Buffer\.from\(stored\.data\)\.toString\(['"]base64['"]\)\}/)
+  assert.match(pi, /type:\s*['"]image['"][\s\S]*?Buffer\.from\(version\.data\)\.toString\(['"]base64['"]\)[\s\S]*?mimeType:\s*version\.mediaType/)
+  assert.match(deepseek, /type:\s*['"]image_url['"][\s\S]*?data:\$\{version\.mediaType\};base64,\$\{Buffer\.from\(version\.data\)\.toString\(['"]base64['"]\)\}/)
   assert.doesNotMatch(fsTool, /assertImageCapableRoute|does not declare image input/)
   assert.match(fsTool, /Image admission is provider-owned/)
   assert.match(modelSelection, /snapshot\.routable === false \|\| snapshot\.status === "selecting"/)

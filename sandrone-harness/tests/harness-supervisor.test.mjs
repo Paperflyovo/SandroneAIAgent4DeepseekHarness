@@ -39,6 +39,19 @@ test('readiness accepts only an exact loopback HTTP origin', () => {
   assert.throws(() => validateReadyUrl('http://127.0.0.1:0'), /invalid port/)
 })
 
+test('authenticated readiness keeps the bootstrap token out of public status and logs', async t => {
+  const child = new FakeChild()
+  const supervisor = new HarnessSupervisor({ launch: () => child })
+  t.after(() => supervisor.stop())
+  let launchUrl
+  supervisor.once('ready', url => { launchUrl = url })
+  const started = supervisor.start()
+  child.stdout.emit('data', 'dsh web: http://127.0.0.1:43123/?token=private-bootstrap-token\n')
+  assert.equal(await started, 'http://127.0.0.1:43123')
+  assert.equal(launchUrl, 'http://127.0.0.1:43123/?token=private-bootstrap-token')
+  assert.doesNotMatch(JSON.stringify(supervisor.snapshot()), /private-bootstrap-token/)
+})
+
 test('supervisor resolves readiness split across stdout chunks and ignores stale generations', async t => {
   const children = []
   const supervisor = new HarnessSupervisor({

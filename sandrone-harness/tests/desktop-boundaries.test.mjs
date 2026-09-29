@@ -348,6 +348,19 @@ test('desktop exposes narrow extension config and Skill scan IPC only', async ()
   assert.doesNotMatch(preload, /require\(['"]node:fs|fs\.readFile|fs\.writeFile|rmSync|arbitrary/)
 })
 
+test('space resource import stays behind trusted desktop IPC', async () => {
+  const [main, preload] = await Promise.all([
+    readFile(new URL('../apps/desktop/main.cjs', import.meta.url), 'utf8'),
+    readFile(new URL('../apps/desktop/preload.cjs', import.meta.url), 'utf8'),
+  ])
+  assert.match(main, /desktop:space-import-resource-file/)
+  assert.match(main, /assertTrusted\(event\)[\s\S]*?copyResource\(spaceRootPath\(\)/)
+  assert.match(preload, /webUtils\.getPathForFile\(file\)/)
+  assert.match(preload, /importResourceFile:/)
+  assert.match(main, /desktop:space-restore-markdown/)
+  assert.match(preload, /restoreMarkdown:/)
+})
+
 test('workspace browser stays inside registered workspace roots', async t => {
   const { listWorkspaceDirectory, readWorkspaceFile } = await import('../apps/desktop/lib/workspace-browser.cjs')
   const root = await mkdtemp(join(tmpdir(), 'sandrone-workspace-browser-'))
@@ -397,7 +410,7 @@ test('desktop loading page uses the current brand mark without a framed card', a
   const source = await readFile(new URL('../apps/desktop/loading.html', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /class=['"]card['"]|\.card\s*\{/)
   assert.match(source, /class=['"]launch-copy['"]/)
-  assert.match(source, /<img class=['"]mark['"] src=['"]\.\.\/\.\.\/build\/icon\.svg['"] alt=['"]['"]>/)
+  assert.match(source, /<img class=['"]mark['"] src=['"]\.\.\/\.\.\/build\/icon\.png['"] alt=['"]['"]>/)
   assert.match(source, /img-src ['"]self['"] data:/)
   assert.match(source, /\.launch-copy\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;/)
 })

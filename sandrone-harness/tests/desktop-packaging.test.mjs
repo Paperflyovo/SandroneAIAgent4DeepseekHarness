@@ -10,7 +10,7 @@ import {
   electronExecutableRelativePath,
 } from '../scripts/lib/desktop-platform.mjs'
 
-const { missingRequiredPeerDependencies, requiredNodePtyArtifacts } = nativeArtifacts
+const { missingRequiredPeerDependencies, requiredNodePtyArtifacts, requiredPersistenceArtifacts } = nativeArtifacts
 
 async function source(relative) {
   return readFile(new URL(`../${relative}`, import.meta.url), 'utf8')
@@ -73,10 +73,16 @@ test('native artifact gate distinguishes prebuilt and rebuilt node-pty layouts',
 
 test('packaging gate rejects missing required peers and ignores optional peers', async () => {
   const root = await mkdtemp(join(tmpdir(), 'sandrone-peer-gate-'))
-  const nodeModules = join(root, 'node_modules')
+  const nodeModules = join(root, 'app', 'node_modules')
+  const outerRuntime = join(root, 'node_modules', '@example', 'runtime')
   const consumer = join(nodeModules, '@example', 'consumer')
   const runtime = join(nodeModules, '@example', 'runtime')
+  await mkdir(outerRuntime, { recursive: true })
   await mkdir(consumer, { recursive: true })
+  await writeFile(join(outerRuntime, 'package.json'), JSON.stringify({
+    name: '@example/runtime',
+    version: '1.0.0',
+  }))
   await writeFile(join(consumer, 'package.json'), JSON.stringify({
     name: '@example/consumer',
     version: '1.0.0',
@@ -92,7 +98,7 @@ test('packaging gate rejects missing required peers and ignores optional peers',
     assert.deepEqual(missingRequiredPeerDependencies(nodeModules), [{
       packageName: '@example/runtime',
       consumers: ['@example/consumer@1.0.0'],
-    }])
+    }], 'packaging verification must not borrow dependencies from outside the application root')
     await mkdir(runtime, { recursive: true })
     await writeFile(join(runtime, 'package.json'), JSON.stringify({
       name: '@example/runtime',
@@ -102,6 +108,15 @@ test('packaging gate rejects missing required peers and ignores optional peers',
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('persistence packaging requires the migration worker and Windows atomic-write native module', async () => {
+  const artifacts = requiredPersistenceArtifacts('win32', 'x64')
+  assert.deepEqual(artifacts, [
+    '@deepseek-ai/dsh-session-persistence-jsonl/lib/worker.cjs',
+    '@koromix/koffi-win32-x64/win32_x64/koffi.node',
+  ])
+  for (const artifact of artifacts) await access(new URL(`../node_modules/${artifact}`, import.meta.url))
 })
 
 test('manual sandbox workflow covers native x64 and arm64 runners for all desktop platforms', async () => {

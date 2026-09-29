@@ -1,34 +1,53 @@
-import { access, readdir, readFile } from 'node:fs/promises'
+import { access, readdir, readFile, realpath } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const DEFAULT_VERSION = '0.1.1-rc.1'
+const DEFAULT_VERSION = '0.1.5-rc.1'
 
 const REQUIRED_PATCHES = Object.freeze({
-  '@deepseek-ai/dsh@0.1.1-rc.1': {
-    file: 'patches/@deepseek-ai__dsh@0.1.1-rc.1.patch',
-    adds: ['@sandrone/harness-image-tools'],
+  '@deepseek-ai/dsh-client-ui-open-in-app@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-client-ui-open-in-app@0.1.5-rc.1.patch',
+    adds: ['conversation.session.header.actions', 'data-sandrone-open-in-app'],
   },
-  '@deepseek-ai/dsh-client-ui-model-selection@0.1.1-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.1-rc.1.patch',
+  '@deepseek-ai/dsh-session-format-v0-to-v1@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-session-format-v0-to-v1@0.1.5-rc.1.patch',
+    adds: ['"origin"', 'event.data?.version === 2'],
+  },
+  '@deepseek-ai/dsh-client-ui-chat@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-client-ui-chat@0.1.5-rc.1.patch',
+    adds: ['windowsPath', 'conversation = ctx.get("conversation")', 'branchBlock', 'clearDraft', 'dsh.conversation.', 'blocks.set(sessionId', 'blocks?.set(sessionId', 'ctx.sessions.clear()', 'binding(childId)', 'openState !== "open"', 'blankPasses', 'shell?.snapshot?.draft', 'setTimeout(finish, 0)'],
+  },
+  '@deepseek-ai/dsh-agent-presets@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch',
+    adds: ['@sandrone/harness-image-tools', 'Network access depends on the task environment.'],
+    removes: ["You don't have access to the internet via this tool."],
+  },
+  '@deepseek-ai/dsh-sdk-minimal@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-sdk-minimal@0.1.5-rc.1.patch',
+    adds: ['Network access depends on the task environment.'],
+    removes: ["You don't have access to the internet via this tool."],
+  },
+  '@deepseek-ai/dsh-client-ui-model-selection@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch',
     adds: ['snapshot.status === "selecting"'],
   },
-  '@deepseek-ai/dsh-host-apiproxy@0.1.1-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-host-apiproxy@0.1.1-rc.1.patch',
-    removes: ['MODEL_DOES_NOT_SUPPORT_IMAGES', 'does not accept image input, but this session already contains images'],
+  '@deepseek-ai/dsh-api-session-controller@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch',
+    removes: ['MODEL_DOES_NOT_SUPPORT_IMAGES'],
   },
-  '@deepseek-ai/dsh-llm-pi-ai@0.1.1-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-llm-pi-ai@0.1.1-rc.1.patch',
+  '@deepseek-ai/dsh-llm-pi-ai@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch',
     removes: ['does not support image input'],
   },
-  '@deepseek-ai/dsh-llm-deepseek@0.1.1-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-llm-deepseek@0.1.1-rc.1.patch',
+  '@deepseek-ai/dsh-llm-deepseek@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch',
     removes: ['does not accept image input'],
+    adds: ['DEFAULT_MODELS.find((entry) => entry.id === model.id)?.inputModalities'],
   },
-  '@deepseek-ai/dsh-tool-fs@0.1.1-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-tool-fs@0.1.1-rc.1.patch',
+  '@deepseek-ai/dsh-tool-fs@0.1.5-rc.1': {
+    file: 'patches/@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch',
     removes: ['assertImageCapableRoute(ctx, exec, args.file_path)', 'does not declare image input'],
   },
 })
@@ -37,7 +56,9 @@ const REQUIRED_PACKAGES = Object.freeze({
   '@deepseek-ai/dsh': { bin: 'dsh' },
   '@deepseek-ai/dsh-base': { bundlePatch: true },
   '@deepseek-ai/dsh-web-app': { bundlePatch: true },
-  '@deepseek-ai/dsh-client-runtime': { export: './client' },
+  '@deepseek-ai/dsh-client-ui-session': { export: './client' },
+  '@deepseek-ai/dsh-api-remotes': { export: './client' },
+  '@deepseek-ai/dsh-api-session-controller': { export: './client' },
   '@deepseek-ai/dsh-client-ui-layout': { export: './client' },
   '@deepseek-ai/dsh-client-ui-primitives': { export: '.' },
   '@deepseek-ai/dsh-client-ui-slots': { export: '.' },
@@ -127,6 +148,43 @@ async function collectWorkspaceManifests(root) {
     }
   }
   return manifests
+}
+
+export async function installedFamilyProblems(root) {
+  const errors = []
+  const pending = [join(root, 'node_modules')]
+  const visited = new Set()
+  while (pending.length) {
+    const directory = pending.pop()
+    if (!(await exists(directory))) continue
+    const canonical = await realpath(directory)
+    if (visited.has(canonical)) continue
+    visited.add(canonical)
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name.startsWith('.') || (!entry.isDirectory() && !entry.isSymbolicLink())) continue
+      const packageRoot = join(directory, entry.name)
+      if (entry.name.startsWith('@')) {
+        pending.push(packageRoot)
+        continue
+      }
+      pending.push(join(packageRoot, 'node_modules'))
+      const manifestPath = join(packageRoot, 'package.json')
+      if (!(await exists(manifestPath))) continue
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+      if (/^@deepseek-ai\/dsh(?:-|$)/.test(manifest.name) && manifest.version !== DEFAULT_VERSION) {
+        errors.push(`${manifestPath}: installed ${manifest.name}@${manifest.version}, expected ${DEFAULT_VERSION}`)
+      }
+      if (manifest.name === '@deepseek-ai/dsh-agent-presets') {
+        for (const preset of ['standard', 'cordis', 'ptc']) {
+          const source = await readFile(join(packageRoot, 'presets', preset, 'agent.cordis.yml'), 'utf8')
+          if ([...source.matchAll(/^\s*- id: sandrone-image-tools\s*$/gm)].length !== 1) {
+            errors.push(`${preset} preset must mount sandrone-image-tools exactly once; reinstall locked dependencies`)
+          }
+        }
+      }
+    }
+  }
+  return errors
 }
 
 function exactDshFamilyProblems(manifest, label = 'package.json') {
@@ -221,6 +279,7 @@ export async function verifyUpstream(options = {}) {
   }
   errors.push(...patchProblems(patch))
   errors.push(...await dependencyPatchProblems(root))
+  errors.push(...await installedFamilyProblems(root))
 
   const packages = []
   for (const [packageName, rule] of Object.entries(REQUIRED_PACKAGES)) {
@@ -237,7 +296,7 @@ export async function verifyUpstream(options = {}) {
     if (base.dsh?.bundle?.patch !== './cordis.patch.yml') errors.push('@deepseek-ai/dsh-base patch declaration changed')
     if (web.dsh?.bundle?.patch !== './cordis.patch.yml') errors.push('@deepseek-ai/dsh-web-app patch declaration changed')
     errors.push(...await bundlePatchProblems(baseResult, ['session', 'agent-loop', 'settings', 'credentials']))
-    errors.push(...await bundlePatchProblems(webResult, ['api-gateway', 'connection', 'client-runtime', 'ui-layout']))
+    errors.push(...await bundlePatchProblems(webResult, ['session-controller', 'connection', 'ui-session', 'ui-layout']))
   }
 
   return { root, expectedVersion: DEFAULT_VERSION, packages, errors }

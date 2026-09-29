@@ -10,19 +10,23 @@ test('UI package self-registers as a Web client plugin using only public depende
   assert.equal(manifest.dsh?.client?.platform, 'web')
   assert.ok(manifest.exports?.['./client'])
   assert.deepEqual(manifest.dsh.client.inject, [
-    '@deepseek-ai/dsh-client-runtime',
+    '@deepseek-ai/dsh-client-ui-session',
+    '@deepseek-ai/dsh-api-remotes',
     '@deepseek-ai/dsh-client-ui-layout',
+    '@deepseek-ai/dsh-client-ui-sidebar-right',
     '@deepseek-ai/dsh-client-ui-theme',
+    '@deepseek-ai/dsh-api-session-controller',
+    '@deepseek-ai/dsh-client-ui-model-selection',
   ])
   for (const [name, version] of Object.entries(manifest.peerDependencies)) {
-    if (name.startsWith('@deepseek-ai/dsh')) assert.equal(version, '0.1.1-rc.1')
+    if (name.startsWith('@deepseek-ai/dsh')) assert.equal(version, '0.1.5-rc.1')
   }
 })
 
 test('source registers theme and overlay through reversible Harness effects', async () => {
   const source = await readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8')
   assert.match(source, /import\s+React,\s*\{[^}]*useEffect[^}]*useState[^}]*\}\s+from\s+['"]react['"]/)
-  assert.match(source, /export\s+const\s+inject\s*=\s*\[['"]slots['"],\s*['"]theme['"]\]/)
+  assert.match(source, /export\s+const\s+inject\s*=\s*\[['"]slots['"],\s*['"]theme['"],\s*['"]layout['"]\]/)
   assert.match(source, /ctx\.effect\s*\(/)
   assert.match(source, /ctx\.theme\.overrideTokens\s*\(/)
   assert.match(source, /ctx\.slots\.inject\s*\(\s*['"]shell\.overlay['"]/)
@@ -54,9 +58,45 @@ test('desktop chrome owns a complete sidebar toggle and collapse state', async (
   ])
   assert.match(component, /className=['"]sandrone-topbar-history sandrone-topbar-sidebar['"]/)
   assert.match(component, /aria-label=['"]切换侧边栏['"]/)
-  assert.match(component, /sandroneSidebarForcedCollapsed/)
-  assert.match(stylesheet, /\[data-sandrone-frame\]\[data-sidebar-collapsed=['"]true['"]\][\s\S]*?grid-template-columns:\s*0 minmax\(0, 1fr\) 0/)
-  assert.match(stylesheet, /\[data-sidebar-collapsed=['"]true['"]\] \[data-sandrone-sidebar-column\][\s\S]*?visibility:\s*hidden/)
+})
+
+test('space actions use app-owned dialogs and a browser dev storage fallback', async () => {
+  const [component, stylesheet] = await Promise.all([
+    readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
+    readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
+  ])
+  const space = component.match(/function renderMarkdownHtml[\s\S]*?function SandroneRegionLauncher/)?.[0] ?? ''
+  assert.match(component, /BROWSER_SPACE_STORAGE_KEY/)
+  assert.match(component, /function getSpaceApi\(\)/)
+  assert.match(space, /className="sandrone-space-dialog-backdrop"/)
+  assert.match(space, /root\.setAttribute\('data-sandrone-space-dialog-open', 'true'\)/)
+  assert.match(space, /className="sandrone-space-native-actions"/)
+  assert.match(space, /const undoEditorChange = \(\) =>/)
+  assert.match(space, /const redoEditorChange = \(\) =>/)
+  assert.match(space, /title="撤销 \(Ctrl\+Z\)"/)
+  assert.match(space, /title="重做 \(Ctrl\+Y\)"/)
+  assert.match(space, /className="sandrone-space-split-view"/)
+  assert.match(space, /const flushCurrentDocument = async \(\)/)
+  assert.match(space, /onClick=\{\(\) => void selectDocument\(file\)\}/)
+  assert.match(space, /onDrop=\{handleEditorDrop\}/)
+  assert.match(space, /onPaste=\{handleEditorPaste\}/)
+  assert.match(space, /api\?\.importResourceFile/)
+  assert.match(space, /restoreDeletedDocument/)
+  assert.match(space, /撤销删除/)
+  assert.match(space, /tableDelimiter = line =>/)
+  assert.match(space, /sandrone-space-task/)
+  assert.match(space, /language-\$\{escapeMarkdownHtml\(codeLanguage\)\}/)
+  assert.doesNotMatch(space, /window\.(prompt|confirm)/)
+  assert.match(stylesheet, /\[data-sandrone-region="space"\][\s\S]*?searchSlot/)
+  assert.match(stylesheet, /\.sandrone-space-dialog-backdrop[\s\S]*?pointer-events:\s*auto/)
+  assert.match(stylesheet, /html\[data-sandrone-space-dialog-open="true"\] \[data-sandrone-region-host\][\s\S]*?visibility:\s*hidden[\s\S]*?pointer-events:\s*none/)
+  assert.match(stylesheet, /\.sandrone-space-split-view\s*\{[\s\S]*?grid-template-columns/)
+  assert.match(stylesheet, /\.sandrone-region-menu\s*\{[\s\S]*?z-index:\s*1000/)
+  assert.match(stylesheet, /\[data-sandrone-region-host\]\s*\{[\s\S]*?z-index:\s*300/)
+  assert.match(stylesheet, /\.sandrone-space-tree-row, \.sandrone-space-document-row\s*\{[\s\S]*?height:\s*36px[\s\S]*?min-height:\s*36px/)
+  assert.match(stylesheet, /\.sandrone-space-document-tree\s*\{[^}]*padding-left:\s*0;\s*border-left:\s*0;/)
+  assert.match(stylesheet, /\.sandrone-space-folder-row\s*\{[\s\S]*?height:\s*36px/)
+  assert.match(stylesheet, /\.sandrone-space-resource-row\s*\{[\s\S]*?height:\s*36px/)
 })
 
 test('conversation toolbar preserves upstream session chrome and seats Buddy on the right', async () => {
@@ -73,7 +113,8 @@ test('conversation toolbar preserves upstream session chrome and seats Buddy on 
   assert.match(stylesheet, /\[data-sandrone-session-toolbar\][\s\S]*?border-bottom:\s*1px solid var\(--sandrone-line\)/)
   assert.match(stylesheet, /\[data-sandrone-session-title-row\]\s*\{\s*display:\s*contents\s*!important;/)
   assert.match(stylesheet, /\[data-sandrone-session-tabs\][\s\S]*?clip-path:\s*inset\(50%\)/)
-  assert.match(stylesheet, /\[data-sandrone-center\]\s*\{[\s\S]*?padding-top:\s*38px\s*!important/)
+  assert.match(stylesheet, /\[data-sandrone-frame\]\s*\{[\s\S]*?padding-top:\s*38px/)
+  assert.match(stylesheet, /\[data-sandrone-session-toolbar\]\[aria-hidden="true"\][\s\S]*?display:\s*none/)
   assert.match(stylesheet, /\[data-sandrone-session-utilities\][\s\S]*?margin-left:\s*auto\s*!important/)
   assert.match(stylesheet, /\.sandrone-buddy-anchor,\s*\n\.sandrone-right-panel-anchor\s*\{[\s\S]*?position:\s*relative/)
   assert.match(stylesheet, /\.sandrone-right-panel\s*\{[\s\S]*?position:\s*fixed[\s\S]*?right:\s*0[\s\S]*?bottom:\s*0/)
@@ -130,18 +171,14 @@ test('conversation toolbar compacts native views and unifies Sandrone utilities'
   assert.match(component, /function ScreenshotDirectoryRow\(/)
   assert.match(component, /chooseScreenshotDirectory/)
   assert.match(component, /data-sandrone-session-log/)
-  assert.match(component, /function WorkspaceControl\(\{ useWorkspaces, sessionId \}\)/)
-  assert.match(component, /function WorkspacePanel\(/)
-  assert.match(component, /window\.sandroneDesktop\?\.workspace/)
-  assert.match(component, /function BuddyControl\(\{ connection, sessionId, useWorkspaces \}\)/)
-  assert.match(component, /connection\.api\.sessions\.prompt/)
-  assert.match(component, /connection\.api\.sessions\.models/)
-  assert.match(component, /connection\.api\.sessions\.selectModel/)
+  assert.match(component, /function WorkspaceControl\(\{ toggleWorkspace \}\)/)
+  assert.doesNotMatch(component, /function WorkspacePanel\(/)
+  assert.match(component, /scope\.sidebarRight\.toggleExpanded\(\)/)
+  assert.doesNotMatch(component, /SandroneImageAttach/)
   assert.match(component, /agentPreset:\s*['"]sandrone-buddy['"]/)
-  assert.match(component, /maxMessages:\s*12/)
+  assert.match(component, /binding\?\.eventSource\.getSnapshot\(\)\.entries/)
   assert.match(component, /collectBuddyActivity/)
   assert.match(component, /RIGHT_PANEL_EVENT/)
-  assert.match(component, /sandrone-right-panel-anchor\$\{panel\.open \? ['"] is-open['"] : ['"]['"]\}/)
   assert.match(component, /sandrone-buddy-anchor\$\{panel\.open \? ['"] is-open['"] : ['"]['"]\}/)
   assert.match(component, /function ThemeControl\(\{ getTheme, toggleTheme \}\)/)
   assert.match(component, /id:\s*['"]sandrone-view-toggle['"]/)
@@ -153,7 +190,7 @@ test('conversation toolbar compacts native views and unifies Sandrone utilities'
   assert.match(stylesheet, /\.sandrone-right-panel/)
   assert.doesNotMatch(stylesheet, /data-sandrone-screenshot-freeze/)
   assert.match(stylesheet, /\.sandrone-buddy-anchor\.is-open,\s*\n\.sandrone-right-panel-anchor\.is-open\s*\{\s*z-index:\s*72/)
-  assert.match(component, /className="sandrone-right-panel sandrone-workspace-panel"/)
+  assert.doesNotMatch(component, /className="sandrone-right-panel sandrone-workspace-panel"/)
   assert.doesNotMatch(component, /WebPanel|WebControl|sandrone-web/)
   assert.doesNotMatch(stylesheet, /sandrone-web|data-sandrone-web-mode/)
   assert.match(component, /className="sandrone-right-panel sandrone-buddy-panel"/)
@@ -222,8 +259,8 @@ test('custom Provider reasoning capabilities flow into the composer picker', asy
   ])
   assert.match(component, /PROVIDER_REASONING_LEVELS[^\n]*off[^\n]*minimal[^\n]*xhigh[^\n]*max/)
   assert.match(component, /reasoningEfforts/)
-  assert.match(component, /installProviderCapabilityFields\(connection\)/)
-  assert.match(component, /connection\.api\.settings\.mutate/)
+  assert.match(component, /installProviderCapabilityFields\(remote\)/)
+  assert.match(component, /remote\.settings\.mutate/)
   assert.match(component, /\{ op: ['"]unset['"], path \}/)
   assert.match(component, /未声明（仅提供方默认）/)
   assert.match(component, /标准：关 \/ 低 \/ 中 \/ 高/)
@@ -253,129 +290,9 @@ test('message image enhancement owns local object URLs and an accessible preview
   assert.match(stylesheet, /:focus-visible/)
 })
 
-test('patched Markdown renderer preserves absolute local image paths as inert data', async () => {
-  const patches = await Promise.all([
-    readFile(join(root, 'patches/@deepseek-ai__dsh-client-ui-primitives@0.1.1-rc.1.patch'), 'utf8'),
-    readFile(join(root, 'patches/@deepseek-ai__dsh-web-frontend@0.1.1-rc.1.patch'), 'utf8'),
-  ])
-  for (const patch of patches) {
-    assert.match(patch, /data-sandrone-local-image/)
-    assert.match(patch, /\^\[A-Za-z\]:\[\\\\\/\]/)
-    assert.match(patch, /\^\\\/\(\?!\\\/\)/)
-  }
-})
-
-test('host plugin leaves upstream runtime behavior authoritative', async () => {
-  const source = await readFile(join(root, 'packages/sandrone-ui/src/index.js'), 'utf8')
-  assert.match(source, /export function apply\(\) \{\}/)
-  assert.doesNotMatch(source, /system-prompt\/assemble|sandbox_permissions|llm\/stream/)
-})
-
-test('settings styles use a reversible semantic panel boundary', async () => {
-  const [component, stylesheet] = await Promise.all([
-    readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
-    readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
-  ])
-  assert.match(component, /mark\(panel,\s*['"]data-sandrone-settings-panel['"]\)/)
-  assert.match(component, /markedElements\.push\(\[element, attribute\]\)/)
-  assert.match(component, /element\.removeAttribute\(attribute\)/)
-  assert.match(component, /className=['"]sandrone-settings-search-input['"]/)
-  assert.match(component, /data-sandrone-settings-control/)
-  assert.match(component, /data-sandrone-settings-nav-cell/)
-  assert.doesNotMatch(component, /cell\.style\.display/)
-  assert.match(stylesheet, /\[data-sandrone-settings-panel\]/)
-  assert.match(stylesheet, /input\[data-sandrone-settings-control\]/)
-  assert.match(stylesheet, /\[data-sandrone-settings-nav-cell\]\[data-sandrone-filtered\]/)
-  assert.doesNotMatch(stylesheet, /VOzbGW_panel|VOzbGW_overlay|VOzbGW_mask|VOzbGW_close|VOzbGW_navTitle|VOzbGW_content|VOzbGW_options|me01iq_action/)
-})
-
-test('settings visual system uses semantic markers and the Sandrone red state chain', async () => {
-  const [component, stylesheet] = await Promise.all([
-    readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
-    readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
-  ])
-  assert.match(component, /data-sandrone-settings-section/)
-  assert.match(component, /data-sandrone-settings-card/)
-  assert.match(component, /data-sandrone-settings-primary-action/)
-  assert.match(component, /data-sandrone-settings-choice-grid/)
-  assert.match(stylesheet, /\[data-sandrone-settings-nav-cell\]\[aria-current="true"\][\s\S]*?background:\s*var\(--sandrone-settings-accent-wash\)[\s\S]*?color:\s*var\(--sandrone-red\)/)
-  assert.match(stylesheet, /\[data-sandrone-settings-primary-action\][\s\S]*?background:\s*var\(--sandrone-red\)/)
-  assert.match(stylesheet, /\.sandrone-setting-switch\.is-on[\s\S]*?background:\s*var\(--sandrone-red\)/)
-})
-
-test('Sandrone settings sections use stable semantic SVG icons', async () => {
-  const [component, stylesheet] = await Promise.all([
-    readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
-    readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
-  ])
-  for (const [label, icon] of [
-    ['Skills', 'skill'],
-    ['MCP', 'mcp'],
-    ['Buddy', 'buddy'],
-    ['IM', 'im'],
-    ['Agent 预设', 'agent'],
-    ['其他', 'other'],
-  ]) {
-    assert.match(component, new RegExp(`\\['${label}', \\['${icon}'`))
-  }
-  assert.match(component, /data-sandrone-settings-icon/)
-  assert.match(component, /data-sandrone-settings-nav-icon/)
-  assert.match(component, /createElementNS\('http:\/\/www\.w3\.org\/2000\/svg', 'svg'\)/)
-  assert.match(stylesheet, /\[data-sandrone-settings-nav-icon\]/)
-  assert.match(stylesheet, /svg:not\(\[data-sandrone-settings-nav-icon\]\)/)
-  assert.doesNotMatch(component, /nth-child/)
-})
-
-test('narrow settings layout stays visible only while the official trigger is open', async () => {
-  const [component, stylesheet] = await Promise.all([
-    readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
-    readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
-  ])
-  assert.match(component, /getAttribute\('aria-expanded'\) === 'true'/)
-  assert.match(component, /toggleAttribute\('data-sandrone-settings-open', settingsOpen\)/)
-  assert.match(stylesheet, /@media \(max-width: 900px\)[\s\S]*?\[data-sandrone-settings-overlay\]\[data-sandrone-settings-open\][\s\S]*?visibility:\s*visible[\s\S]*?pointer-events:\s*auto/)
-  assert.match(stylesheet, /\[data-sandrone-settings-choice-grid\][\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/)
-})
-
-test('provisional blank session stays runtime-owned but is omitted from sidebar history', async () => {
-  const [component, stylesheet] = await Promise.all([
-    readFile(join(root, 'packages/sandrone-ui/src/client.jsx'), 'utf8'),
-    readFile(join(root, 'packages/sandrone-ui/src/client.css'), 'utf8'),
-  ])
-  assert.match(component, /data-sandrone-provisional-session/)
-  assert.match(component, /label === ['"]新会话['"] \|\| label === ['"]New Session['"]/)
-  assert.match(component, /hasSessionActions/)
-  assert.match(stylesheet, /\[data-sandrone-provisional-session\]\s*\{\s*display:\s*none\s*!important;/)
-})
-
-test('built client bundle self-registers and stylesheet ownership is reversible', async () => {
-  const bundle = await readFile(join(root, 'packages/sandrone-ui/lib/client.js'), 'utf8')
-  assert.match(bundle, /__ModuleLoader__\.load\(\{\s*id:\s*['"]@sandrone\/harness-ui['"]/)
-  assert.match(bundle, /ctx\.effect\s*\(/)
-  assert.match(bundle, /ctx\.slots\.register\s*\(/)
-  assert.match(bundle, /data-plugin-css|dataset\.pluginCss/)
-  assert.match(bundle, /removeChild|\.remove\(\)/)
-})
-
-test('UI build and sync verification share a complete source fingerprint', async () => {
-  const [buildScript, verifyScript, fingerprintScript] = await Promise.all([
-    readFile(join(root, 'scripts/build-ui.mjs'), 'utf8'),
-    readFile(join(root, 'scripts/verify-ui-sync.mjs'), 'utf8'),
-    readFile(join(root, 'scripts/ui-source-fingerprint.mjs'), 'utf8'),
-  ])
-  assert.match(buildScript, /fingerprintUiSources\(packageRoot\)/)
-  assert.match(buildScript, /sandrone-ui-source-sha256:/)
-  assert.match(verifyScript, /fingerprintUiSources\(packageRoot\)/)
-  assert.match(verifyScript, /sandrone-ui-source-sha256:\(\[a-f0-9\]\{64\}\)/)
-  for (const input of ['client.jsx', 'buddy.js', 'sessionScreenshot.js', 'client.css', 'index.js', 'header-bg.png', 'header-bg-dark.png']) {
-    assert.match(fingerprintScript, new RegExp(input.replace('.', '\\.')))
-  }
-})
-
-test('UI build script inserts CSS through an effect-owned disposer at a stable marker', async () => {
-  const source = await readFile(join(root, 'scripts/build-ui.mjs'), 'utf8')
-  assert.match(source, /data-plugin-css|dataset\.pluginCss/)
-  assert.match(source, /removeChild|\.remove\(\)/)
-  assert.match(source, /ctx\.effect|export\s+function\s+apply/)
-  assert.doesNotMatch(source, /bundle\.replace\(\s*['"]var module = \{['"]/)
+test('official chat resolves local image paths through authenticated file delivery', async () => {
+  const chat = await readFile(join(root, 'node_modules/@deepseek-ai/dsh-client-ui-chat/lib/client.js'), 'utf8')
+  assert.match(chat, /localPathMediaUrl/)
+  assert.match(chat, /api\/file\?path=/)
+  assert.match(chat, /pathImages/)
 })

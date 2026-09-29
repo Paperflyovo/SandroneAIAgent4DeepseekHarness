@@ -20,13 +20,16 @@ function packageDirectories(nodeModules) {
   return directories
 }
 
-function resolvePeerManifest(packageDirectory, packageName) {
+function resolvePeerManifest(packageDirectory, packageName, nodeModules) {
+  const resolutionRoot = path.dirname(nodeModules)
   let current = packageDirectory
   while (true) {
     const candidate = path.join(current, 'node_modules', ...packageName.split('/'), 'package.json')
     if (fs.existsSync(candidate)) return candidate
+    if (current === resolutionRoot) return null
     const parent = path.dirname(current)
-    if (parent === current) return null
+    const relative = path.relative(resolutionRoot, parent)
+    if (parent === current || relative === '..' || relative.startsWith(`..${path.sep}`)) return null
     current = parent
   }
 }
@@ -46,7 +49,7 @@ function missingRequiredPeerDependencies(nodeModules) {
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
       for (const packageName of Object.keys(manifest.peerDependencies ?? {})) {
         if (manifest.peerDependenciesMeta?.[packageName]?.optional === true) continue
-        if (resolvePeerManifest(packageDirectory, packageName)) continue
+        if (resolvePeerManifest(packageDirectory, packageName, nodeModules)) continue
         const consumers = missing.get(packageName) ?? new Set()
         consumers.add(`${manifest.name ?? path.basename(packageDirectory)}@${manifest.version ?? 'unknown'}`)
         missing.set(packageName, consumers)
@@ -90,6 +93,11 @@ async function verifyNativeArtifacts(context) {
     throw new Error(`Packaged node-pty is missing ${platform}-${architecture} artifacts: ${missing.join(', ')}`)
   }
   const nodeModules = path.join(context.appOutDir, 'resources', 'app', 'node_modules')
+  const missingRuntime = requiredPersistenceArtifacts(platform, architecture)
+    .filter(relative => !fs.existsSync(path.join(nodeModules, ...relative.split('/'))))
+  if (missingRuntime.length > 0) {
+    throw new Error(`Packaged persistence runtime is missing: ${missingRuntime.join(', ')}`)
+  }
   const missingPeers = missingRequiredPeerDependencies(nodeModules)
   if (missingPeers.length > 0) {
     const detail = missingPeers
@@ -99,6 +107,13 @@ async function verifyNativeArtifacts(context) {
   }
 }
 
+function requiredPersistenceArtifacts(platform, architecture) {
+  const artifacts = ['@deepseek-ai/dsh-session-persistence-jsonl/lib/worker.cjs']
+  if (platform === 'win32') artifacts.push(`@koromix/koffi-win32-${architecture}/win32_${architecture}/koffi.node`)
+  return artifacts
+}
+
 module.exports = verifyNativeArtifacts
+module.exports.requiredPersistenceArtifacts = requiredPersistenceArtifacts
 module.exports.missingRequiredPeerDependencies = missingRequiredPeerDependencies
 module.exports.requiredNodePtyArtifacts = requiredNodePtyArtifacts

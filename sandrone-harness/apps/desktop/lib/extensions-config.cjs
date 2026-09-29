@@ -203,7 +203,9 @@ function writeExtensionsPatch(filePath, config) {
   const temporary = `${filePath}.${process.pid}.${Date.now()}.tmp`
   fs.mkdirSync(path.dirname(filePath), { recursive: true })
   try {
-    fs.writeFileSync(temporary, buildExtensionsPatch(config), 'utf8')
+    // The patch carries MCP server env and headers, so it holds the same secrets
+    // as the JSON config and must not land world-readable.
+    fs.writeFileSync(temporary, buildExtensionsPatch(config), { encoding: 'utf8', mode: 0o600 })
     fs.renameSync(temporary, filePath)
   } catch (error) {
     try { fs.rmSync(temporary, { force: true }) } catch {}

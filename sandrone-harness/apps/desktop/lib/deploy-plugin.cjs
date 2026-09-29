@@ -2,6 +2,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { renameWithRetrySync } = require('./rename-with-retry.cjs')
 
 const PLUGIN_NAME = '@sandrone/harness-ui'
 const SEMVER = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
@@ -69,7 +70,7 @@ function sameTree(left, right) {
 
 function installManagedTarget(temporary, target, extensionRoot) {
   if (!entryExists(target)) {
-    fs.renameSync(temporary, target)
+    renameWithRetrySync(temporary, target)
     return
   }
   if (sameTree(temporary, target)) {
@@ -81,12 +82,12 @@ function installManagedTarget(temporary, target, extensionRoot) {
     extensionRoot,
     `.previous-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
   )
-  fs.renameSync(target, backup)
+  renameWithRetrySync(target, backup)
   try {
-    fs.renameSync(temporary, target)
+    renameWithRetrySync(temporary, target)
   } catch (error) {
     try {
-      fs.renameSync(backup, target)
+      renameWithRetrySync(backup, target)
     } catch (rollbackError) {
       error.cause = rollbackError
     }

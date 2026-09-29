@@ -13,12 +13,12 @@
     "src/index.js"
   ],
   "dependencies": {
-    "@deepseek-ai/dsh-attachment": "0.1.1-rc.1",
-    "@deepseek-ai/dsh-tools": "0.1.1-rc.1",
-    "@deepseek-ai/schemastery": "3.18.1",
+    "@deepseek-ai/dsh-attachment": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
+    "@deepseek-ai/schemastery": "3.18.2",
     "ipaddr.js": "1.9.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.1"
+    "@deepseek-ai/cordis": "4.0.2"
   }
 }

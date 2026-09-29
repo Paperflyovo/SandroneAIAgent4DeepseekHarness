@@ -21,4 +21,5 @@ const shutdown = message => {
 process.parentPort?.on('message', event => shutdown(event?.data))
 process.on('message', shutdown)
 
-await import(pathToFileURL(dshBin).href)
+const { runCli } = await import(pathToFileURL(dshBin).href)
+await runCli()

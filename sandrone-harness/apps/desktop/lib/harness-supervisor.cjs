@@ -2,7 +2,7 @@
 
 const { EventEmitter } = require('node:events')
 
-const READY_LINE = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)(?:\s|$)/
+const READY_LINE = /^dsh web: (http:\/\/127\.0\.0\.1:\d+(?:\/\?token=[A-Za-z0-9_-]+)?)(?:\s|$)/
 
 function deferred() {
   let resolve
@@ -162,7 +162,7 @@ class HarnessSupervisor extends EventEmitter {
     clearTimeout(this.stableTimer)
     this.stableTimer = setTimeout(() => { this.restartAttempts = 0 }, this.stableAfterMs)
     this.stableTimer.unref?.()
-    this.emit('ready', url)
+    this.emit('ready', match[1])
   }
 
   onExit(generation, code) {
@@ -206,7 +206,16 @@ class HarnessSupervisor extends EventEmitter {
 
   failStart(error) {
     const normalized = error instanceof Error ? error : new Error(String(error))
-    const publicError = new Error(redact(normalized.message))
+    const recentStderr = this.logs
+      .filter(line => line.startsWith('[stderr]'))
+      .slice(-12)
+      .map(line => line.replace(/^\[stderr\]\s*/, '').trim())
+      .filter(Boolean)
+      .join('\n')
+    const message = redact(normalized.message)
+    const publicError = new Error(recentStderr && !message.includes(recentStderr)
+      ? `${message}\n${recentStderr}`
+      : message)
     this.setStatus({ phase: 'failed', url: null, error: publicError.message, attempts: this.restartAttempts })
     this.startGate?.reject(publicError)
     this.startGate = null

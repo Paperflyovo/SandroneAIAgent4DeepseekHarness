@@ -1,6 +1,22 @@
 # DeepSeek Harness Runtime Evidence
 
-Use this as a source map, not a frozen substitute for upstream documentation. The observations were taken from DeepSeek Harness commit `47f943859bef60e4160492346772ded9b24f765a` (`0.1.0-rc.5` source); the Sandrone distribution resolves the runnable package family at exact `0.1.0-rc.6`. Verify exports and behavior again when upgrading.
+Use this as a source map, not a frozen substitute for upstream documentation. The
+historical sections below describe commit `47f943859bef60e4160492346772ded9b24f765a`
+(`0.1.0-rc.5`). Sandrone now pins `0.1.5-rc.1`, audited against commit
+`183f08e9c6dde7e36cd2318eaee70b0da08fb35e`. Verify exports before using old examples.
+
+## Current 0.1.5 public contracts
+
+- `dsh-api-session-controller/client` exports `SessionEventStream` and
+  `MutableSessionEventSource`; `dsh-client-ui-session/client` supplies React hooks.
+- `ctx.remote.settings.describe()` and `mutate(namespace, operations, revision)`
+  return RemoteResult values with `ok` and `value`; service dependencies require
+  explicit Cordis injection, including `remote.session` for model directories.
+- `dsh` exposes `runCli` from its declared bin. Imported entrypoints do not run
+  automatically. Web readiness includes a process-token bootstrap URL; the desktop
+  retains its origin for trust checks and omits the token from public status.
+- JSONL persistence migrates plain or `.jsonl.zstd` V0 history to V3 on write.
+  Windows atomic replacement requires Koffi; the package includes a migration worker.
 
 ## Compatibility Boundary
 

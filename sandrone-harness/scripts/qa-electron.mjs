@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 
 import { electronExecutableRelativePath } from './lib/desktop-platform.mjs'
+import { checkSidebarCollapse, checkComposerTextAlignment, checkAttachmentPicker, checkCommandLauncher, checkShellGeometry } from './qa-workflow-checks.mjs'
 
 const execFileAsync = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -261,6 +262,8 @@ async function waitForOfficialHarness(page, readyTimeoutMs) {
 
   while (Date.now() < deadline) {
     if (page.isClosed()) throw new Error('Electron renderer closed before Harness became ready')
+    const status = await page.evaluate(() => window.sandroneDesktop?.getStatus()).catch(() => null)
+    if (status?.phase === 'failed') throw new Error(`Harness startup failed: ${redact(status.error)}`)
     lastUrl = page.url()
     if (loopbackOrigin(lastUrl)) {
       try {
@@ -316,7 +319,7 @@ async function waitForEditableComposer(page, workspacePath) {
   await composer.waitFor({ state: 'visible', timeout: 30_000 })
   await page.waitForFunction(() => {
     const input = document.querySelector('[data-sandrone-composer-input]')
-    return input instanceof HTMLTextAreaElement && !input.disabled && !input.readOnly
+    return input instanceof HTMLElement && input.isContentEditable && input.getAttribute('aria-disabled') !== 'true'
   }, undefined, { timeout: 30_000 }).catch(() => {
     throw new Error(`workspace ${workspacePath} was adopted, but its new session composer did not become editable`)
   })
@@ -398,6 +401,14 @@ async function main() {
     // that must never leak into the desktop app under test or require('electron')
     // loses the app APIs and the process exits during launch.
     delete launchEnvironment.ELECTRON_RUN_AS_NODE
+    if (process.env.QA_SYSTEM_PATH === '1' && process.platform === 'win32') {
+      for (const name of Object.keys(launchEnvironment)) {
+        if (name.toLowerCase() === 'path') delete launchEnvironment[name]
+      }
+      const windowsRoot = process.env.SystemRoot || 'C:\\Windows'
+      launchEnvironment.PATH = [join(windowsRoot, 'System32'), windowsRoot, join(windowsRoot, 'System32/WindowsPowerShell/v1.0')].join(';')
+      report.environment.systemPathOnly = true
+    }
 
     application = await playwright.electron.launch({
       executablePath: electron.executablePath,
@@ -457,6 +468,19 @@ async function main() {
     const { workspaceTitle, composer } = await addWorkspaceThroughNativePicker(firstWindow, workspaceDirectory)
     recordCheck(report, 'workspace directory picker adopts a selected directory', await workspaceTitle.isVisible(), workspaceDirectory)
     recordCheck(report, 'selected workspace opens an editable new conversation', await composer.isEditable(), '[data-sandrone-composer-input]')
+    await checkSidebarCollapse(firstWindow)
+    recordCheck(report, 'sidebar fully hides and the titlebar toggle restores it with keyboard', true)
+    await checkCommandLauncher(firstWindow)
+    const composerAlignment = await checkComposerTextAlignment(firstWindow)
+    recordCheck(report, 'composer placeholder, caret and typed text share origins and font metrics', true, composerAlignment)
+    recordCheck(report, 'native commands stay open for mouse, keyboard and slash', true)
+    await checkAttachmentPicker(firstWindow)
+    recordCheck(report, 'native attachment button receives pointer clicks and opens the file chooser', true)
+    const geometry = await checkShellGeometry(firstWindow)
+    recordCheck(report, 'desktop titlebar has no duplicate inset or attachment entry', true, geometry)
+    await firstWindow.mouse.move(2, 2)
+    await composer.press('Control+Home')
+    await firstWindow.locator('[data-composer-card]').screenshot({ path: join(outputDirectory, 'composer-aligned.png'), caret: 'initial' })
     const initialScreenshot = join(outputDirectory, 'desktop-initial.png')
     await firstWindow.screenshot({ path: initialScreenshot, fullPage: false })
     report.application.initial.screenshot = initialScreenshot

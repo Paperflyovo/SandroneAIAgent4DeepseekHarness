@@ -17,7 +17,8 @@ const {
   screen,
   shell,
 } = require('electron')
-const { HarnessSupervisor } = require('./lib/harness-supervisor.cjs')
+const { HarnessSupervisor, redact } = require('./lib/harness-supervisor.cjs')
+const { prepareUpgradeBackup } = require('./lib/upgrade-backup.cjs')
 const { deployPlugin } = require('./lib/deploy-plugin.cjs')
 const { deployRuntimePackage } = require('./lib/deploy-runtime-package.cjs')
 const { deployAgentPresets } = require('./lib/deploy-agent-presets.cjs')
@@ -41,6 +42,29 @@ const { packageBin } = require('./lib/resolve-package.cjs')
 const { MAX_SESSION_SCREENSHOT_TRANSFER_BYTES, composeSessionScreenshot } = require('./lib/session-screenshot.cjs')
 const { UpdateService } = require('./lib/update-service.cjs')
 const { listWorkspaceDirectory, readWorkspaceFile, resolveWorkspaceTarget } = require('./lib/workspace-browser.cjs')
+const {
+  createSpace,
+  renameSpace,
+  listSpaces,
+  getSpace,
+  listDocuments,
+  listFolders,
+  createDirectory,
+  listResources,
+  searchSpaces,
+  readMarkdown,
+  writeMarkdown,
+  createMarkdown,
+  renameMarkdown,
+  deleteMarkdown,
+  restoreMarkdown,
+  deleteSpace,
+  readResource,
+  copyResource,
+  renameResource,
+  deleteResource,
+  migrateSpaceRoot,
+} = require('./lib/space-store.cjs')
 
 const APP_NAME = 'Sandrone AI Agent'
 const ROOT = path.resolve(__dirname, '..', '..')
@@ -65,6 +89,7 @@ app.setName(APP_NAME)
 
 let mainWindow = null
 let activeOrigin = null
+let activeLaunchUrl = null
 let navigationRetry = 0
 let navigationTimer = null
 let quitting = false
@@ -188,6 +213,47 @@ function dshHome() {
   return path.join(app.getPath('userData'), 'DeepSeekHarness')
 }
 
+// Space documents are user data, not shared build output: they belong beside
+// the other Harness state under userData. Earlier releases kept them in the
+// installation directory, which loses them whenever the installer is pointed at
+// a new path, so previousSpaceRootPath() feeds the one-time migration below.
+function previousSpaceRootPath() {
+  return app.isPackaged ? path.join(path.dirname(app.getPath('exe')), 'space') : null
+}
+
+function spaceRootPath() {
+  const override = process.env.SANDRONE_SPACE_ROOT?.trim()
+  if (override) return path.resolve(override)
+  return app.isPackaged
+    ? path.join(app.getPath('userData'), 'space')
+    : path.join(ROOT, 'space')
+}
+
+// Credentials, extension secrets and the local-image allow-list live here. A
+// resource import must never be able to read the application's own data back
+// out, even if the preload boundary is ever bypassed or refactored away.
+function protectedResourceRoots() {
+  return [
+    app.getPath('userData'),
+    path.join(app.getPath('home'), '.dsh'),
+  ]
+}
+
+function migrateSpaceData() {
+  const from = previousSpaceRootPath()
+  if (!from) return null
+  try {
+    const result = migrateSpaceRoot(from, spaceRootPath())
+    if (result.migrated) {
+      console.log(`[sandrone-desktop] migrated ${result.spaces} space(s) from ${from} to ${spaceRootPath()}`)
+    }
+    return result
+  } catch (error) {
+    console.error(`[sandrone-desktop] space migration failed: ${String(error)}`)
+    return null
+  }
+}
+
 function extensionsConfigPath() {
   return path.join(app.getPath('userData'), 'sandrone-extensions.json')
 }
@@ -272,6 +338,8 @@ function writeWindowState() {
 }
 
 function launchHarness() {
+  prepareUpgradeBackup(dshHome())
+  migrateSpaceData()
   const bin = packageBin('@deepseek-ai/dsh', 'dsh', path.join(ROOT, 'package.json'))
   deployPlugin({ source: UI_PLUGIN, dshHome: dshHome() })
   deployRuntimePackage({
@@ -391,7 +459,8 @@ async function showLoadingPage() {
 async function loadHarness(url) {
   if (!mainWindow || mainWindow.isDestroyed() || quitting) return
   activeOrigin = new URL(url).origin
-  await mainWindow.loadURL(activeOrigin)
+  activeLaunchUrl = url
+  await mainWindow.loadURL(url)
 }
 
 function clearNavigationRetry() {
@@ -407,7 +476,7 @@ function scheduleNavigationRetry() {
   navigationTimer = setTimeout(() => {
     navigationTimer = null
     if (supervisor.snapshot().phase === 'ready' && activeOrigin) {
-      void loadHarness(activeOrigin).catch(() => scheduleNavigationRetry())
+      void loadHarness(activeLaunchUrl || activeOrigin).catch(() => scheduleNavigationRetry())
     }
   }, delay)
   navigationTimer.unref?.()
@@ -673,6 +742,110 @@ function registerIpc() {
     }
     return { ok: true }
   })
+  ipcMain.handle('desktop:space-root', event => {
+    assertTrusted(event)
+    const root = spaceRootPath()
+    fs.mkdirSync(root, { recursive: true })
+    return root
+  })
+  ipcMain.handle('desktop:space-list', event => {
+    assertTrusted(event)
+    return listSpaces(spaceRootPath())
+  })
+  ipcMain.handle('desktop:space-create', (event, name) => {
+    assertTrusted(event)
+    return createSpace(spaceRootPath(), String(name || ''))
+  })
+  ipcMain.handle('desktop:space-rename', (event, id, name) => {
+    assertTrusted(event)
+    return renameSpace(spaceRootPath(), String(id || ''), String(name || ''))
+  })
+  ipcMain.handle('desktop:space-delete', (event, id) => {
+    assertTrusted(event)
+    return deleteSpace(spaceRootPath(), String(id || ''))
+  })
+  ipcMain.handle('desktop:space-get', (event, id) => {
+    assertTrusted(event)
+    const space = getSpace(spaceRootPath(), String(id || ''))
+    return { ...space, directory: undefined }
+  })
+  ipcMain.handle('desktop:space-documents', (event, id) => {
+    assertTrusted(event)
+    return listDocuments(spaceRootPath(), String(id || ''))
+  })
+  ipcMain.handle('desktop:space-folders', (event, id) => {
+    assertTrusted(event)
+    return listFolders(spaceRootPath(), String(id || ''))
+  })
+  ipcMain.handle('desktop:space-create-directory', (event, id, relativePath) => {
+    assertTrusted(event)
+    return createDirectory(spaceRootPath(), String(id || ''), String(relativePath || ''))
+  })
+  ipcMain.handle('desktop:space-resources', (event, id) => {
+    assertTrusted(event)
+    return listResources(spaceRootPath(), String(id || ''))
+  })
+  ipcMain.handle('desktop:space-search', (event, query) => {
+    assertTrusted(event)
+    return searchSpaces(spaceRootPath(), String(query || ''))
+  })
+  ipcMain.handle('desktop:space-read-markdown', (event, id, relativePath) => {
+    assertTrusted(event)
+    return readMarkdown(spaceRootPath(), String(id || ''), String(relativePath || ''))
+  })
+  ipcMain.handle('desktop:space-write-markdown', (event, id, relativePath, content) => {
+    assertTrusted(event)
+    return writeMarkdown(spaceRootPath(), String(id || ''), String(relativePath || ''), String(content ?? ''))
+  })
+  ipcMain.handle('desktop:space-create-markdown', (event, id, relativePath) => {
+    assertTrusted(event)
+    return createMarkdown(spaceRootPath(), String(id || ''), String(relativePath || ''))
+  })
+  ipcMain.handle('desktop:space-rename-markdown', (event, id, relativePath, nextRelativePath) => {
+    assertTrusted(event)
+    return renameMarkdown(spaceRootPath(), String(id || ''), String(relativePath || ''), String(nextRelativePath || ''))
+  })
+  ipcMain.handle('desktop:space-delete-markdown', (event, id, relativePath) => {
+    assertTrusted(event)
+    return deleteMarkdown(spaceRootPath(), String(id || ''), String(relativePath || ''))
+  })
+  ipcMain.handle('desktop:space-restore-markdown', (event, id, relativePath, trashId) => {
+    assertTrusted(event)
+    return restoreMarkdown(spaceRootPath(), String(id || ''), String(relativePath || ''), String(trashId || ''))
+  })
+  ipcMain.handle('desktop:space-read-resource', (event, id, relativePath) => {
+    assertTrusted(event)
+    try {
+      return { ok: true, ...readResource(spaceRootPath(), String(id || ''), String(relativePath || '')) }
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle('desktop:space-import-resource', async (event, id) => {
+    assertTrusted(event)
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '导入空间资源',
+      buttonLabel: '导入到空间',
+      properties: ['openFile'],
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return copyResource(spaceRootPath(), String(id || ''), result.filePaths[0], { protectedRoots: protectedResourceRoots() })
+  })
+  ipcMain.handle('desktop:space-import-resource-file', (event, id, sourcePath) => {
+    assertTrusted(event)
+    // The renderer cannot choose this path: preload derives it with
+    // webUtils.getPathForFile, which yields '' for any File not backed by a real
+    // file the user actually handed over. The root check below is the second line.
+    return copyResource(spaceRootPath(), String(id || ''), String(sourcePath || ''), { protectedRoots: protectedResourceRoots() })
+  })
+  ipcMain.handle('desktop:space-rename-resource', (event, id, relativePath, nextRelativePath) => {
+    assertTrusted(event)
+    return renameResource(spaceRootPath(), String(id || ''), String(relativePath || ''), String(nextRelativePath || ''))
+  })
+  ipcMain.handle('desktop:space-delete-resource', (event, id, relativePath) => {
+    assertTrusted(event)
+    return deleteResource(spaceRootPath(), String(id || ''), String(relativePath || ''))
+  })
   ipcMain.handle('desktop:get-update-state', event => {
     assertTrusted(event)
     return getUpdateService().snapshot()
@@ -702,8 +875,10 @@ function registerIpc() {
   ipcMain.handle('desktop:pick-directory', async event => {
     assertTrusted(event)
     // QA override: automated runs cannot drive the native OS dialog, so the
-    // fixture path resolves directly when the environment asks for it.
-    const fixture = process.env.SANDRONE_QA_PICK_DIRECTORY?.trim()
+    // fixture path resolves directly when the environment asks for it. Packaged
+    // builds never honour it, so a stray variable cannot register a directory
+    // as an authorized local-image root without the user choosing it.
+    const fixture = app.isPackaged ? undefined : process.env.SANDRONE_QA_PICK_DIRECTORY?.trim()
     if (fixture) {
       writeSupplementaryRoot(localImageRootsPath(), fixture)
       return fixture
@@ -808,16 +983,26 @@ const quitCoordinator = createQuitCoordinator({
 })
 
 supervisor.on('status', status => {
+  if (status.phase === 'failed' || status.phase === 'restarting') {
+    try {
+      const logPath = path.join(dshHome(), 'startup.log')
+      fs.mkdirSync(path.dirname(logPath), { recursive: true })
+      fs.writeFileSync(logPath, `${new Date().toISOString()}\n${JSON.stringify(status, null, 2)}\n`, 'utf8')
+    } catch (error) {
+      console.error(`[sandrone-desktop] could not persist startup diagnostics: ${String(error)}`)
+    }
+  }
   sendStatus(status)
   if (status.phase !== 'ready') {
     activeOrigin = null
+    activeLaunchUrl = null
     if (status.phase === 'restarting' || status.phase === 'failed') void showLoadingPage()
   }
 })
 supervisor.on('ready', url => {
   clearNavigationRetry()
   void loadHarness(url).catch(error => {
-    console.error(`[sandrone-desktop] could not load Harness UI: ${String(error)}`)
+    console.error(`[sandrone-desktop] could not load Harness UI: ${redact(String(error))}`)
     void showLoadingPage().finally(scheduleNavigationRetry)
   })
 })

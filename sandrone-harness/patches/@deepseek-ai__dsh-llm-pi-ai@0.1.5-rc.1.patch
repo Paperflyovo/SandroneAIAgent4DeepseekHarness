@@ -1,16 +1,9 @@
 diff --git a/lib/index.js b/lib/index.js
-index b6d57a430fee25985ecb5d619ee3ef9a1077e18e..f143e2f2d6949cbcabcc37b20a854501a93784ba 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -867,7 +867,6 @@ var PiAiAdapter = class extends LlmAdapter {
- 			const watchdog = __addDisposableResource(env_1, idleWatchdog(upstream, streamIdleTimeoutMs, "LLM_STREAM_IDLE_TIMEOUT"), false);
- 			try {
- 				const containsImage = options.messages.some((message) => contentHasImage(message.content));
--				if (containsImage && !model.input.includes("image")) throw new LlmError(`pi-ai model "${model.id}" does not support image input`, "UNSUPPORTED_CONTENT");
- 				const attachments = containsImage ? this.config.resolveAttachments?.() : void 0;
- 				if (containsImage && attachments === void 0) throw new LlmError("pi-ai image input requires the durable attachment service", "UNSUPPORTED_CONTENT");
- 				const onReplayDegrade = (reason) => {
-@@ -1687,14 +1686,11 @@ const DEFAULT_MAX_TOKENS = 32768;
+@@ -894,17 +894,14 @@
+ /** Output capability assumed for a model neither configuration nor the catalog sizes. */
+ const DEFAULT_MAX_TOKENS = 32768;
  /**
  * Modalities assumed for a model neither configuration nor the catalog
 -* declares. Text is the floor every supported protocol certainly carries, so
@@ -30,3 +23,14 @@ index b6d57a430fee25985ecb5d619ee3ef9a1077e18e..f143e2f2d6949cbcabcc37b20a854501
  const thinkingBudgets = z.object({
  	minimal: z.number(),
  	low: z.number(),
+ 	medium: z.number(),
+@@ -1841,9 +1838,8 @@
+ 			const streamIdleTimeoutMs = profile.streamIdleTimeoutMs;
+ 			const watchdog = __addDisposableResource(env_1, idleWatchdog(upstream, streamIdleTimeoutMs, "LLM_STREAM_IDLE_TIMEOUT"), false);
+ 			try {
+ 				const containsImage = options.messages.some((message) => contentHasImage(message.content));
+-				if (containsImage && !model.input.includes("image")) throw new LlmError(`pi-ai model "${model.id}" does not support image input`, "UNSUPPORTED_CONTENT");
+ 				const attachments = containsImage ? this.config.resolveAttachments?.() : void 0;
+ 				if (containsImage && attachments === void 0) throw new LlmError("pi-ai image input requires the durable attachment service", "UNSUPPORTED_CONTENT");
+ 				const onReplayDegrade = (reason) => {
+ 					this.config.onReplayDegrade?.({

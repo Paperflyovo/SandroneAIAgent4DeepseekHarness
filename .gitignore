@@ -17,6 +17,8 @@ sandrone-harness/.env.*
 !.env.example
 sandrone-harness/.sessions/
 sandrone-harness/.storages/
+# Space notes and imported resources are user data: never commit them.
+sandrone-harness/space/
 sandrone-harness/profiles/*/user-data/
 sandrone-harness/profiles/*/browser-data/
 sandrone-harness/**/*.log

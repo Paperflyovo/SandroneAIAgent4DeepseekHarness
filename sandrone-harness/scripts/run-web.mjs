@@ -9,6 +9,8 @@ const require = createRequire(import.meta.url)
 const { deployPlugin } = require('../apps/desktop/lib/deploy-plugin.cjs')
 const { deployAgentPresets } = require('../apps/desktop/lib/deploy-agent-presets.cjs')
 const { packageBin } = require('../apps/desktop/lib/resolve-package.cjs')
+const { prepareUpgradeBackup } = require('../apps/desktop/lib/upgrade-backup.cjs')
+const { deployRuntimePackage } = require('../apps/desktop/lib/deploy-runtime-package.cjs')
 const dshHome = resolve(process.env.DSH_HOME || join(root, 'runtime', 'dsh-home'))
 const patch = join(root, 'profiles', 'sandrone-web.patch.yml')
 const plugin = join(root, 'packages', 'sandrone-ui')
@@ -16,12 +18,14 @@ const presets = join(root, 'presets')
 const dump = process.argv.slice(2).includes('--dump-config')
 
 await mkdir(dshHome, { recursive: true })
+if (!dump) prepareUpgradeBackup(dshHome)
 deployPlugin({ source: plugin, dshHome })
+deployRuntimePackage({ source: join(root, 'packages', 'sandrone-image-tools'), dshHome, packageName: '@sandrone/harness-image-tools' })
 deployAgentPresets({ sourceRoot: presets, dshHome, presetNames: ['sandrone-buddy'] })
 
 const args = ['web', '--patch', patch]
 if (dump) args.push('--dump-config')
-else args.push('--port', process.env.PORT || '3080')
+else args.push('--port', process.env.PORT || '3080', '--no-open')
 
 const child = spawn(process.execPath, [packageBin('@deepseek-ai/dsh', 'dsh', join(root, 'package.json')), ...args], {
   cwd: process.cwd(),

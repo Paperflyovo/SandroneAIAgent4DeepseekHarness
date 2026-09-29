@@ -2,6 +2,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { renameWithRetrySync } = require('./rename-with-retry.cjs')
 
 const MANAGED_MARKER = '.sandrone-managed-preset'
 const PRESET_NAME = /^[a-z0-9][a-z0-9-]*$/
@@ -42,13 +43,13 @@ function deployAgentPresets({ sourceRoot, dshHome, presetNames }) {
       fs.copyFileSync(path.join(source, name, 'preset.yml'), path.join(temporary, 'preset.yml'))
       fs.copyFileSync(path.join(source, name, 'agent.cordis.yml'), path.join(temporary, 'agent.cordis.yml'))
       fs.writeFileSync(path.join(temporary, MANAGED_MARKER), 'managed by Sandrone\n')
-      if (exists(target)) fs.renameSync(target, backup)
-      fs.renameSync(temporary, target)
+      if (exists(target)) renameWithRetrySync(target, backup)
+      renameWithRetrySync(temporary, target)
       fs.rmSync(backup, { recursive: true, force: true })
       deployed.push(target)
     } catch (error) {
       fs.rmSync(temporary, { recursive: true, force: true })
-      if (!exists(target) && exists(backup)) fs.renameSync(backup, target)
+      if (!exists(target) && exists(backup)) renameWithRetrySync(backup, target)
       throw error
     }
   }

@@ -15,6 +15,12 @@ DeepSeek Harness 负责 agent loop、会话与历史、流式事件、上下文�
 
 这样可以直接吸收 DeepSeek Harness 后续的后端和 Web 能力，同时保持 Sandrone 的产品识别度。移除 `sandrone-harness/packages/sandrone-ui` 后，官方 Harness 的状态、对话和运行时仍然完整可用。
 
+## 空间区
+
+桌面版侧栏顶部的“工作区”切换器现在包含两个区域：工作区继续承载 DeepSeek Harness，会话状态不会因为切换而丢失；空间区用于记录个人思考和 Markdown 笔记。空间区支持创建、删除和切换子空间，创建和删除 Markdown，编辑/阅读切换，自动保存，导入图片等资源，以及使用 `[文字](其他文档.md)` 在文档之间跳转。
+
+空间数据写入本机用户数据目录下的 `space/`：每个子空间包含 `space.json`、`md/` 和 `res/`。Markdown 保存采用临时文件替换，路径始终限制在对应空间目录内。早期版本曾把 `space/` 放在应用安装目录，首次启动会自动复制到新位置，原目录保留不删除。
+
 ## 安装 Release 版
 
 从 [最新发布页](https://github.com/Paperflyovo/SandroneAIAgent4DeepseekHarness/releases/latest) 下载 Windows x64 安装包 `SandroneAIAgent-26.9.12-x64.exe`，双击安装后从桌面或开始菜单启动。
@@ -58,6 +64,8 @@ Windows 安装包使用 Electron 原生文件夹对话框选择工作区。`node
 首次运行会在本机用户数据目录创建 Harness 数据。不要把 `.env`、API Key、会话目录、浏览器 profile、`node_modules` 或 `release/` 上传到 Git。
 
 ## 更新 DeepSeek Harness
+
+当前源码适配已锁定整个 Harness `0.1.5-rc.1` 包族，已发布的 `V26.9.12` 安装包仍以发布页附件为准。新版首次启动会在 `DeepSeekHarness` 的同级 `DeepSeekHarness-backups` 目录备份旧数据，备份失败会停止启动。历史格式升级由官方运行时完成；回退步骤见 [适配层 README](sandrone-harness/README.md#upgrade-backup-and-rollback)。Buddy 会话与历史由官方 Session 管理，内嵌网页浏览功能继续保持删除。
 
 上游代码位于 `deepseek-harness/`，适配层通过 DeepSeek 的公开客户端包和插件接口工作。升级时请整体更新 DeepSeek 包族，重新执行适配层的构建、架构检查、上游锁定检查和测试，并在发布前备份 Harness 用户数据。`sandrone-harness/docs/upstream-lock.json` 记录了当前适配所依据的上游版本证据。
 
