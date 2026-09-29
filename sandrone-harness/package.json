@@ -79,7 +79,7 @@
     "@deepseek-ai/dsh-api-session-controller": "0.2.0-rc.2"
   },
   "devDependencies": {
-    "electron": "43.3.0",
+    "electron": "44.0.0",
     "electron-builder": "26.15.3",
     "esbuild": "^0.25.0",
     "html-to-image": "1.11.13"
