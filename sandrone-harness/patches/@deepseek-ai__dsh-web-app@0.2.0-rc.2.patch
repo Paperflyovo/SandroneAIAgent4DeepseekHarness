@@ -1,0 +1,39 @@
+diff --git a/presets/cordis.patch.yml b/presets/cordis.patch.yml
+index 2f22d8c..8a67193 100644
+--- a/presets/cordis.patch.yml
++++ b/presets/cordis.patch.yml
+@@ -149,6 +149,8 @@
+             name: '@deepseek-ai/dsh-tool-skill'
+           - id: present
+             name: '@deepseek-ai/dsh-tool-present'
++          - id: sandrone-image-tools
++            name: '@sandrone/harness-image-tools'
+           - id: tool-plugin-manager
+             name: '@deepseek-ai/dsh-plugin-manager/tools'
+             disabled: !!js "!ctx.get('profileContext')"
+diff --git a/presets/ptc.patch.yml b/presets/ptc.patch.yml
+index 10b7ffc..d3bdd92 100644
+--- a/presets/ptc.patch.yml
++++ b/presets/ptc.patch.yml
+@@ -147,6 +147,8 @@
+               mode: ptc
+           - id: present
+             name: '@deepseek-ai/dsh-tool-present'
++          - id: sandrone-image-tools
++            name: '@sandrone/harness-image-tools'
+           - id: tool-plugin-manager
+             name: '@deepseek-ai/dsh-plugin-manager/tools'
+             disabled: true
+diff --git a/presets/standard.patch.yml b/presets/standard.patch.yml
+index 0b898bf..1a37a84 100644
+--- a/presets/standard.patch.yml
++++ b/presets/standard.patch.yml
+@@ -141,6 +141,8 @@
+               searchTimeoutMs: 60000
+           - id: present
+             name: '@deepseek-ai/dsh-tool-present'
++          - id: sandrone-image-tools
++            name: '@sandrone/harness-image-tools'
+           - id: tool-plugin-manager
+             name: '@deepseek-ai/dsh-plugin-manager/tools'
+             disabled: true

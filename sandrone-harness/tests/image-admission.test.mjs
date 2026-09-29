@@ -10,50 +10,50 @@ async function source(relative) {
 }
 
 test('version-locked dependency patches remove declaration-based image rejection', async () => {
-  const [hostPatch, piPatch, deepseekPatch, fsPatch, modelSelectionPatch, dshPatch, workspace] = await Promise.all([
-    source('patches/@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch'),
-    source('patches/@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch'),
+  const [hostPatch, piPatch, deepseekPatch, fsPatch, webAppPatch, workspace] = await Promise.all([
+    source('patches/@deepseek-ai__dsh-api-session-controller@0.2.0-rc.2.patch'),
+    source('patches/@deepseek-ai__dsh-llm-pi-ai@0.2.0-rc.2.patch'),
+    source('patches/@deepseek-ai__dsh-llm-deepseek@0.2.0-rc.2.patch'),
+    source('patches/@deepseek-ai__dsh-tool-fs@0.2.0-rc.2.patch'),
+    source('patches/@deepseek-ai__dsh-web-app@0.2.0-rc.2.patch'),
     source('pnpm-workspace.yaml'),
   ])
   assert.match(hostPatch, /^-.*MODEL_DOES_NOT_SUPPORT_IMAGES/m)
   assert.match(piPatch, /^-.*does not support image input/m)
-  assert.match(deepseekPatch, /^-.*does not accept image input/m)
+  // 0.2.0 merged the modality and attachment conditions into one gate, so the
+  // patch drops the modality half and keeps the attachment requirement.
+  assert.match(deepseekPatch, /^-.*requires a vision model and attachment service/m)
+  assert.match(deepseekPatch, /^\+.*\.default\(void 0\)/m)
+  assert.match(deepseekPatch, /^\+.*DEFAULT_MODELS\.find\(\(entry\) => entry\.id === model\.id\)\?\.inputModalities/m)
   assert.match(fsPatch, /^-.*assertImageCapableRoute/m)
   assert.match(fsPatch, /^-.*does not declare image input/m)
-  assert.match(modelSelectionPatch, /^\+.*snapshot\.status === "selecting"/m)
-  assert.match(dshPatch, /^\+.*@sandrone\/harness-image-tools/m)
+  assert.match(webAppPatch, /^\+.*@sandrone\/harness-image-tools/m)
   for (const filename of [
-    '@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch',
-    '@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch',
-    '@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch',
-    '@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch',
-    '@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch',
-    '@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch',
+    '@deepseek-ai__dsh-api-session-controller@0.2.0-rc.2.patch',
+    '@deepseek-ai__dsh-llm-pi-ai@0.2.0-rc.2.patch',
+    '@deepseek-ai__dsh-llm-deepseek@0.2.0-rc.2.patch',
+    '@deepseek-ai__dsh-tool-fs@0.2.0-rc.2.patch',
+    '@deepseek-ai__dsh-web-app@0.2.0-rc.2.patch',
+    '@deepseek-ai__dsh-session-format-v0-to-v1@0.2.0-rc.2.patch',
   ]) assert.match(workspace, new RegExp(filename.replaceAll('.', '\\.')))
 })
 
 test('installed adapters and filesystem tool admit durable images', async () => {
-  const [host, pi, deepseek, fsTool, modelSelection, standardPreset] = await Promise.all([
+  const [host, pi, deepseek, fsTool, standardPreset] = await Promise.all([
     source('node_modules/@deepseek-ai/dsh-api-session-controller/lib/index.js'),
     source('node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js'),
     source('node_modules/@deepseek-ai/dsh-llm-deepseek/lib/index.js'),
     source('node_modules/@deepseek-ai/dsh-tool-fs/lib/index.js'),
-    source('node_modules/@deepseek-ai/dsh-client-ui-model-selection/lib/client.js'),
-    source('node_modules/@deepseek-ai/dsh-agent-presets/presets/standard/agent.cordis.yml'),
+    source('node_modules/@deepseek-ai/dsh-web-app/presets/standard.patch.yml'),
   ])
   assert.doesNotMatch(host, /MODEL_DOES_NOT_SUPPORT_IMAGES|does not accept image input, but this session already contains images/)
   assert.doesNotMatch(pi, /pi-ai model .* does not support image input/)
   assert.match(pi, /const DEFAULT_INPUT = \["text", "image"\]/)
-  assert.doesNotMatch(deepseek, /DeepSeek model .* does not accept image input/)
-  assert.match(pi, /type:\s*['"]image['"][\s\S]*?Buffer\.from\(version\.data\)\.toString\(['"]base64['"]\)[\s\S]*?mimeType:\s*version\.mediaType/)
-  assert.match(deepseek, /type:\s*['"]image_url['"][\s\S]*?data:\$\{version\.mediaType\};base64,\$\{Buffer\.from\(version\.data\)\.toString\(['"]base64['"]\)\}/)
+  assert.match(deepseek, /inputModalities: z\.array\(z\.union\(MODEL_MODALITIES\)\)\.min\(1\)\.default\(void 0\)/)
+  assert.match(deepseek, /DEFAULT_MODELS\.find\(\(entry\) => entry\.id === model\.id\)\?\.inputModalities/)
+  assert.doesNotMatch(deepseek, /DeepSeek Messages image input requires a vision model/)
+  assert.match(deepseek, /DeepSeek Messages image input requires the durable attachment service/)
   assert.doesNotMatch(fsTool, /assertImageCapableRoute|does not declare image input/)
-  assert.match(fsTool, /Image admission is provider-owned/)
-  assert.match(modelSelection, /snapshot\.routable === false \|\| snapshot\.status === "selecting"/)
   assert.match(standardPreset, /@sandrone\/harness-image-tools/)
 })
 
@@ -77,13 +77,15 @@ test('unknown third-party pi-ai models default to image-capable requests', async
       },
     },
   })
-  assert.deepEqual(parsed.providers.gateway.defaultInput, ['text', 'image'])
-  assert.deepEqual(parsed.providers.textOnly.defaultInput, ['text'])
+  // providers is a volatile field at 0.2.0; .get() materializes it.
+  const providers = parsed.providers.get()
+  assert.deepEqual(providers.gateway.defaultInput, ['text', 'image'])
+  assert.deepEqual(providers.textOnly.defaultInput, ['text'])
 
   const image = { type: 'image', data: 'iVBORw0KGgo=', mimeType: 'image/png' }
   const [message] = transformMessages(
     [{ role: 'user', content: [image] }],
-    { input: parsed.providers.gateway.defaultInput },
+    { input: providers.gateway.defaultInput },
     (id) => id,
   )
   assert.deepEqual(message.content, [image])

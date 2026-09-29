@@ -1,12 +1,13 @@
 {
   "$comment": [
     "为什么每个上游补丁存在，以及什么条件下可以删掉它。",
-    "这个文件是「该不该再加第十一个补丁」的刹车装置：scripts/verify-upstream.mjs 会强制校验",
+    "这个文件是「该不该再加补丁」的刹车装置：scripts/verify-patches.mjs 会强制校验",
     "它和 pnpm-workspace.yaml 的 patchedDependencies、patches/ 目录三者完全一致，任一处漂移都会让构建失败。",
     "reason 取值：upstream-bug 可证明的上游缺陷 / historical-data 迁移已发布的历史数据 /",
     "capability 上游没有的能力 / policy-disagreement 与上游明确的取舍冲突 / preference 纯偏好。",
     "preferenceClass（policy-disagreement + preference）超过 preferenceBudget 时校验失败。",
-    "preferenceBudget 只允许下调，不允许上调：删掉一个偏好补丁就把预算降到新的数量。"
+    "preferenceBudget 只允许下调，不允许上调：删掉一个偏好补丁就把预算降到新的数量。",
+    "0.2.0-rc.2 一役从 10 个补丁压到 6 个，预算从 4 降到 1；被删的 4 个见 docs/upstream-parity-review.md 第 8 节。"
   ],
   "reasons": [
     "upstream-bug",
@@ -15,93 +16,59 @@
     "policy-disagreement",
     "preference"
   ],
-  "preferenceBudget": 4,
+  "preferenceBudget": 1,
   "patches": {
-    "@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch": {
+    "@deepseek-ai__dsh-llm-deepseek@0.2.0-rc.2.patch": {
       "package": "@deepseek-ai/dsh-llm-deepseek",
       "reason": "upstream-bug",
-      "summary": "catalogModel 的 zod .default([\"text\"]) 在解析阶段把省略的 inputModalities 物化成 [\"text\"]，导致同 id 覆盖内置模型时静默丢失图片能力，并按纯文本计费。",
-      "removeWhen": "上游让省略的 inputModalities 继承同 id 内置模型的能力（.default 不再物化，且 ?? 回退考虑 DEFAULT_MODELS）。",
+      "summary": "catalogModel 的 zod .default([\"text\"]) 在解析阶段把省略的 inputModalities 物化成 [\"text\"]，导致同 id 覆盖内置模型时静默丢失图片能力并按纯文本计费；另外 adapter 的 Messages 门禁把「声明了 image」当作发图前提。",
+      "removeWhen": "上游让省略的 inputModalities 继承同 id 内置模型的能力（.default 不再物化，且 ?? 回退考虑 DEFAULT_MODELS），并把 adapter 门禁改为只看附件服务。",
       "upstreamReport": "docs/upstream-reports/0001-input-modalities.md",
-      "lastVerified": "0.1.5-rc.1"
+      "lastVerified": "0.2.0-rc.2",
+      "note": "0.2.0 重写：旧补丁删掉的那一整行已不存在，上游把两个条件合并成 `model?.inputModalities?.includes(\"image\") !== true || attachments === void 0`。本次只去掉模态那一半、保留附件服务要求，并把消息改为不再声称需要视觉模型。"
     },
-    "@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch": {
+    "@deepseek-ai__dsh-tool-fs@0.2.0-rc.2.patch": {
       "package": "@deepseek-ai/dsh-tool-fs",
       "reason": "upstream-bug",
-      "summary": "read_image 前的 assertImageCapableRoute 要求路由显式声明 image，未声明的模型连读图都被拒；删除该门禁并放宽工具描述。",
+      "summary": "read_image 前的 assertImageCapableRoute 要求路由显式声明 image，未声明的模型连读图都被拒；删除该函数与其调用点。",
       "removeWhen": "上游让 read_image 以「未声明即不拦截」处理，或把该门禁改为可配置。",
       "upstreamReport": "docs/upstream-reports/0001-input-modalities.md",
-      "lastVerified": "0.1.5-rc.1"
+      "lastVerified": "0.2.0-rc.2",
+      "note": "0.2.0 重写：旧补丁的第三个 hunk（改写 read_image 描述、去掉「Requires the current model to accept image input.」）已作废——上游自己把那句删了，新描述不再声称模型要求。所以本补丁从 3 处改动缩到 2 处。"
     },
-    "@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch": {
+    "@deepseek-ai__dsh-api-session-controller@0.2.0-rc.2.patch": {
       "package": "@deepseek-ai/dsh-api-session-controller",
       "reason": "upstream-bug",
       "summary": "附件准入在模型未显式声明 image 时直接以 session/attachment-invalid 拒绝上传；删除该守卫，让端点成为权威。",
-      "removeWhen": "上游在 admit() 内不再于模型未显式声明 image 时以 session/attachment-invalid 拒绝附件上传，或把该判断改为可配置。",
+      "removeWhen": "上游在模型未显式声明 image 时不再以 session/attachment-invalid 拒绝附件上传（当前该守卫位于 admit() 内），或把该判断改为可配置。",
       "upstreamReport": "docs/upstream-reports/0001-input-modalities.md",
-      "lastVerified": "0.1.5-rc.1"
+      "lastVerified": "0.2.0-rc.2"
     },
-    "@deepseek-ai__dsh-client-ui-chat@0.1.5-rc.1.patch": {
-      "package": "@deepseek-ai/dsh-client-ui-chat",
-      "reason": "upstream-bug",
-      "alsoContains": "preference",
-      "summary": "两件事：(1) localPathMediaUrl 只认以 / 开头的 POSIX 路径，Windows C:\\ 盘符路径被判为无效；(2) forkAt 分支流程重写，切换分支时清理草稿并让占位块收敛。第 (2) 件没有公开扩展点，是全仓最大的一个偏好改动（64 行）。",
-      "removeWhen": "(1) 上游接受 Windows 盘符路径后即可删除该部分——**已核实 0.2.0-rc.2 修好了**，见下方 note。(2) forkAt 分支流程需要上游把「分支切换清草稿」做成官方行为，否则只能长期保留或放弃该体验。",
-      "upstreamReport": null,
-      "lastVerified": "0.1.5-rc.1",
-      "note": "拆分的优先候选，而且升级时它的成本比 canary 报出来的低。已核实（读 0.2.0-rc.2 的 client-ui-chat/lib/client.js）：上游把 localPathMediaUrl 重写为 decodeURIComponent + fileMediaUrl，并新增 isAbsoluteWorkspacePath(path){return path.startsWith(\"/\") || isWindowsStylePath(path)}，也就是**上游自己修好了 Windows 盘符路径**——本补丁的 (1) 部分在 0.2.0 上已无必要，直接丢弃而不是重移植。因此该补丁在 0.2.0 上退化为纯 forkAt 分支改写（preference 类），按偏好补丁的处理原则可以整块删除、接受上游的分支行为。"
-    },
-    "@deepseek-ai__dsh-session-format-v0-to-v1@0.1.5-rc.1.patch": {
+    "@deepseek-ai__dsh-session-format-v0-to-v1@0.2.0-rc.2.patch": {
       "package": "@deepseek-ai/dsh-session-format-v0-to-v1",
       "reason": "historical-data",
-      "summary": "两件事：(1) 已发布的 0.1.1-rc.1 会在 permission/preset 里写 origin（类型声明为 'default'|'selection'|'inferred'），但 V0 事件词表只列了 preset，迁移会以 unexpected member 硬失败；(2) 把已发布的 subagent/descriptor v2 升为 v3。",
+      "summary": "两件事：(1) 已发布的 0.1.1-rc.1 会在 permission/preset 里写 origin（其类型声明为 'default'|'selection'|'inferred'），但 V0 事件词表只列了 preset，迁移会以 unexpected member 硬失败；(2) 把已发布的 subagent/descriptor v2 升为 v3。",
       "removeWhen": "上游把 origin 列为该事件的可选成员；以及上游自行受理 descriptor v2。若上游明确判定不回补历史数据，本条转为长期补丁并从「等上游」清单移除。",
       "upstreamReport": "docs/upstream-reports/0002-permission-preset-origin.md",
-      "lastVerified": "0.1.5-rc.1"
+      "lastVerified": "0.2.0-rc.2"
     },
-    "@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch": {
-      "package": "@deepseek-ai/dsh-agent-presets",
-      "reason": "capability",
-      "alsoContains": "preference",
-      "summary": "两件事：(1) 在 standard/cordis/ptc 三个上游预设里插入 sandrone-image-tools，让图像工具对所有预设会话可见；(2) 改写 minimal 预设里一句给模型看的网络说明文字。",
-      "removeWhen": "(1) 只有当上游把工具名册从预设里解耦（例如允许 profile 级注册对所有预设 agent 生效）才可能删除；见下方 note，profile 级挂载已验证**不可行**。(2) 纯文案，可以立刻删除，无功能损失。",
-      "upstreamReport": null,
-      "lastVerified": "0.1.5-rc.1",
-      "note": "已核实（不是推测）：预设的名册就是该 agent 的完整工具目录。证据是 presets/minimal/agent.cordis.yml 只有 69 行、没有任何 include，只挂 persona + PTY 栈 + persistent bash/pwsh 两个工具；其自述为「The model receives only the persistent shell」。因此把 sandrone-image-tools 挂到 profile 级**不会**让它出现在走预设的 agent 里——本清单初版曾建议这么做，是错的，已更正。另：上游 preset 的发现顺序是 shipped root 优先，同名预设无法被覆盖，所以 Sandrone 只能另起 id（用户需手动选）或继续改上游预设文件。0.2.0 上提供预设的包已由 dsh-agent-presets 变为 dsh-agent-preset + dsh-agent-preset-registry，重做时需重新定位注入点。"
-    },
-    "@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch": {
+    "@deepseek-ai__dsh-llm-pi-ai@0.2.0-rc.2.patch": {
       "package": "@deepseek-ai/dsh-llm-pi-ai",
       "reason": "policy-disagreement",
       "summary": "把 DEFAULT_INPUT 由 [\"text\"] 改为 [\"text\",\"image\"] 并删除适配器内 image 守卫，理由是第三方网关常暴露 pi-ai 目录中没有的视觉模型。上游原文 JSDoc 明确主张相反的取舍（宁可少声明也不要在回合中途失败），本补丁覆盖了该主张。",
-      "removeWhen": "上游把 pi-ai 的默认输入模态改为可配置（目前 defaultInput 已是配置字段，但默认值仍为 text 且适配器守卫不可关闭）。",
+      "removeWhen": "上游把 pi-ai 的默认输入模态改为可配置（defaultInput 已是配置字段，但默认值仍为 text 且适配器守卫不可关闭）。",
       "upstreamReport": null,
-      "lastVerified": "0.1.5-rc.1",
-      "note": "全仓与上游设计意图冲突最直接的一个补丁。若不再需要第三方网关收图，这是第一个应该删掉的。"
+      "lastVerified": "0.2.0-rc.2",
+      "note": "全仓与上游设计意图冲突最直接的一个补丁，也是 preferenceBudget 降到 1 之后唯一占额度的那个。若不再需要第三方网关收图，第一个该删。"
     },
-    "@deepseek-ai__dsh-client-ui-open-in-app@0.1.5-rc.1.patch": {
-      "package": "@deepseek-ai/dsh-client-ui-open-in-app",
-      "reason": "preference",
-      "summary": "把注册槽位由 conversation.session.header.utilities 改到 header.actions（order -10→100），菜单 align 改 start 并 autoFocus，按钮由应用图标改为应用名文本，另加一个自用 DOM 标记。",
-      "removeWhen": "上游 0.2.0-rc.2 自己已把该组件注册到 header.actions，所以升级后本补丁的主要动机消失；剩下的纯属外观偏好，可直接接受上游原样并整体删除。",
+    "@deepseek-ai__dsh-web-app@0.2.0-rc.2.patch": {
+      "package": "@deepseek-ai/dsh-web-app",
+      "reason": "capability",
+      "summary": "在 standard / cordis / ptc 三个预设的 config.plugins 名册里插入 sandrone-image-tools，让图像工具对所有预设会话可见。",
+      "removeWhen": "上游把工具名册从预设里解耦、允许 profile 级注册对所有预设 agent 生效时才可能删除；已核实 patch 层做不到（applyEntryPatches 逐键浅替换，且 insert 要求目标带 group:true，而 preset-standard 不是 group）。",
       "upstreamReport": null,
-      "lastVerified": "0.1.5-rc.1",
-      "note": "升级到 0.2.x 时优先删除候选。"
-    },
-    "@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch": {
-      "package": "@deepseek-ai/dsh-client-ui-model-selection",
-      "reason": "preference",
-      "summary": "上游只在 routable === false 时阻塞会话，本补丁把 status === \"selecting\" 也算作阻塞，避免选择模型过程中发送消息。",
-      "removeWhen": "上游把 selecting 状态也视为需要阻塞，或该 store 暴露可订阅的公开状态供插件自行处理。",
-      "upstreamReport": null,
-      "lastVerified": "0.1.5-rc.1"
-    },
-    "@deepseek-ai__dsh-sdk-minimal@0.1.5-rc.1.patch": {
-      "package": "@deepseek-ai/dsh-sdk-minimal",
-      "reason": "preference",
-      "summary": "把 cordis.patch.yml 里 pwsh 工具描述中的一句「You don't have access to the internet via this tool.」改成中性表述。纯模型可见文案，不影响任何执行路径——网络能力由 shell 与 sandbox profile 决定。",
-      "removeWhen": "立刻可删。这是全仓最没有保留价值的一个补丁（12 行里只有 1 行真实变更）。",
-      "upstreamReport": null,
-      "lastVerified": "0.1.5-rc.1"
+      "lastVerified": "0.2.0-rc.2",
+      "note": "取代旧的 dsh-agent-presets 补丁。0.2.0 上预设移到了 dsh-web-app/presets/*.patch.yml，且旧包已停止发布。注入锚点仍是 `- id: present` 那一行；旧补丁里 `- id: present` → `- id: 'present'` 的加引号是无意义改动，本次未带。"
     }
   }
 }

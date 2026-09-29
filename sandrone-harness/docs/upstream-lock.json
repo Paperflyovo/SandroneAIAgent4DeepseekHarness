@@ -1,11 +1,12 @@
 {
   "npmPackage": "@deepseek-ai/dsh",
-  "npmVersion": "0.1.5-rc.1",
-  "packageFamilyVersion": "0.1.5-rc.1",
+  "npmVersion": "0.2.0-rc.2",
+  "packageFamilyVersion": "0.2.0-rc.2",
   "auditedSource": {
     "repository": "https://github.com/deepseek-ai/deepseek-harness",
-    "commit": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e",
-    "version": "0.1.5-rc.1",
+    "commit": "04f392c9ddd144fa426da2045178797da6db6c11",
+    "version": "0.2.0-rc.2",
+    "evidenceNote": "0.2.0-rc.2 的核对对象是 npm 已发布包与官方桌面版内嵌副本（该桌面构建自标记 commit 04f392c9）。上游源码仓库对应此版本的 commit 未经独立确认。",
     "license": "MIT"
   },
   "publicContracts": [

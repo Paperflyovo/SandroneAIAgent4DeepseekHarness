@@ -49,24 +49,20 @@ test('a zero-context patch is never reported as a false conflict', async t => {
   assert.ok(['context', 'unidiff-zero'].includes(outcome.mode), `unexpected mode ${outcome.mode}`)
 })
 
-test('the shipped patches really do carry context-free hunks, so the fallback stays load-bearing', async () => {
-  const patches = await readdir(join(ROOT, 'patches'))
-  let contextFree = 0
-  let patchesWithContextFreeHunks = 0
-  for (const name of patches.filter(entry => entry.endsWith('.patch'))) {
+test('every shipped patch carries context lines, which pnpm requires', async () => {
+  // Learned from a real failure: the 0.1.5-era patches were zero-context, and a
+  // renamed copy of one still made `git apply --check --unidiff-zero` pass while
+  // pnpm's stricter applier refused it mid-install (ERR_PNPM_PATCH_FAILED).
+  // Regenerated patches must therefore keep normal context.
+  const patches = (await readdir(join(ROOT, 'patches'))).filter(entry => entry.endsWith('.patch'))
+  assert.ok(patches.length > 0)
+  for (const name of patches) {
     const source = await readFile(join(ROOT, 'patches', name), 'utf8')
-    let inHunk = false
-    let found = false
-    for (const line of source.split('\n')) {
-      if (line.startsWith('@@')) { inHunk = true; continue }
-      if (line.startsWith('diff ') || line.startsWith('--- ') || line.startsWith('+++ ')) { inHunk = false; continue }
-      if (inHunk && line.startsWith(' ')) inHunk = false
-      else if (inHunk && (line.startsWith('+') || line.startsWith('-'))) { contextFree += 1; found = true }
-    }
-    if (found) patchesWithContextFreeHunks += 1
+    const hunkLines = source.split('\n').filter(line => line.startsWith('@@'))
+    assert.ok(hunkLines.length > 0, `${name} has no hunks`)
+    const contextLines = source.split('\n').filter(line => line.startsWith(' '))
+    assert.ok(contextLines.length > 0, `${name} is zero-context; regenerate it without -U0 so pnpm can apply it`)
   }
-  assert.ok(contextFree > 0, 'expected at least one context-free hunk across the shipped patches')
-  assert.ok(patchesWithContextFreeHunks > 0)
 })
 
 test('a context patch applies in the plain mode', async t => {

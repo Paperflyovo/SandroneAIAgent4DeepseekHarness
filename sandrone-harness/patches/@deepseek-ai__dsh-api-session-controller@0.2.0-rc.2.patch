@@ -1,17 +1,8 @@
 diff --git a/lib/index.js b/lib/index.js
+index 3b8507e..5e98d11 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -748,22 +748,17 @@
- 			kind: "user",
- 			rpcId: request.requestId,
- 			...clientTimeZone === void 0 ? {} : { clientTimeZone }
- 		};
- 		const hasImage = request.content.some((part) => part.type === "image");
- 		const admit = async () => {
- 			try {
- 				const env_2 = {
- 					stack: [],
- 					error: void 0,
+@@ -867,11 +867,6 @@ var SessionCommandController = class {
  					hasError: false
  				};
  				try {
@@ -23,4 +14,3 @@ diff --git a/lib/index.js b/lib/index.js
  					const admission = resolvePromptFileReceipts(request.content, (receiptId) => this.ctx.fileUploads.resolve(agent, receiptId));
  					const message = createUserMessage({
  						content: await this.ctx.attachments.admitPromptContent(admission.content),
- 						source

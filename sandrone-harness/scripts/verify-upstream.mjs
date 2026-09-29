@@ -4,51 +4,32 @@ import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const DEFAULT_VERSION = '0.1.5-rc.1'
+const DEFAULT_VERSION = '0.2.0-rc.2'
 
 const REQUIRED_PATCHES = Object.freeze({
-  '@deepseek-ai/dsh-client-ui-open-in-app@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-client-ui-open-in-app@0.1.5-rc.1.patch',
-    adds: ['conversation.session.header.actions', 'data-sandrone-open-in-app'],
+  '@deepseek-ai/dsh-llm-deepseek@0.2.0-rc.2': {
+    file: 'patches/@deepseek-ai__dsh-llm-deepseek@0.2.0-rc.2.patch',
+    adds: ['.default(void 0)', 'DEFAULT_MODELS.find((entry) => entry.id === model.id)?.inputModalities'],
   },
-  '@deepseek-ai/dsh-session-format-v0-to-v1@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-session-format-v0-to-v1@0.1.5-rc.1.patch',
-    adds: ['"origin"', 'event.data?.version === 2'],
+  '@deepseek-ai/dsh-tool-fs@0.2.0-rc.2': {
+    file: 'patches/@deepseek-ai__dsh-tool-fs@0.2.0-rc.2.patch',
+    removes: ['assertImageCapableRoute(ctx, exec, args.file_path)', 'does not declare image input'],
   },
-  '@deepseek-ai/dsh-client-ui-chat@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-client-ui-chat@0.1.5-rc.1.patch',
-    adds: ['windowsPath', 'conversation = ctx.get("conversation")', 'branchBlock', 'clearDraft', 'dsh.conversation.', 'blocks.set(sessionId', 'blocks?.set(sessionId', 'ctx.sessions.clear()', 'binding(childId)', 'openState !== "open"', 'blankPasses', 'shell?.snapshot?.draft', 'setTimeout(finish, 0)'],
-  },
-  '@deepseek-ai/dsh-agent-presets@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch',
-    adds: ['@sandrone/harness-image-tools', 'Network access depends on the task environment.'],
-    removes: ["You don't have access to the internet via this tool."],
-  },
-  '@deepseek-ai/dsh-sdk-minimal@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-sdk-minimal@0.1.5-rc.1.patch',
-    adds: ['Network access depends on the task environment.'],
-    removes: ["You don't have access to the internet via this tool."],
-  },
-  '@deepseek-ai/dsh-client-ui-model-selection@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch',
-    adds: ['snapshot.status === "selecting"'],
-  },
-  '@deepseek-ai/dsh-api-session-controller@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch',
+  '@deepseek-ai/dsh-api-session-controller@0.2.0-rc.2': {
+    file: 'patches/@deepseek-ai__dsh-api-session-controller@0.2.0-rc.2.patch',
     removes: ['MODEL_DOES_NOT_SUPPORT_IMAGES'],
   },
-  '@deepseek-ai/dsh-llm-pi-ai@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch',
+  '@deepseek-ai/dsh-session-format-v0-to-v1@0.2.0-rc.2': {
+    file: 'patches/@deepseek-ai__dsh-session-format-v0-to-v1@0.2.0-rc.2.patch',
+    adds: ['"origin"', 'event.data?.version === 2'],
+  },
+  '@deepseek-ai/dsh-llm-pi-ai@0.2.0-rc.2': {
+    file: 'patches/@deepseek-ai__dsh-llm-pi-ai@0.2.0-rc.2.patch',
     removes: ['does not support image input'],
   },
-  '@deepseek-ai/dsh-llm-deepseek@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch',
-    removes: ['does not accept image input'],
-    adds: ['DEFAULT_MODELS.find((entry) => entry.id === model.id)?.inputModalities'],
-  },
-  '@deepseek-ai/dsh-tool-fs@0.1.5-rc.1': {
-    file: 'patches/@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch',
-    removes: ['assertImageCapableRoute(ctx, exec, args.file_path)', 'does not declare image input'],
+  '@deepseek-ai/dsh-web-app@0.2.0-rc.2': {
+    file: 'patches/@deepseek-ai__dsh-web-app@0.2.0-rc.2.patch',
+    adds: ['@sandrone/harness-image-tools'],
   },
 })
 
@@ -111,9 +92,17 @@ async function inspectPackage(packageName, rule, root, resolvePackageJson) {
     else if (!(await exists(join(packageRoot, target)))) errors.push(`public entry target is missing: ${target}`)
   }
   if (rule.bundlePatch) {
-    const patch = manifest.dsh?.bundle?.patch
-    if (typeof patch !== 'string') errors.push('does not declare dsh.bundle.patch')
-    else if (!(await exists(join(packageRoot, patch)))) errors.push(`bundle patch is missing: ${patch}`)
+    // 0.2.0 declares one file or several: dsh-base keeps a string, while
+    // dsh-web-app lists cordis plus every preset composition.
+    const declared = manifest.dsh?.bundle?.patch
+    const patches = typeof declared === 'string' ? [declared] : Array.isArray(declared) ? declared : null
+    if (patches === null || patches.some(entry => typeof entry !== 'string')) {
+      errors.push('does not declare dsh.bundle.patch')
+    } else {
+      for (const entry of patches) {
+        if (!(await exists(join(packageRoot, entry)))) errors.push(`bundle patch is missing: ${entry}`)
+      }
+    }
     if (!manifestExport(manifest, './cordis.patch.yml')) errors.push('does not export ./cordis.patch.yml')
   }
 
@@ -197,9 +186,18 @@ function exactDshFamilyProblems(manifest, label = 'package.json') {
 }
 
 async function bundlePatchProblems(result, expectedIds) {
-  if (!result.manifestPath || !result.manifest?.dsh?.bundle?.patch) return []
-  const patchPath = join(dirname(result.manifestPath), result.manifest.dsh.bundle.patch)
-  const source = await readFile(patchPath, 'utf8')
+  const declared = result.manifest?.dsh?.bundle?.patch
+  if (!result.manifestPath || declared === undefined) return []
+  const patches = typeof declared === 'string' ? [declared] : Array.isArray(declared) ? declared : []
+  let source = ''
+  for (const entry of patches) {
+    if (typeof entry !== 'string') continue
+    try {
+      source += `\n${await readFile(join(dirname(result.manifestPath), entry), 'utf8')}`
+    } catch {
+      // A missing patch file is reported by inspectPackage; do not report it twice.
+    }
+  }
   return expectedIds
     .filter(id => !new RegExp(`\\bid:\\s*${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(source))
     .map(id => `${result.packageName} bundle patch is missing required row ${id}`)
@@ -293,8 +291,15 @@ export async function verifyUpstream(options = {}) {
   const baseResult = packages.find(item => item.packageName === '@deepseek-ai/dsh-base')
   const webResult = packages.find(item => item.packageName === '@deepseek-ai/dsh-web-app')
   if (base && web) {
-    if (base.dsh?.bundle?.patch !== './cordis.patch.yml') errors.push('@deepseek-ai/dsh-base patch declaration changed')
-    if (web.dsh?.bundle?.patch !== './cordis.patch.yml') errors.push('@deepseek-ai/dsh-web-app patch declaration changed')
+    // Both must still declare the cordis layer, but 0.2.0 lets web-app list the
+    // preset compositions alongside it, so assert membership rather than equality.
+    const declaresCordis = manifest => {
+      const declared = manifest.dsh?.bundle?.patch
+      const files = typeof declared === 'string' ? [declared] : Array.isArray(declared) ? declared : []
+      return files.includes('./cordis.patch.yml')
+    }
+    if (!declaresCordis(base)) errors.push('@deepseek-ai/dsh-base no longer declares ./cordis.patch.yml')
+    if (!declaresCordis(web)) errors.push('@deepseek-ai/dsh-web-app no longer declares ./cordis.patch.yml')
     errors.push(...await bundlePatchProblems(baseResult, ['session', 'agent-loop', 'settings', 'credentials']))
     errors.push(...await bundlePatchProblems(webResult, ['session-controller', 'connection', 'ui-session', 'ui-layout']))
   }

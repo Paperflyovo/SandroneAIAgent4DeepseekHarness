@@ -1,8 +1,8 @@
 diff --git a/lib/index.js b/lib/index.js
+index 0c74b3a..208d71d 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -894,17 +894,14 @@
- /** Output capability assumed for a model neither configuration nor the catalog sizes. */
+@@ -929,15 +929,12 @@ const DEFAULT_CONTEXT_WINDOW = 262144;
  const DEFAULT_MAX_TOKENS = 32768;
  /**
  * Modalities assumed for a model neither configuration nor the catalog
@@ -13,19 +13,18 @@ diff --git a/lib/index.js b/lib/index.js
 -* attached, naming the model. Over-claiming admits one the provider then
 -* rejects mid-turn, after the message is durable, leaving the session
 -* repeating a request that cannot succeed.
+-*/
+-const DEFAULT_INPUT = ["text"];
 +* declares. Sandrone custom routes admit images by default because gateways
 +* commonly expose vision-capable models absent from pi-ai's catalog. The
 +* provider remains the authority that accepts or rejects the request; an
 +* explicitly text-only route can set `defaultInput: [text]`.
- */
--const DEFAULT_INPUT = ["text"];
++*/
 +const DEFAULT_INPUT = ["text", "image"];
  const thinkingBudgets = z.object({
  	minimal: z.number(),
  	low: z.number(),
- 	medium: z.number(),
-@@ -1841,9 +1838,8 @@
- 			const streamIdleTimeoutMs = profile.streamIdleTimeoutMs;
+@@ -1856,7 +1853,6 @@ var PiAiAdapter = class extends LlmAdapter {
  			const watchdog = __addDisposableResource(env_1, idleWatchdog(upstream, streamIdleTimeoutMs, "LLM_STREAM_IDLE_TIMEOUT"), false);
  			try {
  				const containsImage = options.messages.some((message) => contentHasImage(message.content));
@@ -33,4 +32,3 @@ diff --git a/lib/index.js b/lib/index.js
  				const attachments = containsImage ? this.config.resolveAttachments?.() : void 0;
  				if (containsImage && attachments === void 0) throw new LlmError("pi-ai image input requires the durable attachment service", "UNSUPPORTED_CONTENT");
  				const onReplayDegrade = (reason) => {
- 					this.config.onReplayDegrade?.({

@@ -34,12 +34,12 @@ for (const [label, row] of [
     await context.plugin(JsonlSessionPersistence, { root, compression: 'none' })
     await assert.rejects(context.sessionPersistence.open(id, 'write'), /origin|unexpected member|unsupported descriptor/)
     assert.deepEqual(await readFile(source), original)
-    await assert.rejects(access(join(directory, 'session.v3.jsonl')), { code: 'ENOENT' })
+    await assert.rejects(access(join(directory, 'session.v4.jsonl')), { code: 'ENOENT' })
   })
 }
 
 for (const compression of ['none', 'zstd']) {
-  test(`published runtime migrates V0 history and reopens V3 (${compression})`, async t => {
+  test(`published runtime migrates V0 history and reopens V4 (${compression})`, async t => {
     const root = await mkdtemp(join(tmpdir(), 'sandrone-migration-'))
     const contexts = []
     t.after(async () => {
@@ -51,7 +51,7 @@ for (const compression of ['none', 'zstd']) {
     await mkdir(directory, { recursive: true })
     const suffix = compression === 'none' ? 'jsonl' : 'jsonl.zstd'
     const source = join(directory, `session.${suffix}`)
-    const successor = join(directory, `session.v3.${suffix}`)
+    const successor = join(directory, `session.v4.${suffix}`)
     const rows = [
       event('turn/start', 0, { turn: 1 }),
       event('step/start', 1, { turn: 1, step: 1 }),
@@ -75,7 +75,7 @@ for (const compression of ['none', 'zstd']) {
     contexts.push(context)
     await context.plugin(JsonlSessionPersistence, { root, compression })
     const read = await context.sessionPersistence.open(id, 'read')
-    assert.equal(read.header.version, 3)
+    assert.equal(read.header.version, 4)
     const migrated = (await read.read()).events
     assert.deepEqual(migrated.filter(row => row.type === 'permission/preset').map(row => row.data), rows.filter(row => row.type === 'permission/preset').map(row => row.data))
     assert.deepEqual(migrated.find(row => row.type === 'subagent/descriptor').data, { ...rows.at(-1).data, version: 3 })
@@ -93,7 +93,7 @@ for (const compression of ['none', 'zstd']) {
     contexts.push(fresh)
     await fresh.plugin(JsonlSessionPersistence, { root, compression })
     const restored = await fresh.sessionPersistence.open(id, 'read')
-    assert.equal(restored.header.version, 3)
+    assert.equal(restored.header.version, 4)
     assert.deepEqual((await restored.read()).events, migrated)
     await restored.close()
   })

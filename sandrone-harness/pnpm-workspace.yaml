@@ -15,13 +15,9 @@ allowBuilds:
   node-pty: true
   protobufjs: false
 patchedDependencies:
-  '@deepseek-ai/dsh-session-format-v0-to-v1@0.1.5-rc.1': patches/@deepseek-ai__dsh-session-format-v0-to-v1@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-client-ui-chat@0.1.5-rc.1': patches/@deepseek-ai__dsh-client-ui-chat@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-llm-pi-ai@0.1.5-rc.1': patches/@deepseek-ai__dsh-llm-pi-ai@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-llm-deepseek@0.1.5-rc.1': patches/@deepseek-ai__dsh-llm-deepseek@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-client-ui-model-selection@0.1.5-rc.1': patches/@deepseek-ai__dsh-client-ui-model-selection@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-api-session-controller@0.1.5-rc.1': patches/@deepseek-ai__dsh-api-session-controller@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-tool-fs@0.1.5-rc.1': patches/@deepseek-ai__dsh-tool-fs@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-agent-presets@0.1.5-rc.1': patches/@deepseek-ai__dsh-agent-presets@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-sdk-minimal@0.1.5-rc.1': patches/@deepseek-ai__dsh-sdk-minimal@0.1.5-rc.1.patch
-  '@deepseek-ai/dsh-client-ui-open-in-app@0.1.5-rc.1': patches/@deepseek-ai__dsh-client-ui-open-in-app@0.1.5-rc.1.patch
+  '@deepseek-ai/dsh-api-session-controller@0.2.0-rc.2': patches/@deepseek-ai__dsh-api-session-controller@0.2.0-rc.2.patch
+  '@deepseek-ai/dsh-llm-deepseek@0.2.0-rc.2': patches/@deepseek-ai__dsh-llm-deepseek@0.2.0-rc.2.patch
+  '@deepseek-ai/dsh-llm-pi-ai@0.2.0-rc.2': patches/@deepseek-ai__dsh-llm-pi-ai@0.2.0-rc.2.patch
+  '@deepseek-ai/dsh-session-format-v0-to-v1@0.2.0-rc.2': patches/@deepseek-ai__dsh-session-format-v0-to-v1@0.2.0-rc.2.patch
+  '@deepseek-ai/dsh-tool-fs@0.2.0-rc.2': patches/@deepseek-ai__dsh-tool-fs@0.2.0-rc.2.patch
+  '@deepseek-ai/dsh-web-app@0.2.0-rc.2': patches/@deepseek-ai__dsh-web-app@0.2.0-rc.2.patch

@@ -347,6 +347,72 @@ shell (bash on POSIX, pwsh on win32)"*。这说明**预设的名册就是该 age
 重做 1 个（`agent-presets` 注入点）、重移植 2 个（`llm-deepseek`、`tool-fs` 的图像门禁）、
 改文件名与版本键 3 个（`api-session-controller`、`llm-pi-ai`、`session-format-v0-to-v1`）。
 
+**(3) 那两个「冲突」只是行号位移，不是逻辑变更。** 读 0.2.0-rc.2 的真实代码核对：
+
+| 补丁 | 0.1.5 位置 | 0.2.0-rc.2 位置 | 语义 |
+|---|---|---|---|
+| `tool-fs` | `assertImageCapableRoute` @`:953`，调用 @`:1069` | @`:898`，调用 @`:1006` | 完全一致 |
+| `llm-deepseek` | Messages 门禁 @`:1617` | @`:1415` | 完全一致 |
+
+`.default(["text"])`、`?? ["text"]`、第二处 `:494` 也都原样保留。所以这两个是**机械重生成**，不是设计工作。
+
+**(4) `agent-presets` 在 0.2.0 上的形态完全变了，而且变得更好。** 已核实：
+
+- 旧的 `@deepseek-ai/dsh-agent-presets` **在 0.2.0 已不再发布**（npm 停在 `0.1.6-alpha.2`），官方运行时里也没有它。
+- 预设不再以 `presets/<name>/agent.cordis.yml` 形式存在，而是
+  `@deepseek-ai/dsh-web-app/presets/{standard,cordis,ptc,minimal}.patch.yml`。
+- 每个预设是**一条声明式配置**，名册是可配字段：
+
+  ```yaml
+  - insert:
+      - id: preset-standard
+        name: '@deepseek-ai/dsh-agent-preset'
+        config:
+          id: standard
+          order: 1
+          plugins:            # ← 工具名册就是这个数组
+            - id: persona
+              name: '@deepseek-ai/dsh-persona'
+            - id: tool-pwsh
+              name: '@deepseek-ai/dsh-tool-pwsh'
+  ```
+
+  而 `@deepseek-ai/dsh-agent-preset` 的 schema 就是
+  `Config = z.object({ id, name?, description?, order?, plugins: z.array(z.any()).required() })`。
+
+- **该文件自己的头部注释给出了官方的扩展路径**：*"Edits saved from the Web editor override this row's
+  `config.plugins` by id from the profile patch."* 也就是说 0.2.0 **预期由 profile patch 按 id 覆盖预设**。
+
+**这条结论对 Sandrone 的意义——已查证完毕，结论是「必须继续改预设文件」**：
+
+读了 0.2.0-rc.2 的 patch 层实现 `@deepseek-ai/dsh-app-boot/lib/index.js` 的 `applyEntryPatches`（`:61-110`），
+语义是**逐键浅替换**，不是深合并：
+
+```js
+for (const [key, value] of Object.entries(overrides)) {
+  if (key === "id") continue;
+  target[key] = value;          // config 整体被替换，数组不会被合并
+}
+```
+
+而 `insert` 分支（`:74-89`）要求目标是 group：`if (!target.group) { warn("patch insert: entry %C is not a group"); continue }`。
+预设条目 `preset-standard` 带的是 `config: { id, order, plugins }`（对象，不是数组），也没有 `group: true`，
+所以两条路都不通：
+
+- **按 id 覆盖** `config` → 整个 `plugins` 名册被替换，必须把上游那份 146 行抄进 Sandrone 的 profile，
+  比打补丁更糟（会随上游漂移，而且是静默漂移）。
+- **insert 一行** → 目标不是 group，patch 层直接警告跳过，什么都不会发生。
+
+**因此 `agent-presets` 补丁在 0.2.0 上只能重做、不能删除**：注入点从
+`@deepseek-ai/dsh-agent-presets/presets/<name>/agent.cordis.yml` 改为
+`@deepseek-ai/dsh-web-app/presets/<name>.patch.yml`，往每个 `config.plugins` 数组里插
+`sandrone-image-tools` 一行。改动形状与现在完全一致，只是包名与路径变了。
+
+（顺带一个发现：patch 层对 `name` 做一致性校验——`name` 与目标的 `name` 不符时警告并跳过整条 patch，
+见 `:100-103`。这对 Sandrone 反而是好事：上游改包名时不会静默错位，会明确报「name mismatch」。）
+
+
+
 
 ### 8.1 已由本轮完成的机制
 

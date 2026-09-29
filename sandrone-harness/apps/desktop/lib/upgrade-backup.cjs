@@ -3,7 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
-const TARGET_VERSION = '0.1.5-rc.1'
+const TARGET_VERSION = '0.2.0-rc.2'
 const MARKER = '.sandrone-runtime-version.json'
 
 function prepareUpgradeBackup(dshHome, options = {}) {

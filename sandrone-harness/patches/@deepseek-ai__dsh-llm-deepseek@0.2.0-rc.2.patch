@@ -1,16 +1,8 @@
 diff --git a/lib/index.js b/lib/index.js
-index eff6f1ce3a6f08aa26e3ac104f31d56334ede366..41bbdbad54b1ed708f020c72b32659fe8ec68ee6 100644
+index cc8935e..a8db75f 100644
 --- a/lib/index.js
 +++ b/lib/index.js
-@@ -1617,7 +1617,6 @@ var DeepSeekAdapter = class extends LlmAdapter {
- 			const hasImages = options.messages.some((message) => contentHasImage(message.content));
- 			let attachments;
- 			if (hasImages) {
--				if (connection.models.find((entry) => entry.id === options.model)?.inputModalities?.includes("image") !== true) throw new LlmError(`DeepSeek model "${options.model}" does not accept image input.`, "UNSUPPORTED_CONTENT");
- 				attachments = this.config.resolveAttachments?.();
- 				if (attachments === void 0) throw new LlmError("DeepSeek image conversion requires the durable attachment service.", "UNSUPPORTED_CONTENT");
- 			}
-@@ -1876,7 +1875,7 @@ const catalogModel = z.object({
+@@ -300,7 +300,7 @@ const catalogModel = z.object({
  	description: z.string(),
  	contextWindow: z.number().step(1).min(1),
  	maxTokens: z.number().step(1).min(1),
@@ -18,8 +10,8 @@ index eff6f1ce3a6f08aa26e3ac104f31d56334ede366..41bbdbad54b1ed708f020c72b32659fe
 +	inputModalities: z.array(z.union(MODEL_MODALITIES)).min(1).default(void 0),
  	imagePixelBudget: z.union([z.number().step(1).min(1), "low"]),
  	imageMaxBytes: z.number().step(1).min(1),
- 	systemPromptUpdate: z.const("in-history")
-@@ -1920,7 +1919,7 @@ function resolveModels(models) {
+ 	systemPromptUpdate: z.const("in-history"),
+@@ -346,7 +346,7 @@ function resolveModels(models) {
  		if (model.name !== void 0 && model.name.length === 0) throw new Error(`llm-deepseek: catalog model "${model.id}" has an empty name`);
  		if (model.contextWindow !== void 0 && (!Number.isInteger(model.contextWindow) || model.contextWindow <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" contextWindow must be a positive integer`);
  		if (model.maxTokens !== void 0 && (!Number.isInteger(model.maxTokens) || model.maxTokens <= 0)) throw new Error(`llm-deepseek: catalog model "${model.id}" maxTokens must be a positive integer`);
@@ -28,3 +20,12 @@ index eff6f1ce3a6f08aa26e3ac104f31d56334ede366..41bbdbad54b1ed708f020c72b32659fe
  		if (inputModalities.length === 0) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not be empty`);
  		if (inputModalities.some((modality) => !MODEL_MODALITIES.includes(modality))) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must contain only "text" and "image"`);
  		if (new Set(inputModalities).size !== inputModalities.length) throw new Error(`llm-deepseek: catalog model "${model.id}" inputModalities must not contain duplicates`);
+@@ -1412,7 +1412,7 @@ async function prepareImages(history, connection, modelId, attachments, access,
+ 		versions
+ 	};
+ 	const model = connection.models.find((entry) => entry.id === modelId);
+-	if (model?.inputModalities?.includes("image") !== true || attachments === void 0) throw new LlmError("DeepSeek Messages image input requires a vision model and attachment service", "UNSUPPORTED_CONTENT");
++	if (attachments === void 0) throw new LlmError("DeepSeek Messages image input requires the durable attachment service", "UNSUPPORTED_CONTENT");
+ 	if (messages.some((message) => message.role !== "user" && message.role !== "tool" && contentHasImage(message.content))) throw new LlmError("DeepSeek Messages supports images only in user messages and tool results", "UNSUPPORTED_CONTENT");
+ 	for (const message of messages) for (const ref of imageRefs(message.content)) if (!versions.has(ref.attachmentId)) versions.set(ref.attachmentId, await attachments.readImageRequest(ref, resolveRequestImageTarget(model, ref), signal));
+ 	assertImagesFit(messages, versions, connection, "raw");

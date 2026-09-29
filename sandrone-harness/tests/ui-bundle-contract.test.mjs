@@ -18,8 +18,11 @@ test('UI package self-registers as a Web client plugin using only public depende
     '@deepseek-ai/dsh-api-session-controller',
     '@deepseek-ai/dsh-client-ui-model-selection',
   ])
+  // Read the pinned family version instead of restating it: a hardcoded copy here
+  // is one more place to forget on every upstream bump.
+  const lock = JSON.parse(await readFile(join(root, 'docs/upstream-lock.json'), 'utf8'))
   for (const [name, version] of Object.entries(manifest.peerDependencies)) {
-    if (name.startsWith('@deepseek-ai/dsh')) assert.equal(version, '0.1.5-rc.1')
+    if (name.startsWith('@deepseek-ai/dsh')) assert.equal(version, lock.packageFamilyVersion)
   }
 })
 

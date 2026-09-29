@@ -13,8 +13,8 @@
     "src/index.js"
   ],
   "dependencies": {
-    "@deepseek-ai/dsh-attachment": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-attachment": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
     "@deepseek-ai/schemastery": "3.18.2",
     "ipaddr.js": "1.9.1"
   },

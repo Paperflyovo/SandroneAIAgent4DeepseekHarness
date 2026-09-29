@@ -1,0 +1,34 @@
+diff --git a/lib/index.js b/lib/index.js
+index 5f8121a..bd12ad0 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -116,7 +116,7 @@ const RELEASED_V0_EVENT_DISPOSITIONS = Object.freeze({
+ 		"retry"
+ 	]),
+ 	"model/selection": disposition(["provider", "model"], ["reasoningEffort"]),
+-	"permission/preset": disposition(["preset"]),
++	"permission/preset": disposition(["preset"], ["origin"]),
+ 	"plan/mode": disposition(["active"]),
+ 	"request/context": disposition(["provider", "model"], ["contextWindow"]),
+ 	"request/header": disposition(["header", "reason"], ["startsSeries"]),
+@@ -398,6 +398,7 @@ function assertReleasedPayloadSemantics(event, version) {
+ 			return;
+ 		case "permission/preset":
+ 			nonEmptyString(data["preset"], `${label} preset`);
++			if (data["origin"] !== void 0) literalValue(data["origin"], ["default", "selection", "inferred"], `${label} origin`);
+ 			return;
+ 		case "plan/mode":
+ 			booleanValue(data["active"], `${label} active`);
+@@ -1913,6 +1914,12 @@ function assertHeaderVersion(header, version) {
+ 	if (header.version !== version) throw new SessionFormatError(`expected format v${version} header`);
+ }
+ function normalizeReleasedV0Event(event, sessionId, state) {
++	if (event.type === "subagent/descriptor" && event.data?.version === 2) {
++		const data = releasedV0Record(event.data, `subagent/descriptor ${event.seq} data`);
++		assertReleasedV0Keys(data, ["mode", "version", "provider"], ["label", "agentProvider", "agentModel", "persona", "toolFilter"], `subagent/descriptor ${event.seq} data`);
++		subagentDescriptorValue({ ...data, version: 3 }, `subagent/descriptor ${event.seq}`);
++		event = { ...event, data: { ...data, version: 3 } };
++	}
+ 	const named = normalizeLegacyCompactionType(event);
+ 	assertSupportedLegacyType(named, sessionId);
+ 	const message = normalizeLegacyMessage(normalizeLegacyCompaction(normalizeLegacyRetry(normalizeLegacySteering(normalizeLegacyRequestHeader(normalizeLegacyTurnEnd(normalizeLegacyTurnStart(named, sessionId), sessionId), sessionId), sessionId), sessionId, state.retryIds), sessionId, state), sessionId, state.messageIds);
