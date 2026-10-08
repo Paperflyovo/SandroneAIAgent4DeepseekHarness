@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { once } from 'node:events'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 
 const requireApp = createRequire(join(resolve(process.env.QA_APP_ROOT || resolve(import.meta.dirname, '..')), 'package.json'))
-const [{ Context }, { default: LlmRuntime, createUserMessage }, { Config, DeepSeekAdapter, plainOptions, resolveAdapterOptions }] = await Promise.all(
+const [{ Context }, { default: LlmRuntime, createUserMessage }, { Config, DeepSeekAdapter, DeepSeekFileStore, DeepSeekUploadIndex, plainOptions, resolveAdapterOptions }] = await Promise.all(
   ['@deepseek-ai/cordis', '@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-llm-deepseek'].map(name => import(pathToFileURL(requireApp.resolve(name)).href)),
 )
 
@@ -82,7 +84,12 @@ test('renamed DeepSeek vision route uploads and sends durable images through the
         }).formData()
         const file = form.get('file')
         uploads.push(Buffer.from(await file.arrayBuffer()))
-        const record = { id: `file-fixture-${uploads.length}`, object: 'file', bytes: file.size, filename: file.name, purpose: 'user_data', created_at: Math.floor(Date.now() / 1000), expires_at: Math.floor(Date.now() / 1000) + 604800 }
+        // 0.2.0 validates the Files wire object strictly: `type: "file"`,
+        // `mime_type`, `size_bytes`, and `created_at` as an ISO-8601 string.
+        // The 0.1.5 shape (`object`/`bytes`/epoch-seconds `created_at`) is now
+        // rejected as INVALID_RESPONSE, which silently degrades every request
+        // back to inline base64.
+        const record = { id: `file-fixture-${uploads.length}`, type: 'file', mime_type: file.type, size_bytes: file.size, filename: file.name, created_at: new Date().toISOString() }
         files.set(record.id, record)
         response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(record))
         return
@@ -109,6 +116,11 @@ test('renamed DeepSeek vision route uploads and sends durable images through the
         'event: content_block_stop',
         'data: {"type":"content_block_stop","index":0}',
         '',
+        // The Messages stream settles its stop reason here; `message_stop` alone
+        // is rejected as malformed by the 0.2.0 translator.
+        'event: message_delta',
+        'data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":2}}',
+        '',
         'event: message_stop',
         'data: {"type":"message_stop"}',
         '',
@@ -129,10 +141,25 @@ test('renamed DeepSeek vision route uploads and sends durable images through the
   })
   let options = adapterOptions({ baseURL: `http://127.0.0.1:${server.address().port}`, models: [{ id: 'deepseek-flash', name: 'DeepSeek-V4.1-Flash' }] })
   await runtime.plugin(LlmRuntime)
+  // 0.2.0 builds a throwaway `DeepSeekFileStore` per request unless `resolveFiles`
+  // supplies one, and the reuse index lives on the store. The real provider
+  // resolves a process-wide store, so the fixture must do the same or the same
+  // image is uploaded once per request instead of being reused. The index is
+  // redirected under `tmpdir()` because its default path is the user's real
+  // `DSH_HOME`, which would both leak fixture records into it and let this test
+  // reuse a previous run's ids instead of uploading.
+  const storeRoot = await mkdtemp(join(tmpdir(), 'sandrone-image-routing-'))
+  context.after(() => rm(storeRoot, { recursive: true, force: true }))
+  const fileStore = new DeepSeekFileStore({ index: new DeepSeekUploadIndex(join(storeRoot, 'files-v3.json')) })
   const adapter = new DeepSeekAdapter({
     options: () => options,
-    resolveApiKey: async () => 'local-fixture',
+    // 0.2.0 replaced the 0.1.5 `resolveApiKey` hook with `resolveAuth`, which
+    // returns the credential headers captured for this request (plus an optional
+    // `onRequestError` classifier). The old hook is simply never called, so
+    // leaving it in place made every request fail as a transport error.
+    resolveAuth: async () => ({ headers: { authorization: 'Bearer local-fixture' } }),
     resolveUserId: () => undefined,
+    resolveFiles: () => fileStore,
     prepareExtensions: async () => ({ fields: {}, accept: async () => {} }),
     resolveAttachments: () => ({
       readImageRequest: async () => ({ variantId: digest, attachment, data: png, mediaType: 'image/png', bytes: png.length, width: 1, height: 1, depth: 'uchar', space: 'srgb', hasAlpha: true }),
@@ -152,7 +179,9 @@ test('renamed DeepSeek vision route uploads and sends durable images through the
   assert.deepEqual(uploads, [png])
   assert.equal(requests.length, 2)
   for (const request of requests) {
-    assert.ok(request.messages.some(item => Array.isArray(item.content) && item.content.some(part => part.type === 'file' && part.file_id === 'file-fixture-1')))
+    // 0.2.0 references an uploaded image as an image block whose `source` is the
+    // file id; 0.1.5 used a top-level `{ type: 'file', file_id }` block.
+    assert.ok(request.messages.some(item => Array.isArray(item.content) && item.content.some(part => part.type === 'image' && part.source?.type === 'file' && part.source.file_id === 'file-fixture-1')))
     assert.doesNotMatch(JSON.stringify(request), /image omitted|accepts text only/)
   }
   assert.deepEqual(message, original)

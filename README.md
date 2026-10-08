@@ -65,7 +65,7 @@ Windows 安装包使用 Electron 原生文件夹对话框选择工作区。`node
 
 ## 更新 DeepSeek Harness
 
-当前源码适配已锁定整个 Harness `0.1.5-rc.1` 包族，已发布的 `V26.9.12` 安装包仍以发布页附件为准。新版首次启动会在 `DeepSeekHarness` 的同级 `DeepSeekHarness-backups` 目录备份旧数据，备份失败会停止启动。历史格式升级由官方运行时完成；回退步骤见 [适配层 README](sandrone-harness/README.md#upgrade-backup-and-rollback)。Buddy 会话与历史由官方 Session 管理，内嵌网页浏览功能继续保持删除。
+当前源码适配已锁定整个 Harness `0.2.0-rc.2` 包族，已发布的 `V26.9.12` 安装包仍以发布页附件为准。新版首次启动会在 `DeepSeekHarness` 的同级 `DeepSeekHarness-backups` 目录备份旧数据，备份写入 `before-0.2.0-rc.2-*/data`，备份失败会停止启动。历史格式升级由官方运行时完成；回退步骤见 [适配层 README](sandrone-harness/README.md#upgrade-backup-and-rollback)。Buddy 会话与历史由官方 Session 管理，内嵌网页浏览功能继续保持删除。
 
 上游代码位于 `deepseek-harness/`，适配层通过 DeepSeek 的公开客户端包和插件接口工作。升级时请整体更新 DeepSeek 包族，重新执行适配层的构建、架构检查、上游锁定检查和测试，并在发布前备份 Harness 用户数据。`sandrone-harness/docs/upstream-lock.json` 记录了当前适配所依据的上游版本证据。
 

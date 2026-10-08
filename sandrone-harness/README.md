@@ -74,12 +74,11 @@ sidebar/settings/workspace controls.
 ### Space region
 
 The desktop sidebar's **工作区** switcher also opens **空间区**, a local Markdown
-workbench for notes while an Agent is running. Spaces are stored beside the
-installed application in `space/<space-id>/` with `space.json`, `md/` and `res/`
-directories. Earlier releases kept those spaces beside the installed
-application, which loses them whenever the installer is pointed at a new path;
-the first packaged launch copies them into the user-data location and leaves the
-original directory untouched. The workbench provides space and document creation/deletion,
+workbench for notes while an Agent is running. Spaces live under the user-data
+directory as `space/<space-id>/` with `space.json`, `md/` and `res/` directories.
+Earlier releases kept them beside the installed application, which loses them
+whenever the installer is pointed at a new path; the first packaged launch copies
+them into the user-data location and leaves the original directory untouched. The workbench provides space and document creation/deletion,
 Markdown editing and reading, debounced auto-save, resource import with
 automatic image references, relative Markdown links and resource previews. The Electron bridge validates every space id and relative
 path before accessing the filesystem; Markdown writes use atomic replacement.
@@ -145,7 +144,7 @@ The implementation boundary, native dependency policy, public reference evidence
 
 ## Upstream rule
 
-The npm distribution is pinned to `@deepseek-ai/dsh@0.1.5-rc.1` and the matching
+The npm distribution is pinned to `@deepseek-ai/dsh@0.2.0-rc.2` and the matching
 DeepSeek package family. The audited source reference is recorded in
 `docs/upstream-lock.json`; it is evidence for review, not a claim that the npm artifacts are
 byte-identical to the source checkout. Upgrade the whole package family in a
@@ -156,8 +155,8 @@ before opening the candidate.
 
 ### Upgrade backup and rollback
 
-Before the first launch with Harness `0.1.5-rc.1`, Sandrone copies existing Harness
-data to the sibling `DeepSeekHarness-backups/before-0.1.5-rc.1-*/data` directory.
+Before the first launch with Harness `0.2.0-rc.2`, Sandrone copies existing Harness
+data to the sibling `DeepSeekHarness-backups/before-0.2.0-rc.2-*/data` directory.
 The backup excludes package links and `node_modules`; it includes history, settings
 and credentials, so keep it private. Startup stops if the backup cannot finish.
 New installations only receive a version marker. Plain and Zstandard V0 histories
